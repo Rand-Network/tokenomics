@@ -1,21 +1,18 @@
-// Vesting Controller Draft
-
-// TODO: 	need reverse logic and limit the LOCKED amount in _transfer() rather than the UNLOCKED
-// 			because if a vesting user receives non-vesting RND, it has to be tracked and registered in a variable constantly
+// Rand.network - Vesting Controller Draft
 
 pragma solidity 0.8.4;
 
+import "hardhat/console.sol";
+
 contract VestingController {
 
-	mapping (address => VestingInvestor) vestingInvestor;
+	mapping (address => VestingInvestor) private vestingInvestor;
 
 	struct VestingInvestment {
 		uint tokenAmount;
 		uint vestingPeriod;
 		uint vestingStartTime;
 		uint cliffStartTime;
-		// dailyTokenAmount should be extended with a check to see if vesting period is over allow tokenAmount to be used 
-		// e.g.: 10/3 = 3.33, 3.33x3=9.99
 		uint dailyTokenAmount;
 	}
 
@@ -25,32 +22,67 @@ contract VestingController {
 		mapping( uint => VestingInvestment) VestingInvestments;
 	}
 
+	// Just to try logic, needs initializer implementation for upgradability
+	constructor() {
+	}
+
+	function getInvestment(address _investor, uint _investment) 
+			public 
+			view 
+			returns (VestingInvestment memory) {
+		VestingInvestment memory investment = vestingInvestor[_investor].VestingInvestments[_investment];
+		return investment;
+	}
+
+	// Adds a new investment for an investor
+	function addInvestment(address _recipient,
+							uint _tokenAmount,
+							uint _vestingPeriod,
+							uint _cliffStartTime) public {
+
+
+		uint dailyTokenAmount = _tokenAmount / _vestingPeriod;
+
+		VestingInvestment memory investment = VestingInvestment(_tokenAmount, 
+																_vestingPeriod,
+																block.timestamp,
+																_cliffStartTime,
+																dailyTokenAmount);
+		
+		uint total = vestingInvestor[_recipient].totalInvestmentCounter;
+		vestingInvestor[_recipient].totalInvestmentCounter = vestingInvestor[_recipient].totalInvestmentCounter + 1;
+		vestingInvestor[_recipient].VestingInvestments[total] = investment;
+		vestingInvestor[_recipient].totalTokenAmount = vestingInvestor[_recipient].totalTokenAmount + _tokenAmount;
+		
+	}
+
+
 	// Calculates the total of not yet vested amount of a user through all his different vesting schedules
 	// Returned amount should be used in _transfer() to prohibit transferring more than this
-	function calculateLockedAmount(address investorAddress) public returns (uint256) {
+	function calculateLockedAmount(address _investorAddress) public view returns (uint256 _lockedAmount) {
 
-		uint total = vestingInvestor[investorAddress].totalInvestmentCounter;
+		uint total = vestingInvestor[_investorAddress].totalInvestmentCounter;
 		uint lockedAmount = 0;
+		uint locked;
 
-		// Iterate over the investments of a wallet in VestingInvestments
-		for (uint i=0; i==total; i++) {
+		// Loop through investments for the investor
+		for (uint i=0; i<total; i++) {
 
-			VestingInvestment memory investment = vestingInvestor[investorAddress].VestingInvestments[i];
-
-			// Check if the cliffStartTime is reached
-			if (investment.cliffStartTime >= block.timestamp) {
-				uint locked = (investment.vestingPeriod - block.timestamp) * (investment.tokenAmount / investment.vestingPeriod);
-				lockedAmount = lockedAmount + locked;
+			VestingInvestment memory investment = vestingInvestor[_investorAddress].VestingInvestments[i];
+			uint vestedPeriods = block.timestamp - investment.vestingStartTime;
+			
+			// Check if there is no overflow, else set locked to zero
+			if (vestedPeriods <= investment.vestingPeriod) {
+				locked = investment.tokenAmount - (vestedPeriods * investment.dailyTokenAmount);
 			}
-
-			// If cliffStartTime is not reached skip to the next iteration
 			else {
-				break;	
+				locked = 0;
+			}
+			// Add up locked amounts
+			lockedAmount = lockedAmount + locked;
+			
 			}
 
-		}
-		
-		// Return total amount locked over all investments
 		return lockedAmount;
 
 	}
@@ -94,36 +126,3 @@ contract VestingController {
 
 
 // total sent 533.33 vested RND and received 200 nonvesting RND
-
-
-
-
-
-// Vested amount function is probably not needed as locked amounts should be calculated and applied for checks
-// locked should be substracted from total to get vested amount
-
-// // Calculates the total of already vested amount of a user through all his different vesting schedules
-// function calculateVestedAmount(address investorAddress) {
-
-// 	uint total = vestingInvestor[investorAddress].totalInvestmentCounter;
-// 	uint unlockedAmount = 0;
-
-// 	// Iterate over the investments of a wallet in VestingInvestments
-// 	for (i=0; i==total; i++) {
-
-// 		// Check if the cliffStartTime is reached
-// 		if (vestingInvestor[investorAddress].VestingInvestments[i].cliffStartTime => block.timestamp) {
-// 			uint unlock = vestingInvestor[investorAddress].VestingInvestments[i].
-// 			unlockedAmount = unlockedAmount + unlocked
-// 		}
-
-// 		// If cliffStartTime is not reached skip to the next iteration
-// 		else {
-// 			break;	
-// 		}
-
-// 	}
-
-// }
-
-
