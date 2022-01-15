@@ -19,12 +19,20 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
  */
 
 module.exports = {
-  solidity: "0.8.2",
   defaultNetwork: "development",
   networks: {
     development: {
       url: "http://127.0.0.1:8545"
     },
+  },
+  solidity: {
+    version: "0.8.2",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
   },
   paths: {
     sources: "./contracts",
