@@ -24,7 +24,9 @@ contract RandVestingNFT is
 
     IERC20 public RND_TOKEN;
     IERC20 public SM_TOKEN;
+    string public baseURI;
 
+    uint256 public PERIOD_SECONDS;
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant SM_ROLE = keccak256("SM_ROLE");
@@ -38,13 +40,13 @@ contract RandVestingNFT is
         uint256 rndStakedAmount;
         uint256 vestingPeriod;
         uint256 vestingStartTime;
-        uint256 cliffPeriod;
+        //uint256 cliffPeriod;
         bool exists;
     }
     mapping(uint256 => VestingInvestment) vestingToken;
 
     // Events
-
+    event BaseURIChanged(string baseURI);
     event ClaimedAmount(uint256 tokenId, address recipient, uint256 amount);
     event StakedAmountModified(uint256 tokenId, uint256 amount);
     event NewInvestmentTokenMinted(
@@ -63,7 +65,8 @@ contract RandVestingNFT is
         string calldata _erc721_name,
         string calldata _erc721_symbol,
         IERC20 _rndTokenContract,
-        IERC20 _smTokenContract
+        IERC20 _smTokenContract,
+        uint256 _periodSeconds
     ) public initializer {
         __ERC721_init(_erc721_name, _erc721_symbol);
         __ERC721Enumerable_init();
@@ -80,33 +83,63 @@ contract RandVestingNFT is
 
         RND_TOKEN = _rndTokenContract;
         SM_TOKEN = _smTokenContract;
+        PERIOD_SECONDS = _periodSeconds;
     }
 
-    // [] limit vesting start by shifting with cliffPeriod
-    // [] implement function for SM to modify rndStakedAmount
-    // [] calculate claimable amount (_calculateTotalClaimableTokens())
-    // [] add claimed amount to rndClaimedAmount in claimTokens()
-    // [] when calculating claimable amount substract the staked ones
+    // [] create interface contract for VCERC721.sol
     // [] create new access roles and add roles to functions
-    // [] add events to the contract and assign to functions
     // [] check if SM_TOKEN is needed, remove if not
-    // [] limit ERC721 token ownership checks to only owners to keep privacy of investors
+    // [] limit ERC721 token info checks to only owners to keep privacy of investors? should we?
+    // [] should we store the block.timestamp when the investment was minted?
+    // [] should we keep _calculateTotalClaimableTokens? (checks all tokens of an address)
 
-    // Function for the SM to increase the staked RND amount
+    // [x] tokenURI
+    // [x] have a period_seconds variable to store how much each period must be multiplied
+    // [x] limit vesting start by shifting with cliffPeriod
+    // [x] implement function for SM to modify rndStakedAmount
+    // [x] calculate claimable amount (_calculateTotalClaimableTokens())
+    // [x] add claimed amount to rndClaimedAmount in claimTokens()
+    // [x] when calculating claimable amount substract the staked ones
+    // [x] add events to the contract and assign to functions
+    // [x] implement view function to see investments (access control)
+
+    // View functions to get investment details
+    function getClaimableTokens(uint256 tokenId) public view returns (uint256) {
+        return _calculateClaimableTokens(tokenId);
+    }
+
+    function getInvestmentInfo(uint256 tokenId)
+        public
+        view
+        returns (
+            uint256 rndTokenAmount,
+            uint256 vestingPeriod,
+            uint256 vestingStartTime //uint256 cliffPeriod
+        )
+    {
+        require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
+        rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
+        vestingPeriod = vestingToken[tokenId].vestingPeriod;
+        vestingStartTime = vestingToken[tokenId].vestingStartTime;
+        //uint256 cliffPeriod = vestingToken[tokenId].cliffPeriod;
+    }
+
+    // Function for SM to increase the staked RND amount
     function modifyStakedAmount(uint256 tokenId, uint256 amount)
         external
         onlyRole(SM_ROLE)
     {
         require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
         vestingToken[tokenId].rndStakedAmount = amount;
+        emit StakedAmountModified(tokenId, amount);
     }
 
-    // Claim function for investors to withdraw their vested tokens
+    // Claim function to withdraw vested tokens
     function claimTokens(
         uint256 tokenId,
         address recipient,
         uint256 amount
-    ) public returns (bool) {
+    ) public {
         require(
             ownerOf(tokenId) == msg.sender || hasRole(BACKEND_ROLE, msg.sender),
             "VC: tokenId is not owned by msg.sender OR not BACKEND_ROLE "
@@ -117,6 +150,7 @@ contract RandVestingNFT is
 
         vestingToken[tokenId].rndClaimedAmount += amount;
         IERC20(RND_TOKEN).safeTransferFrom(address(this), recipient, amount);
+        emit ClaimedAmount(tokenId, recipient, amount);
     }
 
     // Adds claimed amount to the investments
@@ -133,13 +167,11 @@ contract RandVestingNFT is
     function _calculateClaimableTokens(uint256 tokenId)
         internal
         view
-        returns (uint256)
+        returns (uint256 claimableAmount)
     {
-        uint256 claimableAmount;
+        require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
         VestingInvestment memory investment = vestingToken[tokenId];
-        uint256 vestedPeriods = block.timestamp -
-            investment.vestingStartTime +
-            investment.cliffPeriod;
+        uint256 vestedPeriods = block.timestamp - investment.vestingStartTime;
 
         // If there is still not yet vested periods
         if (vestedPeriods <= investment.vestingPeriod) {
@@ -155,17 +187,15 @@ contract RandVestingNFT is
                 investment.rndClaimedAmount -
                 investment.rndStakedAmount;
         }
-
-        return claimableAmount;
     }
 
     // // Calculates the total claimable amount for an investor address
     // function _calculateTotalClaimableTokens(address investor)
     //     internal
     //     view
-    //     returns (uint256)
+    //     returns (uint256 claimableAmount)
     // {
-    //     uint256 claimableAmount;
+    //     require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
     //     uint256 balance = balanceOf(investor);
 
     //     // Calculate total claimable on all investments
@@ -188,8 +218,6 @@ contract RandVestingNFT is
     //                 investment.rndClaimedAmount;
     //         }
     //     }
-
-    //     return claimableAmount;
     // }
 
     // Mints a token and associates an investment to it and sets tokenURI
@@ -199,13 +227,15 @@ contract RandVestingNFT is
         uint256 vestingPeriod,
         uint256 vestingStartTime,
         uint256 cliffPeriod
-    ) public returns (uint256) {
+    ) public onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
         // Incrementing token counter and minting new token to recipient
-        uint256 tokenId = _tokenIdCounter.current();
+        tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(recipient, tokenId);
 
         // Initializing investment struct and assigning to the newly minted token
+        vestingPeriod = vestingPeriod * PERIOD_SECONDS;
+        vestingStartTime += cliffPeriod;
         uint256 rndClaimedAmount = 0;
         uint256 rndStakedAmount = 0;
         bool exists = true;
@@ -219,12 +249,18 @@ contract RandVestingNFT is
             rndStakedAmount,
             vestingPeriod,
             vestingStartTime,
-            cliffPeriod,
             exists
         );
         vestingToken[tokenId] = investment;
 
-        return tokenId;
+        emit NewInvestmentTokenMinted(
+            recipient,
+            rndTokenAmount,
+            vestingPeriod,
+            vestingStartTime,
+            cliffPeriod,
+            tokenId
+        );
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
@@ -241,6 +277,15 @@ contract RandVestingNFT is
         _safeMint(to, tokenId);
     }
 
+    function setBaseURI(string memory newURI) public onlyRole(MINTER_ROLE) {
+        baseURI = newURI;
+        emit BaseURIChanged(baseURI);
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
+    }
+
     function _beforeTokenTransfer(
         address from,
         address to,
@@ -252,8 +297,6 @@ contract RandVestingNFT is
     {
         super._beforeTokenTransfer(from, to, tokenId);
     }
-
-    // The following functions are overrides required by Solidity.
 
     function _burn(uint256 tokenId) internal override(ERC721Upgradeable) {
         super._burn(tokenId);
