@@ -8,10 +8,10 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-contract RandVestingNFT is
+contract VestingControllerERC721 is
     Initializable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
@@ -20,10 +20,10 @@ contract RandVestingNFT is
     ERC721BurnableUpgradeable
 {
     using CountersUpgradeable for CountersUpgradeable.Counter;
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IERC20 public RND_TOKEN;
-    IERC20 public SM_TOKEN;
+    IERC20Upgradeable public RND_TOKEN;
+    IERC20Upgradeable public SM_TOKEN;
     string public baseURI;
 
     uint256 public PERIOD_SECONDS;
@@ -64,8 +64,8 @@ contract RandVestingNFT is
     function initialize(
         string calldata _erc721_name,
         string calldata _erc721_symbol,
-        IERC20 _rndTokenContract,
-        IERC20 _smTokenContract,
+        IERC20Upgradeable _rndTokenContract,
+        IERC20Upgradeable _smTokenContract,
         uint256 _periodSeconds
     ) public initializer {
         __ERC721_init(_erc721_name, _erc721_symbol);
@@ -86,6 +86,7 @@ contract RandVestingNFT is
         PERIOD_SECONDS = _periodSeconds;
     }
 
+    // [] implement setAllowanceForSM
     // [] create interface contract for VCERC721.sol
     // [] create new access roles and add roles to functions
     // [] check if SM_TOKEN is needed, remove if not
@@ -134,6 +135,9 @@ contract RandVestingNFT is
         emit StakedAmountModified(tokenId, amount);
     }
 
+    // Function to allow SM to transfer funds when vesting investor stakes
+    function setAllowanceForSM(uint256 amount) external onlyRole(SM_ROLE) {}
+
     // Claim function to withdraw vested tokens
     function claimTokens(
         uint256 tokenId,
@@ -149,7 +153,11 @@ contract RandVestingNFT is
         require(claimable >= amount, "VC: amount is more than claimable");
 
         vestingToken[tokenId].rndClaimedAmount += amount;
-        IERC20(RND_TOKEN).safeTransferFrom(address(this), recipient, amount);
+        IERC20Upgradeable(RND_TOKEN).safeTransferFrom(
+            address(this),
+            recipient,
+            amount
+        );
         emit ClaimedAmount(tokenId, recipient, amount);
     }
 
