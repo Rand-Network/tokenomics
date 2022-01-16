@@ -2,6 +2,7 @@
 
 // []: implement roles assigned to specific addresses
 // []: select address for initial mint recipient (not msg.sender)
+// [] should we allow burning?
 
 pragma solidity ^0.8.0;
 
@@ -24,15 +25,18 @@ contract RandToken is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
-    function initialize() public initializer {
-        __ERC20_init("Rand Token", "RND");
+    function initialize(string memory _name, string memory _symbol)
+        public
+        initializer
+    {
+        __ERC20_init(_name, _symbol);
         __ERC20Burnable_init();
         __Pausable_init();
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
-        _mint(msg.sender, 200000000 * 10**decimals());
+        _mint(msg.sender, 200e6 * 10**decimals());
         _grantRole(MINTER_ROLE, msg.sender);
     }
 
