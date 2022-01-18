@@ -25,10 +25,11 @@ contract RandToken is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
-    function initialize(string memory _name, string memory _symbol)
-        public
-        initializer
-    {
+    function initialize(
+        string memory _name,
+        string memory _symbol,
+        uint256 _initialSupply
+    ) public initializer {
         __ERC20_init(_name, _symbol);
         __ERC20Burnable_init();
         __Pausable_init();
@@ -36,7 +37,7 @@ contract RandToken is
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
-        _mint(msg.sender, 200e6 * 10**decimals());
+        _mint(msg.sender, _initialSupply * 10**decimals());
         _grantRole(MINTER_ROLE, msg.sender);
     }
 
