@@ -1,15 +1,18 @@
-# Basic Sample Hardhat Project
+# Rand Tokenomics
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
+This repository stores the tokenomics ecosystem related contracts, scripts and test for Rand Network.
 
-Try running some of the following tasks:
+These contracts are the following:
+- Rand Token contract (RND) ERC20
+- Vesting Controller (VC) ERC721
+- Safety Module (SM) ERC20
+- Governance (rDAO) 
 
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
+## Hardhat
+
+To run the repository test follow these steps:
+```
+npm install .
+npx hardhat node &
 npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
 ```
