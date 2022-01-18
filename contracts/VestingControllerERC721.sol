@@ -99,18 +99,17 @@ contract VestingControllerERC721 is
         MultiSigRND = _multisigVault;
     }
 
-    // [] need to implement a function when the VC can transfer RND to itself when minting new investment token
     // [] implement setAllowanceForSM
     // [] create interface contract for VCERC721.sol
     // [] create new access roles and add roles to functions - lets create a document/slide for all the contracts and roles
     // [] check if SM_TOKEN is needed, remove if not
-    // [] limit ERC721 token info checks to only owners to keep privacy of investors? should we? - Lets create a new role e.g.: INVESTOR_INFO and grantRole to recipient and Backend
-    // [] should we keep _calculateTotalClaimableTokens? (checks all tokens of an address) - NO
     // [] add claimable amount to getInvestmentInfo()
-    // [] remove hardhar console import
     // [] why do I need to add allowance for VC on VC's tokens to transfer when claiming tokens???
-    // [] use days instead of seconds
 
+    // [x] need to implement a function when the VC can transfer RND to itself when minting new investment token
+    // [x] limit ERC721 token info checks to only owners to keep privacy of investors? should we? - Lets create a new role e.g.: INVESTOR_INFO and grantRole to recipient and Backend
+    // [x] should we keep _calculateTotalClaimableTokens? (checks all tokens of an address) - NO
+    // [x] remove hardhar console import
     // [x] should we store the block.timestamp when the investment was minted? - YES
     // [x] should we allow burning investment token? - dont allow
     // [x] tokenURI
