@@ -8,19 +8,26 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require('@openzeppelin/test-helpers');
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 describe("Rand Token with Vesting Controller", function () {
 
-  let RNDdeployParams = {
+  const RNDdeployParams = {
     _name: "Rand Token ERC20",
-    _symbol: "RND"
+    _symbol: "RND",
+    _initialSupply: BigNumber.from(200e6)
   }
 
-  let VCdeployParams = {
+  const VCdeployParams = {
     _name: "Rand Vesting Controller ERC721",
     _symbol: "vRND",
     _rndTokenContract: 0, //RandToken.address,
     _smTokenContract: 0, //RandToken.address,
-    _periodSeconds: 1
+    _periodSeconds: 1,
+    _multiSigAddress: 0,
+    _backendAddress: 0
   }
 
   let Token;
@@ -30,12 +37,16 @@ describe("Rand Token with Vesting Controller", function () {
   let proxyAdmin;
   let owner;
   let alice;
-  let bob;
-  let charlie;
+  let backend;
+  let network, chainId, localNode
 
   beforeEach(async function () {
 
-    [owner, proxyAdmin, alice, bob, charlie] = await ethers.getSigners();
+    network = await ethers.provider.getNetwork();
+    chainId = network.chainId;
+    localNode = 31337; // local default chainId from hardhat.config.js
+
+    [owner, proxyAdmin, alice, backend] = await ethers.getSigners();
 
     Token = await ethers.getContractFactory("RandToken");
     VestingController = await ethers.getContractFactory("VestingControllerERC721");
@@ -47,6 +58,9 @@ describe("Rand Token with Vesting Controller", function () {
 
     VCdeployParams._rndTokenContract = RandToken.address;
     VCdeployParams._smTokenContract = RandToken.address;
+    VCdeployParams._multiSigAddress = owner.address;
+    VCdeployParams._backendAddress = backend.address;
+
     RandVC = await upgrades.deployProxy(
       VestingController,
       Object.values(VCdeployParams),
@@ -114,42 +128,112 @@ describe("Rand Token with Vesting Controller", function () {
   });
 
   describe("VC ERC721 functions", function () {
-    it("Checking name, symbol and supply", async function () {
-      expect(await RandVC.name()).to.equal(VCdeployParams._name);
-      expect(await RandVC.symbol()).to.equal(VCdeployParams._symbol);
-      expect(await RandVC.totalSupply()).to.equal(0);
-    });
-    it("Setting and checking tokenURI", async function () {
-      const tokenURI = "http://rand.network/token/";
-      const recipient = alice.address;
-      const rndTokenAmount = BigNumber.from("1").pow(18);
-      const vestingPeriod = 1;
-      const vestingStartTime = 1;
-      const cliffPeriod = 0;
+    beforeEach(async function () {
 
-      await RandVC.setBaseURI(tokenURI);
-      await RandVC.mintNewInvestment(
+      // solidity timestamp
+      last_block = await ethers.provider.getBlock();
+      created_ts = last_block.timestamp;
+      //created_ts = Math.floor(Date.now() / 1000);
+
+      recipient = alice.address;
+      rndTokenAmount = ethers.utils.parseEther('100');
+      vestingPeriod = BigNumber.from("10");
+      vestingStartTime = BigNumber.from(created_ts);
+      cliffPeriod = BigNumber.from("1");
+      claimablePerPeriod = rndTokenAmount.div(vestingPeriod);
+
+      // Add allowance for VC to fetch tokens in claim
+      await RandToken.increaseAllowance(RandVC.address, rndTokenAmount);
+      tx = await RandVC.mintNewInvestment(
         recipient,
         rndTokenAmount,
         vestingPeriod,
         vestingStartTime,
         cliffPeriod);
-      expect(await RandVC.tokenURI(0)).to.equal(tokenURI + '0');
+    })
+    it("Checking name, symbol and supply", async function () {
+      expect(await RandVC.name()).to.equal(VCdeployParams._name);
+      expect(await RandVC.symbol()).to.equal(VCdeployParams._symbol);
+      expect(await RandVC.totalSupply()).to.equal(1);
     });
-    it("Should not be able to burn tokens", async function () { });
+    it("Setting and checking tokenURI", async function () {
+      const tokenURI = "http://rand.network/token/";
+      await RandVC.setBaseURI(tokenURI);
+      const expectedURI = tokenURI + tx.value;
+      expect(await RandVC.tokenURI(0)).to.equal(expectedURI);
+    });
+    it("Should not be able to burn tokens", async function () {
+      await expectRevert.unspecified(RandVC.connect(alice).burn(tx.value));
+    });
+    it("Checking claimable tokens", async function () {
+      claimable = rndTokenAmount.div(vestingPeriod);
+      expect(await RandVC.getClaimableTokens(tx.value)).to.be.equal(claimable);
+    });
+    it("Get full investment info", async function () {
+      await RandVC.getInvestmentInfo(tx.value).then(function (res) {
+        var var1 = res[0];
+        var var2 = res[1];
+        var var3 = res[2];
+        var var4 = res[3];
+        expect(var1).to.be.equal(rndTokenAmount);
+        expect(var2).to.be.equal(0); //rndClaimedAmount
+        expect(var3).to.be.equal(vestingPeriod);
+        expect(var4).to.be.equal(vestingStartTime.add(cliffPeriod));
+      })
+    });
+    it("Claiming vested tokens by user and backend", async function () {
+
+      // Logic to differentiate local testing and testnet
+      // Local node
+      if (chainId == localNode) {
+        // Mine an amount of blocks to increase block.timestamp
+        period = 3;
+        periods = cliffPeriod.add(period);
+        for (let i = 1; i <= periods; i++) {
+          await ethers.provider.send('evm_mine');
+        }
+
+        claimableAmount = await RandVC.getClaimableTokens(tx.value);
+        // claimablePerPeriod + 1 for getClaimableTokens and multiply by periods mined above
+        periods_mined = periods.add(1);
+
+      }
+      // Testnet
+      // else {
+      //   // Wait an fetch new block's timestamp so claimable amount increases
+      //   currentBlockNumber = await ethers.provider.getBlockNumber();
+      //   currentBlockTimestamp = await ethers.provider.getBlock();
+      //   currentBlockTimestamp = currentBlockTimestamp.timestamp;
+      //   newBlockTimestamp = 0;
+      //   while (currentBlockTimestamp > newBlockTimestamp) {
+      //     sleep(5000);
+      //     newBlockTimestamp = await ethers.provider.getBlock();
+      //     newBlockTimestamp = newBlockTimestamp.timestamp;
+      //   }
+      //   claimableAmount = await RandVC.getClaimableTokens(tx.value);
+      // }
+
+      // Check balances
+      claimableAmount = await RandVC.getClaimableTokens(tx.value);
+      claimableAmountHalf = claimableAmount.div(2);
+      const aliceBalanceBefore = await RandToken.balanceOf(alice.address);
+      expect(claimableAmount).to.be.equal(claimablePerPeriod.mul(periods_mined));
+      // Claim half by owner
+      await RandVC.connect(alice).claimTokens(tx.value, alice.address, claimableAmountHalf);
+      aliceBalanceAfter = await RandToken.balanceOf(alice.address);
+      expect(aliceBalanceBefore.add(claimableAmountHalf) == aliceBalanceAfter);
+      // Claim other half by backend
+      await RandVC.connect(backend).claimTokens(tx.value, alice.address, claimableAmountHalf);
+      aliceBalanceAfter = await RandToken.balanceOf(alice.address);
+      expect(aliceBalanceBefore.add(claimableAmountHalf) == aliceBalanceAfter);
+    });
+    //it("Claiming vested tokens by backend", async function () { });
   });
 
-  describe("Registering vesting investment on VC", function () {
-    it("Minting new investment token", async function () { });
-    it("Checking claimable tokens", async function () { });
-    it("Claiming vested tokens by user", async function () { });
-    it("Claiming vested tokens by backend", async function () { });
-  });
-
-  describe("VC interaction with SM", function () {
-    it("Checking token balance before staking", async function () { });
-    it("Setting allowance for SM in amount of stake", async function () { });
-    it("Registering staked amount for investment", async function () { });
-  });
+  // describe("VC interaction with SM", function () {
+  //   it("Checking token balance before staking", async function () { });
+  //   it("Setting allowance for SM in amount of stake", async function () { });
+  //   it("Registering staked amount for investment", async function () { });
+  // });
 
 });
