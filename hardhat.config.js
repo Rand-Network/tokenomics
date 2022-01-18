@@ -1,5 +1,7 @@
 require("@nomiclabs/hardhat-waffle");
 require('@openzeppelin/hardhat-upgrades');
+require("@atixlabs/hardhat-time-n-mine");
+
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -22,7 +24,8 @@ module.exports = {
   defaultNetwork: "development",
   networks: {
     development: {
-      url: "http://127.0.0.1:8545"
+      url: "http://127.0.0.1:8545",
+      chainId: 31337
     },
   },
   solidity: {
