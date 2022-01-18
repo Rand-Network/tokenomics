@@ -11,9 +11,8 @@ on:
   pull_request:
     branches:
       - development
-      - Vesting-Controller-ERC-721
+      - main
     
-
 jobs:
   build:
 
@@ -21,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [17.x]
+        node-version: [16.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
@@ -33,4 +32,3 @@ jobs:
         cache: 'npm'
     - run: npm install .
     - run: npx hardhat test --network hardhat test/RND_VC.js
-    - run: killall hardhat node
