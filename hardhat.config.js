@@ -21,10 +21,10 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
  */
 
 module.exports = {
-  defaultNetwork: "development",
+  defaultNetwork: "hardhat",
   networks: {
-    development: {
-      url: "http://127.0.0.1:8545",
+    hardhat: {
+      //url: "http://127.0.0.1:8545",
       chainId: 31337
     },
   },

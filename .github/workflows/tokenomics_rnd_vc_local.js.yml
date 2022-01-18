@@ -32,6 +32,5 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm install .
-    - run: npx hardhat node --network development &
-    - run: npx hardhat test --network development test/RND_VC.js
+    - run: npx hardhat test --network hardhat test/RND_VC.js
     - run: killall hardhat node
