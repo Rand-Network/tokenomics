@@ -124,6 +124,7 @@ describe("Rand Token with Vesting Controller", function () {
       await expectRevert.unspecified(RandToken.transfer(alice.address, amount));
       await RandToken.unpause();
       expect(RandToken.transfer(alice.address, amount));
+
     });
   });
 
