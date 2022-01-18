@@ -5,9 +5,13 @@ name: Tokenomics CI - RND & VC [local node]
 
 on:
   push:
-    branches: [ development, Vesting-Controller-ERC-721 ]
+    branches:
+      - development
+      - Vesting-Controller-ERC-721
   pull_request:
-    branches: [ development, Vesting-Controller-ERC-721 ]
+    branches:
+      - development
+      - Vesting-Controller-ERC-721
     
 
 jobs:
