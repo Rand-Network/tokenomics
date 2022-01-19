@@ -12,6 +12,9 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+/// @title Rand.network ERC20 Token contract
+/// @author @adradr - Adrian Lenard
+/// @notice Default implementation of the OpenZeppelin ERC20 standard to be used for the RND token
 contract RandToken is
     Initializable,
     ERC20Upgradeable,
@@ -25,6 +28,11 @@ contract RandToken is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
+    /// @notice Initializer allow proxy scheme
+    /// @dev For upgradability its necessary to use initialize instead of simple constructor
+    /// @param _name Name of the token like `Rand Token ERC20`
+    /// @param _symbol Short symbol like `RND`
+    /// @param _initialSupply Total supply to mint initially like `200e6`
     function initialize(
         string memory _name,
         string memory _symbol,
@@ -53,6 +61,7 @@ contract RandToken is
         _mint(to, amount);
     }
 
+    /// @inheritdoc	ERC20Upgradeable
     function _beforeTokenTransfer(
         address from,
         address to,
