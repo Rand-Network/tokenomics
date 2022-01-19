@@ -24,15 +24,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
@@ -121,18 +121,18 @@ contract VestingControllerERC721 is
         __AccessControl_init();
         __ERC721Burnable_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(PAUSER_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, msg.sender);
-        _grantRole(BURNER_ROLE, msg.sender);
-        _grantRole(BACKEND_ROLE, _backendAddress);
-        _grantRole(SM_ROLE, msg.sender);
-        _grantRole(INVESTOR_ROLE, _backendAddress);
-
         RND_TOKEN = _rndTokenContract;
         SM_TOKEN = _smTokenContract;
         PERIOD_SECONDS = _periodSeconds;
         MultiSigRND = _multisigVault;
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
+        _grantRole(PAUSER_ROLE, _multisigVault);
+        _grantRole(MINTER_ROLE, _multisigVault);
+        _grantRole(BURNER_ROLE, _multisigVault);
+        _grantRole(BACKEND_ROLE, _backendAddress);
+        _grantRole(INVESTOR_ROLE, _backendAddress);
+        _grantRole(SM_ROLE, address(SM_TOKEN));
     }
 
     /// @notice View function to get amount of claimable tokens from vested investment token
