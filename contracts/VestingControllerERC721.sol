@@ -1,10 +1,8 @@
-// [] implement setAllowanceForSM
-// [] create interface contract for VCERC721.sol
-// [] create new access roles and add roles to functions - lets create a document/slide for all the contracts and roles
-// [] check if SM_TOKEN is needed, remove if not
 // [] add claimable amount to getInvestmentInfo()
-// [] why do I need to add allowance for VC on VC's tokens to transfer when claiming tokens???
-
+// [] create interface contract for VCERC721.sol
+// [x] implement setAllowanceForSM
+// [x] create new access roles and add roles to functions - lets create a document/slide for all the contracts and roles
+// [x] check if SM_TOKEN is needed, remove if not
 // [x] need to implement a function when the VC can transfer RND to itself when minting new investment token
 // [x] limit ERC721 token info checks to only owners to keep privacy of investors? should we? - Lets create a new role e.g.: INVESTOR_INFO and grantRole to recipient and Backend
 // [x] should we keep _calculateTotalClaimableTokens? (checks all tokens of an address) - NO
@@ -208,19 +206,8 @@ contract VestingControllerERC721 is
     ) public onlyRole(INVESTOR_ROLE) {
         uint256 claimable = _calculateClaimableTokens(tokenId);
         require(claimable >= amount, "VC: amount is more than claimable");
-
         _addClaimedTokens(amount, tokenId);
-
-        IERC20Upgradeable(RND_TOKEN).safeIncreaseAllowance(
-            address(this),
-            amount
-        );
-
-        IERC20Upgradeable(RND_TOKEN).safeTransferFrom(
-            address(this),
-            recipient,
-            amount
-        );
+        IERC20Upgradeable(RND_TOKEN).safeTransfer(recipient, amount);
         emit ClaimedAmount(tokenId, recipient, amount);
     }
 
