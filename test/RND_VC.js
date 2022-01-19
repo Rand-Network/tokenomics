@@ -168,10 +168,10 @@ describe("Rand Token with Vesting Controller", function () {
     });
     it("Checking claimable tokens", async function () {
       claimable = rndTokenAmount.div(vestingPeriod);
-      expect(await RandVC.getClaimableTokens(tx.value)).to.be.equal(claimable);
+      expect(await RandVC.connect(alice.address).getClaimableTokens(tx.value)).to.be.equal(claimable);
     });
     it("Get full investment info", async function () {
-      await RandVC.getInvestmentInfo(tx.value).then(function (res) {
+      await RandVC.connect(alice.address).getInvestmentInfo(tx.value).then(function (res) {
         var var1 = res[0];
         var var2 = res[1];
         var var3 = res[2];
@@ -194,7 +194,7 @@ describe("Rand Token with Vesting Controller", function () {
           await ethers.provider.send('evm_mine');
         }
 
-        claimableAmount = await RandVC.getClaimableTokens(tx.value);
+        claimableAmount = await RandVC.connect(alice.address).getClaimableTokens(tx.value);
         // claimablePerPeriod + 1 for getClaimableTokens and multiply by periods mined above
         periods_mined = periods.add(1);
 
@@ -215,7 +215,7 @@ describe("Rand Token with Vesting Controller", function () {
       // }
 
       // Check balances
-      claimableAmount = await RandVC.getClaimableTokens(tx.value);
+      claimableAmount = await RandVC.connect(alice.address).getClaimableTokens(tx.value);
       claimableAmountHalf = claimableAmount.div(2);
       const aliceBalanceBefore = await RandToken.balanceOf(alice.address);
       expect(claimableAmount).to.be.equal(claimablePerPeriod.mul(periods_mined));
