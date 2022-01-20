@@ -130,6 +130,7 @@ contract VestingControllerERC721 is
         _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(BACKEND_ROLE, _backendAddress);
         _grantRole(INVESTOR_ROLE, _backendAddress);
+        _grantRole(INVESTOR_ROLE, address(SM_TOKEN));
         _grantRole(SM_ROLE, address(SM_TOKEN));
     }
 
@@ -273,9 +274,7 @@ contract VestingControllerERC721 is
             "VC: Cannot request required RND from Multisig"
         );
         // Incrementing token counter and minting new token to recipient
-        tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-        _safeMint(recipient, tokenId);
+        safeMint(recipient);
 
         // Initializing investment struct and assigning to the newly minted token
         if (vestingStartTime == 0) {
