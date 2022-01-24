@@ -1,9 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-// []: implement roles assigned to specific addresses
-// []: select address for initial mint recipient (not msg.sender)
-// [] should we allow burning?
-
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
@@ -11,12 +7,14 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20Burnable
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title Rand.network ERC20 Token contract
 /// @author @adradr - Adrian Lenard
 /// @notice Default implementation of the OpenZeppelin ERC20 standard to be used for the RND token
 contract RandToken is
     Initializable,
+    UUPSUpgradeable,
     ERC20Upgradeable,
     ERC20BurnableUpgradeable,
     PausableUpgradeable,
@@ -36,17 +34,18 @@ contract RandToken is
     function initialize(
         string memory _name,
         string memory _symbol,
-        uint256 _initialSupply
+        uint256 _initialSupply,
+        address _multisigVault
     ) public initializer {
         __ERC20_init(_name, _symbol);
         __ERC20Burnable_init();
         __Pausable_init();
         __AccessControl_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(PAUSER_ROLE, msg.sender);
-        _mint(msg.sender, _initialSupply * 10**decimals());
-        _grantRole(MINTER_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
+        _grantRole(PAUSER_ROLE, _multisigVault);
+        _grantRole(MINTER_ROLE, _multisigVault);
+        _mint(_multisigVault, _initialSupply * 10**decimals());
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
@@ -68,5 +67,13 @@ contract RandToken is
         uint256 amount
     ) internal override whenNotPaused {
         super._beforeTokenTransfer(from, to, amount);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        virtual
+        override
+    {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()));
     }
 }

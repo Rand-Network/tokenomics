@@ -1,23 +1,3 @@
-// [x] create interface contract for VCERC721.sol
-// [x] implement setAllowanceForSM
-// [x] create new access roles and add roles to functions - lets create a document/slide for all the contracts and roles
-// [x] check if SM_TOKEN is needed, remove if not
-// [x] need to implement a function when the VC can transfer RND to itself when minting new investment token
-// [x] limit ERC721 token info checks to only owners to keep privacy of investors? should we? - Lets create a new role e.g.: INVESTOR_INFO and grantRole to recipient and Backend
-// [x] should we keep _calculateTotalClaimableTokens? (checks all tokens of an address) - NO
-// [x] remove hardhar console import
-// [x] should we store the block.timestamp when the investment was minted? - YES
-// [x] should we allow burning investment token? - dont allow
-// [x] tokenURI
-// [x] have a period_seconds variable to store how much each period must be multiplied
-// [x] limit vesting start by shifting with cliffPeriod
-// [x] implement function for SM to modify rndStakedAmount
-// [x] calculate claimable amount (_calculateTotalClaimableTokens())
-// [x] add claimed amount to rndClaimedAmount in claimTokens()
-// [x] when calculating claimable amount substract the staked ones
-// [x] add events to the contract and assign to functions
-// [x] implement view function to see investments (access control)
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -30,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
@@ -38,6 +19,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 contract VestingControllerERC721 is
     Initializable,
+    UUPSUpgradeable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
     PausableUpgradeable,
@@ -426,5 +408,13 @@ contract VestingControllerERC721 is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        virtual
+        override
+    {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()));
     }
 }
