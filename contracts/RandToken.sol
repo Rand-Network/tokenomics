@@ -20,8 +20,13 @@ contract RandToken is
     PausableUpgradeable,
     AccessControlUpgradeable
 {
+    event SMAddressAndRoleUpdated(address newAddress);
+
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant SM_ROLE = keccak256("SM_ROLE");
+
+    address public SM_TOKEN;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -45,7 +50,36 @@ contract RandToken is
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
+        //_grantRole(SM_ROLE, _multisigVault);
         _mint(_multisigVault, _initialSupply * 10**decimals());
+    }
+
+    /// @notice Function to allow SM to transfer funds when users would like to stake
+    /// @dev only accessible by the Safety Module contract via SM_ROLE
+    /// @param amount the amount of tokens to increase allowance for SM as spender on tokens of VC
+    function setAllowanceForSM(address staker, uint256 amount)
+        external
+        onlyRole(SM_ROLE)
+    {
+        require(SM_TOKEN != address(0x0), "RND: No SM address has been set");
+        uint256 currentAllowance = allowance(staker, address(SM_TOKEN));
+        amount += amount + currentAllowance;
+        _approve(staker, address(SM_TOKEN), amount);
+    }
+
+    /// @notice Function to let Rand to update the address of the Safety Module
+    /// @dev emits SMAddressUpdated() and only accessible by MultiSig
+    /// @param newAddress where the new Safety Module contract is located
+    function updateSMAddress(address newAddress)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        SM_TOKEN = newAddress;
+        if (SM_TOKEN != address(0x0)) {
+            _revokeRole(SM_ROLE, SM_TOKEN);
+        }
+        _grantRole(SM_ROLE, newAddress);
+        emit SMAddressAndRoleUpdated(newAddress);
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
@@ -75,5 +109,6 @@ contract RandToken is
         override
     {
         require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()));
+        require(newImplementation != address(0x0)); // mainly just to silence warnings
     }
 }
