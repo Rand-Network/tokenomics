@@ -23,6 +23,7 @@ task("abi2interface", "Generates solidity interface contracts from ABIs")
   });
 
 gasPriceApis = {
+  goerli: 'https://api-goerli.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   ropsten: 'https://api-ropsten.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   rinkeby: 'https://api-rinkeby.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   mainnet: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
@@ -38,8 +39,8 @@ if (process.argv.includes('--network')) {
 //[owner, proxyAdmin, alice, backend] = await ethers.getSigners();
 const envkeys = [
   //process.env.PROXYADMIN_PRIVATE_KEY,
-  process.env.MULTISIG_PRIVATE_KEY,
   process.env.ALICE_PRIVATE_KEY,
+  process.env.MULTISIG_PRIVATE_KEY,
   process.env.BACKEND_PRIVATE_KEY
 ]
 
@@ -72,13 +73,22 @@ module.exports = {
       accounts: accountkeys,
     },
     rinkeby: {
-      url: process.env.RINKEBY_TESNET_URL || '',
+      url: process.env.RINKEBY_TESTNET_URL || '',
       accounts: accountkeys,
+      timeout: 5 * 60 * 1e3,
+      gasPrice: 200e9
+    },
+    goerli: {
+      url: process.env.GOERLI_TESTNET_URL || '',
+      accounts: accountkeys,
+      timeout: 5 * 60 * 1e3,
+      gasPrice: 200e9
     },
     ropsten: {
-      url: process.env.ROPSTEN_TESNET_URL || '',
+      url: process.env.ROPSTEN_TESTNET_URL || '',
       accounts: accountkeys,
-      timeout: 5 * 60 * 1e3
+      timeout: 5 * 60 * 1e3,
+      gasPrice: 200e9
     },
   },
   etherscan: {
