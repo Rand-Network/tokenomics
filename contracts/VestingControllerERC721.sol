@@ -1,23 +1,3 @@
-// [x] create interface contract for VCERC721.sol
-// [x] implement setAllowanceForSM
-// [x] create new access roles and add roles to functions - lets create a document/slide for all the contracts and roles
-// [x] check if SM_TOKEN is needed, remove if not
-// [x] need to implement a function when the VC can transfer RND to itself when minting new investment token
-// [x] limit ERC721 token info checks to only owners to keep privacy of investors? should we? - Lets create a new role e.g.: INVESTOR_INFO and grantRole to recipient and Backend
-// [x] should we keep _calculateTotalClaimableTokens? (checks all tokens of an address) - NO
-// [x] remove hardhar console import
-// [x] should we store the block.timestamp when the investment was minted? - YES
-// [x] should we allow burning investment token? - dont allow
-// [x] tokenURI
-// [x] have a period_seconds variable to store how much each period must be multiplied
-// [x] limit vesting start by shifting with cliffPeriod
-// [x] implement function for SM to modify rndStakedAmount
-// [x] calculate claimable amount (_calculateTotalClaimableTokens())
-// [x] add claimed amount to rndClaimedAmount in claimTokens()
-// [x] when calculating claimable amount substract the staked ones
-// [x] add events to the contract and assign to functions
-// [x] implement view function to see investments (access control)
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -30,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
@@ -38,39 +19,13 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 contract VestingControllerERC721 is
     Initializable,
+    UUPSUpgradeable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
     PausableUpgradeable,
     AccessControlUpgradeable,
     ERC721BurnableUpgradeable
 {
-    using CountersUpgradeable for CountersUpgradeable.Counter;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    IERC20Upgradeable public RND_TOKEN;
-    IERC20Upgradeable public SM_TOKEN;
-    string public baseURI;
-
-    uint256 public PERIOD_SECONDS;
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
-    bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
-    bytes32 public constant SM_ROLE = keccak256("SM_ROLE");
-
-    CountersUpgradeable.Counter private _tokenIdCounter;
-
-    struct VestingInvestment {
-        uint256 rndTokenAmount;
-        uint256 rndClaimedAmount;
-        uint256 rndStakedAmount;
-        uint256 vestingPeriod;
-        uint256 vestingStartTime;
-        uint256 mintTimestamp;
-        bool exists;
-    }
-    mapping(uint256 => VestingInvestment) vestingToken;
-
     // Events
     event BaseURIChanged(string baseURI);
     event ClaimedAmount(uint256 tokenId, address recipient, uint256 amount);
@@ -88,8 +43,33 @@ contract VestingControllerERC721 is
     event MultiSigAddressUpdated(address newAddress);
     event RNDAddressUpdated(IERC20Upgradeable newAddress);
 
-    // Used to set the owner of RNDs
+    using CountersUpgradeable for CountersUpgradeable.Counter;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+    bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
+    bytes32 public constant SM_ROLE = keccak256("SM_ROLE");
+
+    CountersUpgradeable.Counter private _tokenIdCounter;
+
+    uint256 public PERIOD_SECONDS;
+    IERC20Upgradeable public RND_TOKEN;
+    IERC20Upgradeable public SM_TOKEN;
     address public MultiSigRND;
+    string public baseURI;
+
+    struct VestingInvestment {
+        uint256 rndTokenAmount;
+        uint256 rndClaimedAmount;
+        uint256 rndStakedAmount;
+        uint256 vestingPeriod;
+        uint256 vestingStartTime;
+        uint256 mintTimestamp;
+        bool exists;
+    }
+    mapping(uint256 => VestingInvestment) vestingToken;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -128,13 +108,11 @@ contract VestingControllerERC721 is
         _grantRole(MINTER_ROLE, _multisigVault);
         _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(BACKEND_ROLE, _backendAddress);
+        _grantRole(BACKEND_ROLE, address(this));
         _grantRole(SM_ROLE, address(SM_TOKEN));
     }
 
     modifier onlyInvestorOrRand(uint256 tokenId) {
-        // vagy msgSender == owner of tokenId
-        // vagy msgSender has BACKEND_ROLE
-        // vagy msgSender has SM_ROLE
         bool isTokenOwner = ownerOf(tokenId) == _msgSender();
         bool hasBACKEND_ROLE = hasRole(BACKEND_ROLE, _msgSender());
         bool hasSM_ROLE = hasRole(SM_ROLE, _msgSender());
@@ -173,7 +151,8 @@ contract VestingControllerERC721 is
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount,
             uint256 vestingPeriod,
-            uint256 vestingStartTime
+            uint256 vestingStartTime,
+            uint256 rndStakedAmount
         )
     {
         require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
@@ -181,6 +160,7 @@ contract VestingControllerERC721 is
         rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
         vestingPeriod = vestingToken[tokenId].vestingPeriod;
         vestingStartTime = vestingToken[tokenId].vestingStartTime;
+        rndStakedAmount = vestingToken[tokenId].rndStakedAmount;
     }
 
     /// @notice Function for Safety Module to increase the staked RND amount
@@ -426,5 +406,14 @@ contract VestingControllerERC721 is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        virtual
+        override
+    {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()));
+        require(newImplementation != address(0x0)); // mainly just to silence warnings
     }
 }
