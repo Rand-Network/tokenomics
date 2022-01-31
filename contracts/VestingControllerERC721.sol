@@ -1,24 +1,3 @@
-// [] add claimable amount to getInvestmentInfo()
-// [] create interface contract for VCERC721.sol
-// [x] implement setAllowanceForSM
-// [x] create new access roles and add roles to functions - lets create a document/slide for all the contracts and roles
-// [x] check if SM_TOKEN is needed, remove if not
-// [x] need to implement a function when the VC can transfer RND to itself when minting new investment token
-// [x] limit ERC721 token info checks to only owners to keep privacy of investors? should we? - Lets create a new role e.g.: INVESTOR_INFO and grantRole to recipient and Backend
-// [x] should we keep _calculateTotalClaimableTokens? (checks all tokens of an address) - NO
-// [x] remove hardhar console import
-// [x] should we store the block.timestamp when the investment was minted? - YES
-// [x] should we allow burning investment token? - dont allow
-// [x] tokenURI
-// [x] have a period_seconds variable to store how much each period must be multiplied
-// [x] limit vesting start by shifting with cliffPeriod
-// [x] implement function for SM to modify rndStakedAmount
-// [x] calculate claimable amount (_calculateTotalClaimableTokens())
-// [x] add claimed amount to rndClaimedAmount in claimTokens()
-// [x] when calculating claimable amount substract the staked ones
-// [x] add events to the contract and assign to functions
-// [x] implement view function to see investments (access control)
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -31,47 +10,22 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
 /// @notice Manages the vesting schedules for Rand investors
 /// @dev Interacts with Rand token and Safety Module (SM)
+
 contract VestingControllerERC721 is
     Initializable,
+    UUPSUpgradeable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
     PausableUpgradeable,
     AccessControlUpgradeable,
     ERC721BurnableUpgradeable
 {
-    using CountersUpgradeable for CountersUpgradeable.Counter;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    IERC20Upgradeable public RND_TOKEN;
-    IERC20Upgradeable public SM_TOKEN;
-    string public baseURI;
-
-    uint256 public PERIOD_SECONDS;
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
-    bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
-    bytes32 public constant SM_ROLE = keccak256("SM_ROLE");
-    bytes32 public constant INVESTOR_ROLE = keccak256("INVESTOR_ROLE");
-
-    CountersUpgradeable.Counter private _tokenIdCounter;
-
-    struct VestingInvestment {
-        uint256 rndTokenAmount;
-        uint256 rndClaimedAmount;
-        uint256 rndStakedAmount;
-        uint256 vestingPeriod;
-        uint256 vestingStartTime;
-        uint256 mintTimestamp;
-        bool exists;
-    }
-    mapping(uint256 => VestingInvestment) vestingToken;
-
     // Events
     event BaseURIChanged(string baseURI);
     event ClaimedAmount(uint256 tokenId, address recipient, uint256 amount);
@@ -89,8 +43,33 @@ contract VestingControllerERC721 is
     event MultiSigAddressUpdated(address newAddress);
     event RNDAddressUpdated(IERC20Upgradeable newAddress);
 
-    // Used to set the owner of RNDs
+    using CountersUpgradeable for CountersUpgradeable.Counter;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+    bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
+    bytes32 public constant SM_ROLE = keccak256("SM_ROLE");
+
+    CountersUpgradeable.Counter private _tokenIdCounter;
+
+    uint256 public PERIOD_SECONDS;
+    IERC20Upgradeable public RND_TOKEN;
+    IERC20Upgradeable public SM_TOKEN;
     address public MultiSigRND;
+    string public baseURI;
+
+    struct VestingInvestment {
+        uint256 rndTokenAmount;
+        uint256 rndClaimedAmount;
+        uint256 rndStakedAmount;
+        uint256 vestingPeriod;
+        uint256 vestingStartTime;
+        uint256 mintTimestamp;
+        bool exists;
+    }
+    mapping(uint256 => VestingInvestment) vestingToken;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -129,25 +108,36 @@ contract VestingControllerERC721 is
         _grantRole(MINTER_ROLE, _multisigVault);
         _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(BACKEND_ROLE, _backendAddress);
-        _grantRole(INVESTOR_ROLE, _backendAddress);
+        _grantRole(BACKEND_ROLE, address(this));
         _grantRole(SM_ROLE, address(SM_TOKEN));
     }
 
+    modifier onlyInvestorOrRand(uint256 tokenId) {
+        bool isTokenOwner = ownerOf(tokenId) == _msgSender();
+        bool hasBACKEND_ROLE = hasRole(BACKEND_ROLE, _msgSender());
+        bool hasSM_ROLE = hasRole(SM_ROLE, _msgSender());
+        require(
+            isTokenOwner || hasBACKEND_ROLE || hasSM_ROLE,
+            "VC: No authorization from this address"
+        );
+        _;
+    }
+
     /// @notice View function to get amount of claimable tokens from vested investment token
-    /// @dev only accessible by the INVESTOR_ROLE, which is granted to the investors wallet and the backend address
+    /// @dev only accessible by the investor's wallet, the backend address and safety module contract
     /// @param tokenId the tokenId for which to query the claimable amount
     /// @return amounts of tokens an investor is eligible to claim (already vested and unclaimed amount)
     function getClaimableTokens(uint256 tokenId)
         public
         view
-        onlyRole(INVESTOR_ROLE)
+        onlyInvestorOrRand(tokenId)
         returns (uint256)
     {
         return _calculateClaimableTokens(tokenId);
     }
 
     /// @notice View function to get information about a vested investment token
-    /// @dev only accessible by the INVESTOR_ROLE, which is granted to the investors wallet and the backend address
+    /// @dev only accessible by the investor's wallet, the backend address and safety module contract
     /// @param tokenId is the id of the token for which to get info
     /// @return rndTokenAmount is the amount of the total investment
     /// @return rndClaimedAmount amounts of tokens an investor already claimed and received
@@ -156,12 +146,13 @@ contract VestingControllerERC721 is
     function getInvestmentInfo(uint256 tokenId)
         public
         view
-        onlyRole(INVESTOR_ROLE)
+        onlyInvestorOrRand(tokenId)
         returns (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount,
             uint256 vestingPeriod,
-            uint256 vestingStartTime
+            uint256 vestingStartTime,
+            uint256 rndStakedAmount
         )
     {
         require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
@@ -169,6 +160,7 @@ contract VestingControllerERC721 is
         rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
         vestingPeriod = vestingToken[tokenId].vestingPeriod;
         vestingStartTime = vestingToken[tokenId].vestingStartTime;
+        rndStakedAmount = vestingToken[tokenId].rndStakedAmount;
     }
 
     /// @notice Function for Safety Module to increase the staked RND amount
@@ -195,7 +187,7 @@ contract VestingControllerERC721 is
     }
 
     /// @notice Claim function to withdraw vested tokens
-    /// @dev emits ClaimedAmount() and only accessible by the INVESTOR_ROLE, which is granted to the investors wallet and the backend address
+    /// @dev emits ClaimedAmount() and only accessible by the investor's wallet, the backend address and safety module contract
     /// @param tokenId is the id of investment to submit the claim on
     /// @param recipient is the address where to withdraw claimed funds to
     /// @param amount is the amount of vested tokens to claim in the process
@@ -203,7 +195,7 @@ contract VestingControllerERC721 is
         uint256 tokenId,
         address recipient,
         uint256 amount
-    ) public onlyRole(INVESTOR_ROLE) {
+    ) public onlyInvestorOrRand(tokenId) {
         uint256 claimable = _calculateClaimableTokens(tokenId);
         require(claimable >= amount, "VC: amount is more than claimable");
         _addClaimedTokens(amount, tokenId);
@@ -273,9 +265,7 @@ contract VestingControllerERC721 is
             "VC: Cannot request required RND from Multisig"
         );
         // Incrementing token counter and minting new token to recipient
-        tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-        _safeMint(recipient, tokenId);
+        safeMint(recipient);
 
         // Initializing investment struct and assigning to the newly minted token
         if (vestingStartTime == 0) {
@@ -297,7 +287,6 @@ contract VestingControllerERC721 is
             exists
         );
         vestingToken[tokenId] = investment;
-        _grantRole(INVESTOR_ROLE, recipient);
         emit NewInvestmentTokenMinted(
             recipient,
             rndTokenAmount,
@@ -310,7 +299,7 @@ contract VestingControllerERC721 is
     }
 
     /// @notice Function which allows VC to pull RND funds when minting an investment
-    /// @dev emit FetchedRND()
+    /// @dev emit FetchedRND(), needs allowance from MultiSig
     /// @param amount of tokens to fetch from the Rand Multisig when minting a new investment
     /// @return bool
     function _getRND(uint256 amount) internal returns (bool) {
@@ -417,5 +406,14 @@ contract VestingControllerERC721 is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        virtual
+        override
+    {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()));
+        require(newImplementation != address(0x0)); // mainly just to silence warnings
     }
 }

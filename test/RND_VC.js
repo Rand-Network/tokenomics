@@ -1,6 +1,7 @@
+require("@nomiclabs/hardhat-etherscan");
 const { expect } = require("chai");
 const { BigNumber } = require("ethers")
-const { ethers, upgrades } = require("hardhat");
+const { ethers, upgrades, network } = require("hardhat");
 const {
   BN,           // Big Number support
   constants,    // Common constants, like the zero address and largest integers
@@ -17,7 +18,8 @@ describe("Rand Token with Vesting Controller", function () {
   const RNDdeployParams = {
     _name: "Rand Token ERC20",
     _symbol: "RND",
-    _initialSupply: BigNumber.from(200e6)
+    _initialSupply: BigNumber.from(200e6),
+    _multisigVault: 0
   }
 
   const VCdeployParams = {
@@ -34,49 +36,106 @@ describe("Rand Token with Vesting Controller", function () {
   let VestingController;
   let RandToken;
   let RandVC;
-  let proxyAdmin;
   let owner;
   let alice;
   let backend;
-  let network, chainId, localNode
+  let gotNetwork, chainId, localNode
 
-  beforeEach(async function () {
+  before(async function () {
 
-    network = await ethers.provider.getNetwork();
-    chainId = network.chainId;
+    gotNetwork = await ethers.provider.getNetwork();
+    chainId = gotNetwork.chainId;
     localNode = 31337; // local default chainId from hardhat.config.js
+    console.log('Network: ', gotNetwork.name, chainId);
+    numConfirmation = chainId !== localNode ? 1 : 0
+    console.log('Number of confirmations to wait:', numConfirmation)
 
-    [owner, proxyAdmin, alice, backend] = await ethers.getSigners();
+    if (chainId !== localNode) {
+      VCdeployParams._periodSeconds = 5;
+    }
+
+
+    [owner, alice, backend] = await ethers.getSigners();
 
     Token = await ethers.getContractFactory("RandToken");
     VestingController = await ethers.getContractFactory("VestingControllerERC721");
 
+    RNDdeployParams._multisigVault = owner.address;
+
     RandToken = await upgrades.deployProxy(
       Token,
       Object.values(RNDdeployParams),
-      { kind: 'transparent' });
+      { kind: "uups" });
+
+    console.log('Deployed Token proxy at:', RandToken.address);
 
     VCdeployParams._rndTokenContract = RandToken.address;
-    VCdeployParams._smTokenContract = RandToken.address;
+    VCdeployParams._smTokenContract = owner.address;
     VCdeployParams._multiSigAddress = owner.address;
     VCdeployParams._backendAddress = backend.address;
 
     RandVC = await upgrades.deployProxy(
       VestingController,
       Object.values(VCdeployParams),
-      { kind: 'transparent' });
+      { kind: "uups" });
 
-    await upgrades.admin.changeProxyAdmin(RandVC.address, proxyAdmin.address);
+    // Wait for confirmations
+    if (chainId !== localNode) {
+      txRandToken = RandToken.deployTransaction;
+      txRandVC = RandVC.deployTransaction;
+      await txRandToken.wait(numConfirmation);
+      await txRandVC.wait(numConfirmation);
+    }
 
+    console.log('Deployed VC proxy at:', RandVC.address);
+
+    // Setting SM contract address on Rand Token
+    await RandToken.updateSMAddress(owner.address);
+    SM_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('SM_ROLE'));
+    console.log('Does owner has SM_ROLE on RND: ', await RandToken.hasRole(SM_ROLE, owner.address));
+
+    //RandTokenImpl = await ProxyAdminContract.getProxyImplementation(RandToken.address);
+    //RandVCImpl = await ProxyAdminContract.getProxyImplementation(RandVC.address);
+    // On ropsten it always returned with error code=UNPREDICTABLE_GAS_LIMIT for the above calls
+    // https://docs.openzeppelin.com/contracts/4.x/api/proxy#TransparentUpgradeableProxy-implementation--
+    RandTokenImpl = await ethers.provider.getStorageAt(RandToken.address, '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc');
+    RandTokenImpl = await ethers.utils.hexStripZeros(RandTokenImpl);
+    RandTokenImpl = await ethers.utils.getAddress(RandTokenImpl);
+    console.log('Deployed Token implementation at:', RandTokenImpl);
+    RandVCImpl = await ethers.provider.getStorageAt(RandVC.address, '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc');
+    RandVCImpl = await ethers.utils.hexStripZeros(RandVCImpl);
+    RandVCImpl = await ethers.utils.getAddress(RandVCImpl);
+    console.log('Deployed VC implementation at:', RandVCImpl);
+
+    if (chainId !== localNode) {
+
+      this.timeout(0);
+
+      await hre.run("verify:verify", { address: RandTokenImpl }).catch(function (error) {
+        if (error.message == 'Contract source code already verified') {
+          console.error('Contract source code already verified')
+        }
+        else {
+          console.error(error)
+        }
+      });
+
+      await hre.run("verify:verify", { address: RandVCImpl }).catch(function (error) {
+        if (error.message == 'Contract source code already verified') {
+          console.error('Contract source code already verified')
+        }
+        else {
+          console.error(error)
+        }
+      });
+    }
   });
 
-  // You can nest describe calls to create subsections.
   describe("Deployment of RND-ERC20 and VC-ERC721", function () {
     it("Setting and checking owners of RND & VC", async function () {
       MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('MINTER_ROLE'));
       expect(await RandToken.hasRole(MINTER_ROLE, owner.address));
     });
-    it("Upgrading VC", async function () { });
   });
 
   describe("RND ERC20 functions", function () {
@@ -90,46 +149,70 @@ describe("Rand Token with Vesting Controller", function () {
       // Should mint with owner
       const amount = BigNumber.from("1").pow(18);
       const ownerBalanceBefore = await RandToken.balanceOf(owner.address);
-      await RandToken.mint(owner.address, amount);
+      tx = await RandToken.mint(owner.address, amount);
+      await tx.wait(numConfirmation);
       const ownerBalanceAfter = await RandToken.balanceOf(owner.address);
       expect(ownerBalanceBefore.add(amount)).to.equal(ownerBalanceAfter);
       // Should not mint from alice
-      await expectRevert.unspecified(RandToken.connect(alice).mint(alice.address, amount));
+      if (chainId !== localNode) {
+        await RandToken.connect(alice).mint(alice.address, amount).catch(function (error) {
+          expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
+        });
+      } else {
+        await expectRevert.unspecified(RandToken.connect(alice).mint(alice.address, amount));
+      }
+
     });
     it("Burning tokens", async function () {
       // Should burn with owner
       const amount = BigNumber.from("1").pow(18);
       const ownerBalanceBefore = await RandToken.balanceOf(owner.address);
-      await RandToken.increaseAllowance(owner.address, amount);
-      await RandToken.burnFrom(owner.address, amount);
-      //await RandToken.burn(amount);
+      tx = await RandToken.increaseAllowance(owner.address, amount);
+      await tx.wait(numConfirmation);
+      tx = await RandToken.burnFrom(owner.address, amount);
+      await tx.wait(numConfirmation);
       const ownerBalanceAfter = await RandToken.balanceOf(owner.address);
       expect(ownerBalanceBefore.sub(amount)).to.equal(ownerBalanceAfter);
-      // Should not burn from owner by alice 
-      await expectRevert.unspecified(RandToken.connect(alice).burnFrom(owner.address, amount));
+      // Should not burn from owner by alice
+      if (chainId !== localNode) {
+        await RandToken.connect(alice).burnFrom(owner.address, amount).catch(function (error) {
+          expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
+        });
+      } else {
+        await expectRevert.unspecified(RandToken.connect(alice).burnFrom(owner.address, amount));
+      }
+
     });
     it("Transferring tokens", async function () {
       const amount = BigNumber.from("1").pow(18);
       const ownerBalanceBefore = await RandToken.balanceOf(owner.address);
       const aliceBalanceBefore = await RandToken.balanceOf(alice.address);
-      await RandToken.transfer(alice.address, amount);
+      tx = await RandToken.transfer(alice.address, amount);
+      await tx.wait(numConfirmation);
       const ownerBalanceAfter = await RandToken.balanceOf(owner.address);
       expect(ownerBalanceBefore.sub(amount)).to.equal(ownerBalanceAfter);
       expect(aliceBalanceBefore.add(amount)).to.equal(amount);
 
     });
     it("Pausing contract", async function () {
-      await RandToken.pause();
+      tx = await RandToken.pause();
+      await tx.wait(numConfirmation);
       const amount = BigNumber.from("1").pow(18);
-      await expectRevert.unspecified(RandToken.transfer(alice.address, amount));
-      await RandToken.unpause();
-      expect(RandToken.transfer(alice.address, amount));
-
+      if (chainId !== localNode) {
+        await RandToken.transfer(alice.address, amount).catch(function (error) {
+          expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
+        });
+      } else {
+        await expectRevert.unspecified(RandToken.transfer(alice.address, amount));
+      }
+      tx = await RandToken.unpause();
+      await tx.wait(numConfirmation);
+      expect(await RandToken.transfer(alice.address, amount));
     });
   });
 
   describe("VC ERC721 functions", function () {
-    beforeEach(async function () {
+    before(async function () {
 
       // solidity timestamp
       last_block = await ethers.provider.getBlock();
@@ -144,14 +227,19 @@ describe("Rand Token with Vesting Controller", function () {
       claimablePerPeriod = rndTokenAmount.div(vestingPeriod);
 
       // Add allowance for VC to fetch tokens in claim
-      await RandToken.increaseAllowance(RandVC.address, rndTokenAmount);
+      tx = await RandToken.increaseAllowance(RandVC.address, rndTokenAmount);
+      await tx.wait(numConfirmation);
+      // Minting a sample investment token
+
       tx = await RandVC.mintNewInvestment(
         recipient,
         rndTokenAmount,
         vestingPeriod,
         vestingStartTime,
-        cliffPeriod);
-    })
+        cliffPeriod,
+      );
+      await tx.wait(numConfirmation);
+    });
     it("Checking name, symbol and supply", async function () {
       expect(await RandVC.name()).to.equal(VCdeployParams._name);
       expect(await RandVC.symbol()).to.equal(VCdeployParams._symbol);
@@ -159,15 +247,22 @@ describe("Rand Token with Vesting Controller", function () {
     });
     it("Setting and checking tokenURI", async function () {
       const tokenURI = "http://rand.network/token/";
-      await RandVC.setBaseURI(tokenURI);
+      tx = await RandVC.setBaseURI(tokenURI);
+      await tx.wait(numConfirmation);
       const expectedURI = tokenURI + tx.value;
       expect(await RandVC.tokenURI(0)).to.equal(expectedURI);
     });
     it("Should not be able to burn tokens", async function () {
-      await expectRevert.unspecified(RandVC.connect(alice).burn(tx.value));
+      if (chainId !== localNode) {
+        await RandVC.connect(alice).burn(tx.value).catch(function (error) {
+          expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
+        });
+      } else {
+        await expectRevert.unspecified(RandVC.connect(alice).burn(tx.value));
+      }
     });
     it("Checking claimable tokens", async function () {
-      claimable = rndTokenAmount.div(vestingPeriod);
+      claimable = rndTokenAmount.div(vestingPeriod).mul(3);
       expect(await RandVC.connect(alice.address).getClaimableTokens(tx.value)).to.be.equal(claimable);
     });
     it("Get full investment info", async function () {
@@ -188,31 +283,33 @@ describe("Rand Token with Vesting Controller", function () {
       // Local node
       if (chainId == localNode) {
         // Mine an amount of blocks to increase block.timestamp
-        period = 3;
+        period = vestingPeriod / 2;
         periods = cliffPeriod.add(period);
         for (let i = 1; i <= periods; i++) {
           await ethers.provider.send('evm_mine');
+
         }
-
-        claimableAmount = await RandVC.connect(alice.address).getClaimableTokens(tx.value);
-        // claimablePerPeriod + 1 for getClaimableTokens and multiply by periods mined above
-        periods_mined = periods.add(1);
-
+        // Added 3 due to previous transactions mined since than 
+        periods_mined = periods.add(3);
       }
       // Testnet
-      // else {
-      //   // Wait an fetch new block's timestamp so claimable amount increases
-      //   currentBlockNumber = await ethers.provider.getBlockNumber();
-      //   currentBlockTimestamp = await ethers.provider.getBlock();
-      //   currentBlockTimestamp = currentBlockTimestamp.timestamp;
-      //   newBlockTimestamp = 0;
-      //   while (currentBlockTimestamp > newBlockTimestamp) {
-      //     sleep(5000);
-      //     newBlockTimestamp = await ethers.provider.getBlock();
-      //     newBlockTimestamp = newBlockTimestamp.timestamp;
-      //   }
-      //   claimableAmount = await RandVC.getClaimableTokens(tx.value);
-      // }
+      else {
+        // Wait an fetch new block's timestamp so claimable amount increases
+        currentBlockNumber = await ethers.provider.getBlockNumber();
+        currentBlockTimestamp = await ethers.provider.getBlock();
+        currentBlockTimestamp = currentBlockTimestamp.timestamp;
+        newBlockTimestamp = 0;
+        while (currentBlockTimestamp > newBlockTimestamp) {
+          sleep(5000);
+          newBlockTimestamp = await ethers.provider.getBlock();
+          newBlockTimestamp = newBlockTimestamp.timestamp;
+        }
+        currentBlockNumber = await ethers.provider.getBlockNumber();
+        currentBlockTimestamp = await ethers.provider.getBlock();
+        periods_mined = currentBlockTimestamp.timestamp;
+        periods_mined -= created_ts;
+        periods_mined = BigNumber.from(periods_mined).div(5);
+      }
 
       // Check balances
       claimableAmount = await RandVC.connect(alice.address).getClaimableTokens(tx.value);
@@ -220,21 +317,53 @@ describe("Rand Token with Vesting Controller", function () {
       const aliceBalanceBefore = await RandToken.balanceOf(alice.address);
       expect(claimableAmount).to.be.equal(claimablePerPeriod.mul(periods_mined));
       // Claim half by owner
-      await RandVC.connect(alice).claimTokens(tx.value, alice.address, claimableAmountHalf);
+      tx = await RandVC.connect(alice).claimTokens(tx.value, alice.address, claimableAmountHalf);
+      await tx.wait(numConfirmation);
       aliceBalanceAfter = await RandToken.balanceOf(alice.address);
       expect(aliceBalanceBefore.add(claimableAmountHalf) == aliceBalanceAfter);
       // Claim other half by backend
-      await RandVC.connect(backend).claimTokens(tx.value, alice.address, claimableAmountHalf);
+      tx = await RandVC.connect(backend).claimTokens(tx.value, alice.address, claimableAmountHalf);
+      await tx.wait(numConfirmation);
       aliceBalanceAfter = await RandToken.balanceOf(alice.address);
       expect(aliceBalanceBefore.add(claimableAmountHalf) == aliceBalanceAfter);
     });
-    //it("Claiming vested tokens by backend", async function () { });
+    it("Claiming vested tokens by backend", async function () {
+      const aliceBalanceBefore = await RandToken.balanceOf(alice.address);
+      claimableAmount = await RandVC.connect(alice.address).getClaimableTokens(tx.value);
+      tx = await RandVC.connect(backend).claimTokens(tx.value, alice.address, claimableAmount);
+      await tx.wait(numConfirmation);
+      aliceBalanceAfter = await RandToken.balanceOf(alice.address);
+      expect(aliceBalanceBefore.add(claimableAmount) == aliceBalanceAfter);
+    });
   });
 
-  // describe("VC interaction with SM", function () {
-  //   it("Checking token balance before staking", async function () { });
-  //   it("Setting allowance for SM in amount of stake", async function () { });
-  //   it("Registering staked amount for investment", async function () { });
+  describe("VC interaction with SM", function () {
+    it("Checking token balance before staking", async function () {
+      expect(await RandVC.connect(backend).getInvestmentInfo(0));
+    });
+    it("Setting allowance for SM in amount of stake", async function () {
+      // Using owner as SM as in before updateSMAddress
+      tx = await RandVC.connect(owner).setAllowanceForSM(100);
+
+      tx.wait(numConfirmation);
+      expect(await RandToken.connect(owner).allowance(RandVC.address, owner.address)).to.be.equal(100);
+      // Should not be able from alice
+      if (chainId !== localNode) {
+        await await RandVC.connect(alice).setAllowanceForSM(100).catch(function (error) {
+          expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
+        });
+      } else {
+        await expectRevert.unspecified(RandVC.connect(alice).setAllowanceForSM(100));
+      }
+    });
+    it("Registering staked amount for investment", async function () {
+
+    });
+  });
+
+  // describe("Upgrading deployment of RND-ERC20 and VC-ERC721", function () {
+  //   it("Upgrading RND", async function () { });
+  //   it("Upgrading VC", async function () { });
   // });
 
 });
