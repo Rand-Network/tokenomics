@@ -26,33 +26,6 @@ contract VestingControllerERC721 is
     AccessControlUpgradeable,
     ERC721BurnableUpgradeable
 {
-    using CountersUpgradeable for CountersUpgradeable.Counter;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    IERC20Upgradeable public RND_TOKEN;
-    IERC20Upgradeable public SM_TOKEN;
-    string public baseURI;
-
-    uint256 public PERIOD_SECONDS;
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
-    bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
-    bytes32 public constant SM_ROLE = keccak256("SM_ROLE");
-
-    CountersUpgradeable.Counter private _tokenIdCounter;
-
-    struct VestingInvestment {
-        uint256 rndTokenAmount;
-        uint256 rndClaimedAmount;
-        uint256 rndStakedAmount;
-        uint256 vestingPeriod;
-        uint256 vestingStartTime;
-        uint256 mintTimestamp;
-        bool exists;
-    }
-    mapping(uint256 => VestingInvestment) vestingToken;
-
     // Events
     event BaseURIChanged(string baseURI);
     event ClaimedAmount(uint256 tokenId, address recipient, uint256 amount);
@@ -70,8 +43,33 @@ contract VestingControllerERC721 is
     event MultiSigAddressUpdated(address newAddress);
     event RNDAddressUpdated(IERC20Upgradeable newAddress);
 
-    // Used to set the owner of RNDs
+    using CountersUpgradeable for CountersUpgradeable.Counter;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+    bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
+    bytes32 public constant SM_ROLE = keccak256("SM_ROLE");
+
+    CountersUpgradeable.Counter private _tokenIdCounter;
+
+    uint256 public PERIOD_SECONDS;
+    IERC20Upgradeable public RND_TOKEN;
+    IERC20Upgradeable public SM_TOKEN;
     address public MultiSigRND;
+    string public baseURI;
+
+    struct VestingInvestment {
+        uint256 rndTokenAmount;
+        uint256 rndClaimedAmount;
+        uint256 rndStakedAmount;
+        uint256 vestingPeriod;
+        uint256 vestingStartTime;
+        uint256 mintTimestamp;
+        bool exists;
+    }
+    mapping(uint256 => VestingInvestment) vestingToken;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -110,13 +108,11 @@ contract VestingControllerERC721 is
         _grantRole(MINTER_ROLE, _multisigVault);
         _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(BACKEND_ROLE, _backendAddress);
+        _grantRole(BACKEND_ROLE, address(this));
         _grantRole(SM_ROLE, address(SM_TOKEN));
     }
 
     modifier onlyInvestorOrRand(uint256 tokenId) {
-        // vagy msgSender == owner of tokenId
-        // vagy msgSender has BACKEND_ROLE
-        // vagy msgSender has SM_ROLE
         bool isTokenOwner = ownerOf(tokenId) == _msgSender();
         bool hasBACKEND_ROLE = hasRole(BACKEND_ROLE, _msgSender());
         bool hasSM_ROLE = hasRole(SM_ROLE, _msgSender());
@@ -155,7 +151,8 @@ contract VestingControllerERC721 is
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount,
             uint256 vestingPeriod,
-            uint256 vestingStartTime
+            uint256 vestingStartTime,
+            uint256 rndStakedAmount
         )
     {
         require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
@@ -163,6 +160,7 @@ contract VestingControllerERC721 is
         rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
         vestingPeriod = vestingToken[tokenId].vestingPeriod;
         vestingStartTime = vestingToken[tokenId].vestingStartTime;
+        rndStakedAmount = vestingToken[tokenId].rndStakedAmount;
     }
 
     /// @notice Function for Safety Module to increase the staked RND amount
@@ -416,5 +414,6 @@ contract VestingControllerERC721 is
         override
     {
         require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()));
+        require(newImplementation != address(0x0)); // mainly just to silence warnings
     }
 }
