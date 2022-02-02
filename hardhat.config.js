@@ -3,16 +3,20 @@ require('@openzeppelin/hardhat-upgrades');
 require('@nomiclabs/hardhat-etherscan');
 require("hardhat-gas-reporter");
 require("@atixlabs/hardhat-time-n-mine");
-//require("hardhat-interface-generator");
+require("solidity-coverage");
 require('dotenv').config();
+const { flattenAndSave } = require("@ethereum-waffle/compiler");
 const balance = require("@openzeppelin/test-helpers/src/balance");
+//require("hardhat-interface-generator");
 const { abi2sol } = require("./scripts/abi2sol.js");
+const { execute, cleanFile } = require("./scripts/flatten.js");
 
-task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
-  const accounts = await hre.ethers.getSigners();
 
+task("accounts", "Prints the list of accounts", async () => {
+  const accounts = await ethers.getSigners();
   for (const account of accounts) {
-    console.log(account.address)
+    balanceOf = await ethers.provider.getBalance(account.address);
+    console.log(account.address, '(', ethers.utils.formatEther(balanceOf), ')')
   }
 });
 
@@ -21,6 +25,15 @@ task("abi2interface", "Generates solidity interface contracts from ABIs")
   .setAction(async ({ contract }) => {
     await abi2sol(contract);
   });
+
+task("flatten-clean", "Flattens and cleans soldity contract for Etherscan single file verification")
+  .addPositionalParam("contract", "Solidity contract path")
+  .setAction(async ({ contract }) => {
+    await execute(`hh flatten ${contract} > ${contract}.flatten`);
+    await cleanFile(`${contract}.flatten`);
+    await execute(`mv ${contract}.flatten.cleaned ${contract}.flatten`);
+  });
+
 
 gasPriceApis = {
   goerli: 'https://api-goerli.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
@@ -31,29 +44,24 @@ gasPriceApis = {
 }
 
 let gasPriceApi;
+let reportGasSwitch = false;
 if (process.argv.includes('--network')) {
   idx = process.argv.indexOf('--network');
   gasPriceApi = gasPriceApis[process.argv[idx + 1]];
+  reportGasSwitch = true;
 }
 
 //[owner, proxyAdmin, alice, backend] = await ethers.getSigners();
-const envkeys = [
+const accountkeys = [
   //process.env.PROXYADMIN_PRIVATE_KEY,
-  process.env.ALICE_PRIVATE_KEY,
   process.env.MULTISIG_PRIVATE_KEY,
+  process.env.ALICE_PRIVATE_KEY,
   process.env.BACKEND_PRIVATE_KEY
 ]
 
-const accountkeys = []
-for (const key of envkeys) {
-  if (typeof key !== 'undefined' && key !== '') {
-    accountkeys.push(key);
-  }
-}
-
 module.exports = {
   gasReporter: {
-    enabled: process.env.REPORT_GAS ? true : false,
+    enabled: reportGasSwitch,
     //outputFile: './output.txt',
     gasPriceApi: gasPriceApi,
     noColors: true,
@@ -67,6 +75,14 @@ module.exports = {
     development: {
       url: "http://127.0.0.1:8545",
       chainId: 31337
+    },
+    moonbeam: {
+      url: process.env.MOONBEAM_URL || '',
+      accounts: accountkeys,
+    },
+    moonbase: {
+      url: process.env.MOONBASE_URL || '',
+      accounts: accountkeys,
     },
     mainnet: {
       url: process.env.MAINNET_URL || '',
@@ -92,7 +108,14 @@ module.exports = {
     },
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY
+    apiKey: {
+      goerli: process.env.ETHERSCAN_API_KEY,
+      rinkeby: process.env.ETHERSCAN_API_KEY,
+      ropsten: process.env.ETHERSCAN_API_KEY,
+      mainnet: process.env.ETHERSCAN_API_KEY,
+      //moonbeam: process.env.MOONSCAN_API_KEY,
+      moonbaseAlpha: process.env.MOONSCAN_API_KEY
+    }
   },
   solidity: {
     compilers: [
