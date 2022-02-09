@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - development
-      - Vesting-Controller-ERC-721
   pull_request:
     branches:
       - development
@@ -31,4 +30,4 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm install .
-    - run: npx hardhat test --network hardhat test/RND_VC.js
+    - run: npx hardhat test --network hardhat test
