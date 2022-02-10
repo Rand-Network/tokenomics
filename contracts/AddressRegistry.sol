@@ -113,10 +113,7 @@ contract AddressRegistry is
 
     function _authorizeUpgrade(address newImplementation)
         internal
-        virtual
         override
-    {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()));
-        require(newImplementation != address(0)); // mainly just to silence warnings
-    }
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {}
 }

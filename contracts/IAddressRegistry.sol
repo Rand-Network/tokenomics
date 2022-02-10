@@ -6,9 +6,9 @@ interface IAddressRegistry{
   function PAUSER_ROLE (  ) external view returns ( bytes32 );
   function READER_ROLE (  ) external view returns ( bytes32 );
   function UPDATER_ROLE (  ) external view returns ( bytes32 );
-  function getAddress ( string name ) external view returns ( address contractAddress );
-  function getAllAddress ( string name ) external view returns ( address[] tempArray );
-  function getRegistryList (  ) external view returns ( string[] );
+  function getAddress ( string memory name ) external view returns ( address contractAddress );
+  function getAllAddress ( string memory name ) external view returns ( address[] memory tempArray );
+  function getRegistryList (  ) external view returns ( string[] memory );
   function getRoleAdmin ( bytes32 role ) external view returns ( bytes32 );
   function grantRole ( bytes32 role, address account ) external;
   function hasRole ( bytes32 role, address account ) external view returns ( bool );

@@ -12,7 +12,13 @@ async function getInOrOut(type, inputs, methodMutability) {
     let out = '';
     for (let i = 0; i < inputs.length; i += 1) {
         out += inputs[i].type;
-        if ((inputs[i].type == 'string' || inputs[i].type == 'bytes') && methodMutability !== 'view') {
+        //if ((inputs[i].type == 'string' || inputs[i].type == 'bytes') && methodMutability !== 'view') {
+        if ((inputs[i].type == 'string' ||
+            inputs[i].type == 'bytes' ||
+            inputs[i].type == 'address[]' ||
+            inputs[i].type == 'string[]' ||
+            inputs[i].type == 'bytes[]' ||
+            inputs[i].type == 'bytes')) {
             out += ' memory';
         }
 
