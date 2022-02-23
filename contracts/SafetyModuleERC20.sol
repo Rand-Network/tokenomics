@@ -16,7 +16,7 @@ import "./IRandToken.sol";
 /// @title Rand.network ERC20 Safety Module
 /// @author @adradr - Adrian Lenard
 /// @notice Customized implementation of the OpenZeppelin ERC20 standard to be used for the Safety Module
-contract SafetyModule is
+contract SafetyModuleERC20 is
     Initializable,
     UUPSUpgradeable,
     ERC20Upgradeable,
@@ -41,7 +41,6 @@ contract SafetyModule is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
-    bytes32 public constant STAKER_ROLE = keccak256("STAKER_ROLE");
 
     mapping(address => uint256) rewards;
     mapping(address => mapping(address => uint256)) onBehalf;
@@ -74,7 +73,6 @@ contract SafetyModule is
         _grantRole(MINTER_ROLE, _multisigVault);
         _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(BACKEND_ROLE, _backendAddress);
-        _grantRole(STAKER_ROLE, address(this));
 
         RND_TOKEN = _rndTokenContract;
         VC_TOKEN = _vcTokenContract;
@@ -410,22 +408,23 @@ contract SafetyModule is
     }
 
     /// @notice Function to let Rand to update the address of the Rand Token
-    /// @dev emits RNDAddressUpdated() and only accessible by BACKEND_ROLE
+    /// @dev emits RNDAddressUpdated() and only accessible by DEFAULT_ADMIN_ROLE
     /// @param newAddress where the new Rand Token is located
     function updateRNDAddress(IRandToken newAddress)
         public
-        onlyRole(BACKEND_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         RND_TOKEN = newAddress;
         emit RNDAddressUpdated(newAddress);
     }
 
     /// @notice Function to let Rand to update the address of the VC
-    /// @dev emits VCAddressUpdated() and only accessible by BACKEND_ROLE
+    /// @dev emits VCAddressUpdated() and only accessible by DEFAULT_ADMIN_ROLE
     /// @param newAddress where the new VC is located
     function updateVCAddress(IVestingControllerERC721 newAddress)
         public
-        onlyRole(BACKEND_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        whenNotPaused
     {
         VC_TOKEN = newAddress;
         emit VCAddressUpdated(newAddress);
@@ -470,10 +469,7 @@ contract SafetyModule is
 
     function _authorizeUpgrade(address newImplementation)
         internal
-        virtual
         override
-    {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()));
-        require(newImplementation != address(0x0)); // mainly just to silence warnings
-    }
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {}
 }

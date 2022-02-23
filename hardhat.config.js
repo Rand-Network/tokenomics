@@ -5,8 +5,6 @@ require("hardhat-gas-reporter");
 require("@atixlabs/hardhat-time-n-mine");
 require("solidity-coverage");
 require('dotenv').config();
-const { flattenAndSave } = require("@ethereum-waffle/compiler");
-const balance = require("@openzeppelin/test-helpers/src/balance");
 //require("hardhat-interface-generator");
 const { abi2sol } = require("./scripts/abi2sol.js");
 const { execute, cleanFile } = require("./scripts/flatten.js");
@@ -70,7 +68,10 @@ module.exports = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      chainId: 31337
+      chainId: 31337,
+      // forking: {
+      //   url: process.env.MAINNET_URL,
+      // },
     },
     development: {
       url: "http://127.0.0.1:8545",

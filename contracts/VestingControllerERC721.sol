@@ -39,6 +39,7 @@ contract VestingControllerERC721 is
         uint256 mintTimestamp,
         uint256 tokenId
     );
+    event InvestmentTransferred(address recipient, uint256 amount);
     event FetchedRND(uint256 amount);
     event MultiSigAddressUpdated(address newAddress);
     event RNDAddressUpdated(IERC20Upgradeable newAddress);
@@ -106,6 +107,7 @@ contract VestingControllerERC721 is
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
+        _grantRole(MINTER_ROLE, _backendAddress);
         _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(BACKEND_ROLE, _backendAddress);
         _grantRole(BACKEND_ROLE, address(this));
@@ -118,7 +120,7 @@ contract VestingControllerERC721 is
         bool hasSM_ROLE = hasRole(SM_ROLE, _msgSender());
         require(
             isTokenOwner || hasBACKEND_ROLE || hasSM_ROLE,
-            "VC: No authorization from this address"
+            "VC: No access role for this address"
         );
         _;
     }
@@ -192,8 +194,8 @@ contract VestingControllerERC721 is
     /// @param recipient is the address where to withdraw claimed funds to
     /// @param amount is the amount of vested tokens to claim in the process
     function claimTokens(
-        uint256 tokenId,
         address recipient,
+        uint256 tokenId,
         uint256 amount
     ) public onlyInvestorOrRand(tokenId) {
         uint256 claimable = _calculateClaimableTokens(tokenId);
@@ -242,6 +244,23 @@ contract VestingControllerERC721 is
                 investment.rndClaimedAmount -
                 investment.rndStakedAmount;
         }
+    }
+
+    /// @notice Transfers RND Tokens to non-vesting investor, its used to distribute public sale tokens by backend
+    /// @dev emits InvestmentTransferred() and only accessible with MINTER_ROLE
+    /// @param recipient is the address to whom the token should be transferred to
+    /// @param rndTokenAmount is the amount of the total investment
+    function transferTokens(address recipient, uint256 rndTokenAmount)
+        public
+        onlyRole(MINTER_ROLE)
+    {
+        require(rndTokenAmount > 0, "VC: Amount must be more than zero");
+        IERC20Upgradeable(RND_TOKEN).safeTransferFrom(
+            MultiSigRND,
+            recipient,
+            rndTokenAmount
+        );
+        emit InvestmentTransferred(recipient, rndTokenAmount);
     }
 
     /// @notice Mints a token and associates an investment to it and sets tokenURI
@@ -313,22 +332,22 @@ contract VestingControllerERC721 is
     }
 
     /// @notice Function to let Rand to update the address of the Multisig
-    /// @dev emits MultiSigAddressUpdated() and only accessible by BACKEND_ROLE
+    /// @dev emits MultiSigAddressUpdated() and only accessible by DEFAULT_ADMIN_ROLE
     /// @param newAddress where the new Multisig is located
     function updateMultiSigRNDAddress(address newAddress)
         public
-        onlyRole(BACKEND_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         MultiSigRND = newAddress;
         emit MultiSigAddressUpdated(newAddress);
     }
 
     /// @notice Function to let Rand to update the address of the Rand Token
-    /// @dev emits RNDAddressUpdated() and only accessible by BACKEND_ROLE
+    /// @dev emits RNDAddressUpdated() and only accessible by DEFAULT_ADMIN_ROLE
     /// @param newAddress where the new Rand Token is located
     function updateRNDAddress(IERC20Upgradeable newAddress)
         public
-        onlyRole(BACKEND_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         RND_TOKEN = newAddress;
         emit RNDAddressUpdated(newAddress);
@@ -410,10 +429,7 @@ contract VestingControllerERC721 is
 
     function _authorizeUpgrade(address newImplementation)
         internal
-        virtual
         override
-    {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()));
-        require(newImplementation != address(0x0)); // mainly just to silence warnings
-    }
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {}
 }

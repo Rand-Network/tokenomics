@@ -1,6 +1,6 @@
 require("@nomiclabs/hardhat-etherscan");
 const { expect } = require("chai");
-const { BigNumber } = require("ethers")
+const { BigNumber } = require("ethers");
 const { ethers, upgrades, network } = require("hardhat");
 const {
   BN,           // Big Number support
@@ -20,7 +20,7 @@ describe("Rand Token with Vesting Controller", function () {
     _symbol: "RND",
     _initialSupply: BigNumber.from(200e6),
     _multisigVault: 0
-  }
+  };
 
   const VCdeployParams = {
     _name: "Rand Vesting Controller ERC721",
@@ -30,7 +30,7 @@ describe("Rand Token with Vesting Controller", function () {
     _periodSeconds: 1,
     _multiSigAddress: 0,
     _backendAddress: 0
-  }
+  };
 
   let Token;
   let VestingController;
@@ -39,7 +39,7 @@ describe("Rand Token with Vesting Controller", function () {
   let owner;
   let alice;
   let backend;
-  let gotNetwork, chainId, localNode
+  let gotNetwork, chainId, localNode;
 
   before(async function () {
 
@@ -47,8 +47,8 @@ describe("Rand Token with Vesting Controller", function () {
     chainId = gotNetwork.chainId;
     localNode = 31337; // local default chainId from hardhat.config.js
     console.log('Network: ', gotNetwork.name, chainId);
-    numConfirmation = chainId !== localNode ? 1 : 0
-    console.log('Number of confirmations to wait:', numConfirmation)
+    numConfirmation = chainId !== localNode ? 1 : 0;
+    console.log('Number of confirmations to wait:', numConfirmation);
 
     if (chainId !== localNode) {
       VCdeployParams._periodSeconds = 5;
@@ -56,6 +56,9 @@ describe("Rand Token with Vesting Controller", function () {
 
 
     [owner, alice, backend] = await ethers.getSigners();
+    console.log(owner.address);
+    console.log(alice.address);
+    console.log(backend.address);
 
     Token = await ethers.getContractFactory("RandToken");
     VestingController = await ethers.getContractFactory("VestingControllerERC721");
@@ -113,19 +116,19 @@ describe("Rand Token with Vesting Controller", function () {
 
       await hre.run("verify:verify", { address: RandTokenImpl }).catch(function (error) {
         if (error.message == 'Contract source code already verified') {
-          console.error('Contract source code already verified')
+          console.error('Contract source code already verified');
         }
         else {
-          console.error(error)
+          console.error(error);
         }
       });
 
       await hre.run("verify:verify", { address: RandVCImpl }).catch(function (error) {
         if (error.message == 'Contract source code already verified') {
-          console.error('Contract source code already verified')
+          console.error('Contract source code already verified');
         }
         else {
-          console.error(error)
+          console.error(error);
         }
       });
     }
@@ -275,7 +278,7 @@ describe("Rand Token with Vesting Controller", function () {
         expect(var2).to.be.equal(0); //rndClaimedAmount
         expect(var3).to.be.equal(vestingPeriod);
         expect(var4).to.be.equal(vestingStartTime.add(cliffPeriod));
-      })
+      });
     });
     it("Claiming vested tokens by user and backend", async function () {
 
@@ -317,12 +320,12 @@ describe("Rand Token with Vesting Controller", function () {
       const aliceBalanceBefore = await RandToken.balanceOf(alice.address);
       expect(claimableAmount).to.be.equal(claimablePerPeriod.mul(periods_mined));
       // Claim half by owner
-      tx = await RandVC.connect(alice).claimTokens(tx.value, alice.address, claimableAmountHalf);
+      tx = await RandVC.connect(alice).claimTokens(alice.address, tx.value, claimableAmountHalf);
       await tx.wait(numConfirmation);
       aliceBalanceAfter = await RandToken.balanceOf(alice.address);
       expect(aliceBalanceBefore.add(claimableAmountHalf) == aliceBalanceAfter);
       // Claim other half by backend
-      tx = await RandVC.connect(backend).claimTokens(tx.value, alice.address, claimableAmountHalf);
+      tx = await RandVC.connect(backend).claimTokens(alice.address, tx.value, claimableAmountHalf);
       await tx.wait(numConfirmation);
       aliceBalanceAfter = await RandToken.balanceOf(alice.address);
       expect(aliceBalanceBefore.add(claimableAmountHalf) == aliceBalanceAfter);
@@ -330,7 +333,7 @@ describe("Rand Token with Vesting Controller", function () {
     it("Claiming vested tokens by backend", async function () {
       const aliceBalanceBefore = await RandToken.balanceOf(alice.address);
       claimableAmount = await RandVC.connect(alice.address).getClaimableTokens(tx.value);
-      tx = await RandVC.connect(backend).claimTokens(tx.value, alice.address, claimableAmount);
+      tx = await RandVC.connect(backend).claimTokens(alice.address, tx.value, claimableAmount);
       await tx.wait(numConfirmation);
       aliceBalanceAfter = await RandToken.balanceOf(alice.address);
       expect(aliceBalanceBefore.add(claimableAmount) == aliceBalanceAfter);

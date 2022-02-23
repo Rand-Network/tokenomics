@@ -16,7 +16,7 @@ interface IVestingControllerERC721{
   function balanceOf ( address owner ) external view returns ( uint256 );
   function baseURI (  ) external view returns ( string memory );
   function burn ( uint256 tokenId ) external;
-  function claimTokens ( uint256 tokenId, address recipient, uint256 amount ) external;
+  function claimTokens ( address recipient, uint256 tokenId, uint256 amount ) external;
   function getApproved ( uint256 tokenId ) external view returns ( address );
   function getClaimableTokens ( uint256 tokenId ) external view returns ( uint256 );
   function getInvestmentInfo ( uint256 tokenId ) external view returns ( uint256 rndTokenAmount, uint256 rndClaimedAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 rndStakedAmount );
@@ -46,6 +46,7 @@ interface IVestingControllerERC721{
   function tokenURI ( uint256 tokenId ) external view returns ( string memory );
   function totalSupply (  ) external view returns ( uint256 );
   function transferFrom ( address from, address to, uint256 tokenId ) external;
+  function transferTokens ( address recipient, uint256 rndTokenAmount ) external;
   function unpause (  ) external;
   function updateMultiSigRNDAddress ( address newAddress ) external;
   function updateRNDAddress ( address newAddress ) external;

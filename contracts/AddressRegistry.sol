@@ -44,7 +44,7 @@ contract AddressRegistry is
         return addressId;
     }
 
-    function getAddress(string calldata name)
+    function getAddress(string memory name)
         public
         view
         onlyRole(READER_ROLE)
@@ -54,14 +54,13 @@ contract AddressRegistry is
         return tempArray[tempArray.length - 1];
     }
 
-    function getAllAddress(string calldata name)
+    function getAllAddress(string memory name)
         public
         view
         onlyRole(READER_ROLE)
-        returns (address[] memory tempArray)
+        returns (address[] memory)
     {
-        address[] memory tempArray = addressStorage[name];
-        return tempArray;
+        return addressStorage[name];
     }
 
     function updateAddress(string calldata name, address contractAddress)
@@ -77,7 +76,7 @@ contract AddressRegistry is
         emit AddressChanged(name, contractAddress);
     }
 
-    function setNewAddress(string calldata name, address contractAddress)
+    function setNewAddress(string memory name, address contractAddress)
         public
         onlyRole(UPDATER_ROLE)
     {
