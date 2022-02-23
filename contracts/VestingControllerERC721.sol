@@ -285,6 +285,7 @@ contract VestingControllerERC721 is
         );
         // Incrementing token counter and minting new token to recipient
         safeMint(recipient);
+        tokenId = _tokenIdCounter.current();
 
         // Initializing investment struct and assigning to the newly minted token
         if (vestingStartTime == 0) {
