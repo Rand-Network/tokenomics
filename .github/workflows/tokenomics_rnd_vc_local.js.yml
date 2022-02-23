@@ -25,7 +25,7 @@ on:
   push:
     branches:
       - development
-      - Vesting-Controller-ERC-721
+      - main
   pull_request:
     branches:
       - development
