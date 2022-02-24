@@ -40,6 +40,7 @@ describe("Rand Token with Vesting Controller", function () {
   let alice;
   let backend;
   let gotNetwork, chainId, localNode;
+  let mint_tx, e_tokenId;
 
   before(async function () {
 
@@ -230,46 +231,58 @@ describe("Rand Token with Vesting Controller", function () {
       claimablePerPeriod = rndTokenAmount.div(vestingPeriod);
 
       // Add allowance for VC to fetch tokens in claim
-      tx = await RandToken.increaseAllowance(RandVC.address, rndTokenAmount);
+      tx = await RandToken.increaseAllowance(RandVC.address, rndTokenAmount.mul(2));
       await tx.wait(numConfirmation);
       // Minting a sample investment token
 
-      tx = await RandVC.mintNewInvestment(
+      mint_tx = await RandVC.mintNewInvestment(
         recipient,
         rndTokenAmount,
         vestingPeriod,
         vestingStartTime,
         cliffPeriod,
       );
-      await tx.wait(numConfirmation);
+      await mint_tx.wait(numConfirmation);
+      mint_tx = await RandVC.mintNewInvestment(
+        recipient,
+        rndTokenAmount,
+        vestingPeriod,
+        vestingStartTime,
+        cliffPeriod,
+      );
+      const rc = await mint_tx.wait(numConfirmation);
+      const event = rc.events.find(event => event.event === 'NewInvestmentTokenMinted');
+      e_tokenId = event.args.tokenId;
+      console.log('Minted token:', e_tokenId);
     });
     it("Checking name, symbol and supply", async function () {
       expect(await RandVC.name()).to.equal(VCdeployParams._name);
       expect(await RandVC.symbol()).to.equal(VCdeployParams._symbol);
-      expect(await RandVC.totalSupply()).to.equal(1);
+      expect(await RandVC.totalSupply()).to.equal(2);
     });
     it("Setting and checking tokenURI", async function () {
       const tokenURI = "http://rand.network/token/";
       tx = await RandVC.setBaseURI(tokenURI);
       await tx.wait(numConfirmation);
-      const expectedURI = tokenURI + tx.value;
-      expect(await RandVC.tokenURI(0)).to.equal(expectedURI);
+      const expectedURI = tokenURI + e_tokenId;
+      console.log(expectedURI);
+      expect(await RandVC.tokenURI(e_tokenId)).to.equal(expectedURI);
     });
     it("Should not be able to burn tokens", async function () {
       if (chainId !== localNode) {
-        await RandVC.connect(alice).burn(tx.value).catch(function (error) {
+        await RandVC.connect(alice).burn(e_tokenId).catch(function (error) {
           expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
         });
       } else {
-        await expectRevert.unspecified(RandVC.connect(alice).burn(tx.value));
+        await expectRevert.unspecified(RandVC.connect(alice).burn(e_tokenId));
       }
     });
     it("Checking claimable tokens", async function () {
-      claimable = rndTokenAmount.div(vestingPeriod).mul(3);
-      expect(await RandVC.connect(alice.address).getClaimableTokens(tx.value)).to.be.equal(claimable);
+      claimable = rndTokenAmount.div(vestingPeriod).mul(4);
+      expect(await RandVC.connect(alice.address).getClaimableTokens(e_tokenId)).to.be.equal(claimable);
     });
     it("Get full investment info", async function () {
-      await RandVC.connect(alice.address).getInvestmentInfo(tx.value).then(function (res) {
+      await RandVC.connect(alice.address).getInvestmentInfo(e_tokenId).then(function (res) {
         var var1 = res[0];
         var var2 = res[1];
         var var3 = res[2];
@@ -292,8 +305,8 @@ describe("Rand Token with Vesting Controller", function () {
           await ethers.provider.send('evm_mine');
 
         }
-        // Added 3 due to previous transactions mined since than 
-        periods_mined = periods.add(3);
+        // Added 4 due to previous transactions mined since than 
+        periods_mined = periods.add(4);
       }
       // Testnet
       else {
@@ -332,8 +345,8 @@ describe("Rand Token with Vesting Controller", function () {
     });
     it("Claiming vested tokens by backend", async function () {
       const aliceBalanceBefore = await RandToken.balanceOf(alice.address);
-      claimableAmount = await RandVC.connect(alice.address).getClaimableTokens(tx.value);
-      tx = await RandVC.connect(backend).claimTokens(tx.value, claimableAmount);
+      claimableAmount = await RandVC.connect(alice.address).getClaimableTokens(e_tokenId);
+      tx = await RandVC.connect(backend).claimTokens(e_tokenId, claimableAmount);
       await tx.wait(numConfirmation);
       aliceBalanceAfter = await RandToken.balanceOf(alice.address);
       expect(aliceBalanceBefore.add(claimableAmount) == aliceBalanceAfter);
