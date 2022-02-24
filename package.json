@@ -36,6 +36,7 @@
     "@openzeppelin/contracts": "^4.4.1",
     "@openzeppelin/contracts-upgradeable": "^4.4.1",
     "@openzeppelin/test-helpers": "^0.5.15",
+    "@pinata/sdk": "^1.1.23",
     "abi2solidity": "^0.1.2",
     "dotenv": "^14.2.0",
     "hardhat-gas-reporter": "^1.0.7",

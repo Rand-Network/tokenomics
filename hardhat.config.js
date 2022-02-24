@@ -5,23 +5,55 @@ require("hardhat-gas-reporter");
 require("@atixlabs/hardhat-time-n-mine");
 require("solidity-coverage");
 require('dotenv').config();
-//require("hardhat-interface-generator");
-const { abi2sol } = require("./scripts/abi2sol.js");
+const { ContractFactory } = require("ethers");
+const { abi2sol, abi2json } = require("./scripts/abi2sol.js");
 const { execute, cleanFile } = require("./scripts/flatten.js");
 
+const pinataSDK = require('@pinata/sdk');
+const { json } = require("hardhat/internal/core/params/argumentTypes");
+const pinata = pinataSDK(process.env.PINATA_KEY, process.env.PINATA_SECRET);
 
 task("accounts", "Prints the list of accounts", async () => {
   const accounts = await ethers.getSigners();
   for (const account of accounts) {
     balanceOf = await ethers.provider.getBalance(account.address);
-    console.log(account.address, '(', ethers.utils.formatEther(balanceOf), ')')
+    console.log(account.address, '(', ethers.utils.formatEther(balanceOf), ')');
   }
 });
+
+task("upgradeProxy", "Upgrades proxy with OZ upgrades plugin")
+  .addPositionalParam("proxyAddress", "Address of the proxy contract")
+  .addPositionalParam("contractFactory", "Name of the contract")
+  .setAction(async ({ proxyAddress, contractFactory }) => {
+    const accounts = await ethers.getSigners();
+    balanceOf = await ethers.provider.getBalance(accounts[0].address);
+    console.log(accounts[0].address, '(balance:', ethers.utils.formatEther(balanceOf), ')');
+    ContractFactory = await ethers.getContractFactory(contractFactory);
+    tx = await upgrades.upgradeProxy(
+      proxyAddress,
+      ContractFactory
+    );
+    return tx;
+  });
 
 task("abi2interface", "Generates solidity interface contracts from ABIs")
   .addPositionalParam("contract", "Solidity contract name")
   .setAction(async ({ contract }) => {
     await abi2sol(contract);
+  });
+
+task("abi2ipfs", "Uploads ABI to IPFS and pins using Pinata")
+  .addPositionalParam("contract", "Solidity contract name")
+  .setAction(async ({ contract }) => {
+    json_abi = await abi2json(contract);
+    //console.log(json_abi);
+    await pinata.pinJSONToIPFS(JSON.parse(json_abi)).then((result) => {
+      console.log(`Successful upload of ${contract} to IPFS:\nhttps://cloudflare-ipfs.com/ipfs/${result.IpfsHash}\n`);
+      console.log(result);
+    }).catch((err) => {
+      console.log(err);
+    });
+
   });
 
 task("flatten-clean", "Flattens and cleans soldity contract for Etherscan single file verification")
@@ -39,10 +71,10 @@ gasPriceApis = {
   rinkeby: 'https://api-rinkeby.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   mainnet: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   hardhat: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY
-}
+};
 
 let gasPriceApi;
-let reportGasSwitch = false;
+let reportGasSwitch = true;
 if (process.argv.includes('--network')) {
   idx = process.argv.indexOf('--network');
   gasPriceApi = gasPriceApis[process.argv[idx + 1]];
@@ -55,7 +87,7 @@ const accountkeys = [
   process.env.MULTISIG_PRIVATE_KEY,
   process.env.ALICE_PRIVATE_KEY,
   process.env.BACKEND_PRIVATE_KEY
-]
+];
 
 module.exports = {
   gasReporter: {
@@ -150,4 +182,4 @@ module.exports = {
   mocha: {
     timeout: 5 * 60 * 1e3
   }
-}
+};
