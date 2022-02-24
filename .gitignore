@@ -14,3 +14,4 @@ artifacts
 .prettierignore
 .eslintrc.js
 .eslintignore
+bin
