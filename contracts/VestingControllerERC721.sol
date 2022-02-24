@@ -191,13 +191,12 @@ contract VestingControllerERC721 is
     /// @notice Claim function to withdraw vested tokens
     /// @dev emits ClaimedAmount() and only accessible by the investor's wallet, the backend address and safety module contract
     /// @param tokenId is the id of investment to submit the claim on
-    /// @param recipient is the address where to withdraw claimed funds to
     /// @param amount is the amount of vested tokens to claim in the process
-    function claimTokens(
-        address recipient,
-        uint256 tokenId,
-        uint256 amount
-    ) public onlyInvestorOrRand(tokenId) {
+    function claimTokens(uint256 tokenId, uint256 amount)
+        public
+        onlyInvestorOrRand(tokenId)
+    {
+        address recipient = ownerOf(tokenId);
         uint256 claimable = _calculateClaimableTokens(tokenId);
         require(claimable >= amount, "VC: amount is more than claimable");
         _addClaimedTokens(amount, tokenId);
@@ -284,8 +283,8 @@ contract VestingControllerERC721 is
             "VC: Cannot request required RND from Multisig"
         );
         // Incrementing token counter and minting new token to recipient
-        safeMint(recipient);
         tokenId = _tokenIdCounter.current();
+        safeMint(recipient);
 
         // Initializing investment struct and assigning to the newly minted token
         if (vestingStartTime == 0) {

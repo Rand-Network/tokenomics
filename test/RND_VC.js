@@ -320,12 +320,12 @@ describe("Rand Token with Vesting Controller", function () {
       const aliceBalanceBefore = await RandToken.balanceOf(alice.address);
       expect(claimableAmount).to.be.equal(claimablePerPeriod.mul(periods_mined));
       // Claim half by owner
-      tx = await RandVC.connect(alice).claimTokens(alice.address, tx.value, claimableAmountHalf);
+      tx = await RandVC.connect(alice).claimTokens(tx.value, claimableAmountHalf);
       await tx.wait(numConfirmation);
       aliceBalanceAfter = await RandToken.balanceOf(alice.address);
       expect(aliceBalanceBefore.add(claimableAmountHalf) == aliceBalanceAfter);
       // Claim other half by backend
-      tx = await RandVC.connect(backend).claimTokens(alice.address, tx.value, claimableAmountHalf);
+      tx = await RandVC.connect(backend).claimTokens(tx.value, claimableAmountHalf);
       await tx.wait(numConfirmation);
       aliceBalanceAfter = await RandToken.balanceOf(alice.address);
       expect(aliceBalanceBefore.add(claimableAmountHalf) == aliceBalanceAfter);
@@ -333,7 +333,7 @@ describe("Rand Token with Vesting Controller", function () {
     it("Claiming vested tokens by backend", async function () {
       const aliceBalanceBefore = await RandToken.balanceOf(alice.address);
       claimableAmount = await RandVC.connect(alice.address).getClaimableTokens(tx.value);
-      tx = await RandVC.connect(backend).claimTokens(alice.address, tx.value, claimableAmount);
+      tx = await RandVC.connect(backend).claimTokens(tx.value, claimableAmount);
       await tx.wait(numConfirmation);
       aliceBalanceAfter = await RandToken.balanceOf(alice.address);
       expect(aliceBalanceBefore.add(claimableAmount) == aliceBalanceAfter);
