@@ -262,6 +262,8 @@ contract VestingControllerERC721 is
         emit InvestmentTransferred(recipient, rndTokenAmount);
     }
 
+    // [] implement function to send locked tokens from VC to an address - e.g.: somebody lost his vesting wallet? is it needed?
+
     /// @notice Mints a token and associates an investment to it and sets tokenURI
     /// @dev emits NewInvestmentTokenMinted() and only accessible with MINTER_ROLE
     /// @param recipient is the address to whom the investment token should be minted to
@@ -361,7 +363,7 @@ contract VestingControllerERC721 is
     }
 
     function safeMint(address to)
-        public
+        internal
         onlyRole(MINTER_ROLE)
         returns (uint256)
     {
