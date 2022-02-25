@@ -33,7 +33,6 @@ interface IVestingControllerERC721{
   function paused (  ) external view returns ( bool );
   function renounceRole ( bytes32 role, address account ) external;
   function revokeRole ( bytes32 role, address account ) external;
-  function safeMint ( address to ) external returns ( uint256 );
   function safeTransferFrom ( address from, address to, uint256 tokenId ) external;
   function safeTransferFrom ( address from, address to, uint256 tokenId, bytes memory _data ) external;
   function setAllowanceForSM ( uint256 amount ) external;
