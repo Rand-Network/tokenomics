@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -20,7 +19,6 @@ contract SafetyModuleERC20 is
     Initializable,
     UUPSUpgradeable,
     ERC20Upgradeable,
-    ERC20BurnableUpgradeable,
     PausableUpgradeable,
     AccessControlUpgradeable
 {
@@ -38,8 +36,6 @@ contract SafetyModuleERC20 is
     uint256 public UNSTAKE_WINDOW;
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
 
     mapping(address => uint256) rewards;
@@ -64,14 +60,11 @@ contract SafetyModuleERC20 is
         uint256 _unstake_window
     ) public initializer {
         __ERC20_init(_name, _symbol);
-        __ERC20Burnable_init();
         __Pausable_init();
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
-        _grantRole(MINTER_ROLE, _multisigVault);
-        _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(BACKEND_ROLE, _backendAddress);
 
         RND_TOKEN = _rndTokenContract;
@@ -86,9 +79,7 @@ contract SafetyModuleERC20 is
         require(amount != 0, "SM: Stake amount cannot be zero");
         // SM checks if the user has a total token amount he wants to stake
         uint256 alreadyStaked = balanceOf(_msgSender());
-        uint256 VCbalance = IVestingControllerERC721(VC_TOKEN).balanceOf(
-            _msgSender()
-        );
+        uint256 VCbalance = VC_TOKEN.balanceOf(_msgSender());
         uint256 availableForStaking;
         uint256 availableForStakingOnVC;
         uint256 availableForStakingOnRND;
@@ -101,37 +92,31 @@ contract SafetyModuleERC20 is
             uint256 totalClaimed;
 
             for (uint256 i = 0; i <= VCbalance; i++) {
-                uint256 tokenId = IVestingControllerERC721(VC_TOKEN)
-                    .tokenOfOwnerByIndex(_msgSender(), i);
+                uint256 tokenId = VC_TOKEN.tokenOfOwnerByIndex(_msgSender(), i);
                 //tokenIds.push(tokenId);
                 tokenIds[i] = tokenId;
                 (
                     uint256 rndTokenAmount,
                     uint256 rndClaimedAmount,
-                    uint256 vestingPeriod,
-                    uint256 vestingStartTime,
-                    uint256 rndStakedAmount
-                ) = IVestingControllerERC721(VC_TOKEN).getInvestmentInfo(
-                        tokenId
-                    );
-                delete (vestingPeriod);
-                delete (vestingStartTime);
-                delete (rndStakedAmount);
+                    ,
+                    ,
+
+                ) = VC_TOKEN.getInvestmentInfo(tokenId);
+
                 totalToken += rndTokenAmount;
                 totalClaimed += rndClaimedAmount;
                 stakeableOnTokenId[i] = rndTokenAmount - rndClaimedAmount;
             }
             availableForStakingOnVC = totalToken - totalClaimed - alreadyStaked;
-            // Add simple RND balance
-            availableForStakingOnRND += IRandToken(RND_TOKEN).balanceOf(
-                _msgSender()
-            );
+
+            // Add non-vested RND balance
+            availableForStakingOnRND += RND_TOKEN.balanceOf(_msgSender());
             availableForStaking =
                 availableForStakingOnVC +
                 availableForStakingOnRND;
         } else {
             // If the user is not a vesting user simply check his RND balance
-            availableForStaking = IRandToken(RND_TOKEN).balanceOf(_msgSender());
+            availableForStaking = RND_TOKEN.balanceOf(_msgSender());
         }
         require(
             amount <= availableForStaking,
@@ -145,29 +130,22 @@ contract SafetyModuleERC20 is
             if (amount > availableForStakingOnVC) {
                 // Get from VC and RND
                 // Getting allowance from VC and RND
-                IVestingControllerERC721(VC_TOKEN).setAllowanceForSM(vc_amount);
-                IRandToken(RND_TOKEN).setAllowanceForSM(
-                    _msgSender(),
-                    rnd_amount
-                );
+                VC_TOKEN.setAllowanceForSM(vc_amount);
+                RND_TOKEN.setAllowanceForSM(_msgSender(), rnd_amount);
                 // Transfer RND from VC to SM
-                IVestingControllerERC721(VC_TOKEN).transferFrom(
+                VC_TOKEN.transferFrom(
                     address(VC_TOKEN),
                     address(this),
                     vc_amount
                 );
                 // Transfer RND from staker to SM
-                IRandToken(RND_TOKEN).transferFrom(
-                    _msgSender(),
-                    address(this),
-                    rnd_amount
-                );
+                RND_TOKEN.transferFrom(_msgSender(), address(this), rnd_amount);
             } else {
                 // Get from VC only
                 // Getting allowance from VC
-                IVestingControllerERC721(VC_TOKEN).setAllowanceForSM(amount);
+                VC_TOKEN.setAllowanceForSM(amount);
                 // Transfer RND from VC to SM
-                IVestingControllerERC721(VC_TOKEN).transferFrom(
+                VC_TOKEN.transferFrom(
                     address(VC_TOKEN),
                     address(this),
                     vc_amount
@@ -176,13 +154,9 @@ contract SafetyModuleERC20 is
         } else {
             // Get from RND only
             // Set increase allowance for SM
-            IRandToken(RND_TOKEN).setAllowanceForSM(_msgSender(), amount);
+            RND_TOKEN.setAllowanceForSM(_msgSender(), amount);
             // Transfer RND from staker to SM
-            IRandToken(RND_TOKEN).transferFrom(
-                _msgSender(),
-                address(this),
-                amount
-            );
+            RND_TOKEN.transferFrom(_msgSender(), address(this), amount);
         }
 
         // SM registers staked amount in SM storage and VC storage
@@ -201,7 +175,7 @@ contract SafetyModuleERC20 is
                 for (uint256 i = 0; i <= tokenIds.length; i++) {
                     if (toStake > stakeableOnTokenId[i]) {
                         // If investment[i] does not cover toStake amount
-                        IVestingControllerERC721(VC_TOKEN).modifyStakedAmount(
+                        VC_TOKEN.modifyStakedAmount(
                             tokenIds[i],
                             stakeableOnTokenId[i] <= toStake
                                 ? stakeableOnTokenId[i]
@@ -210,10 +184,7 @@ contract SafetyModuleERC20 is
                         toStake -= stakeableOnTokenId[i];
                     } else {
                         // If investment[i] can cover toStake amount
-                        IVestingControllerERC721(VC_TOKEN).modifyStakedAmount(
-                            tokenIds[i],
-                            toStake
-                        );
+                        VC_TOKEN.modifyStakedAmount(tokenIds[i], toStake);
                         toStake -= toStake;
                     }
                     // Do not continue for loop if toStake is depleated
@@ -224,15 +195,12 @@ contract SafetyModuleERC20 is
             } else {
                 // [] Need to add it to the already staked amount!!!
                 // In line 108 the rndStakedAmount return values must be added to an array
-                IVestingControllerERC721(VC_TOKEN).modifyStakedAmount(
-                    tokenIds[0],
-                    vc_amount
-                );
+                VC_TOKEN.modifyStakedAmount(tokenIds[0], vc_amount);
             }
         }
 
         // SM mints sRND tokens for the user
-        mint(_msgSender(), amount);
+        _mint(_msgSender(), amount);
         emit Staked(amount);
     }
 
@@ -288,32 +256,19 @@ contract SafetyModuleERC20 is
             onBehalf[_msgSender()][_msgSender()] = 0;
             // Substract unstaked amount from VC staked amounts
             // by iterating over his investment tokens from oldest to newest
-            uint256 VCbalance = IVestingControllerERC721(VC_TOKEN).balanceOf(
-                _msgSender()
-            );
+            uint256 VCbalance = VC_TOKEN.balanceOf(_msgSender());
             uint256[] memory tokenIds;
             uint256[] memory stakedOnTokenId;
             uint256[] memory toUnstakedOnTokenId;
             // Iterate over investments
             for (uint256 i = 0; i <= VCbalance; i++) {
-                uint256 tokenId = IVestingControllerERC721(VC_TOKEN)
-                    .tokenOfOwnerByIndex(_msgSender(), i);
+                uint256 tokenId = VC_TOKEN.tokenOfOwnerByIndex(_msgSender(), i);
                 //tokenIds.push(tokenId);
                 tokenIds[i] = tokenId;
-                (
-                    uint256 rndTokenAmount,
-                    uint256 rndClaimedAmount,
-                    uint256 vestingPeriod,
-                    uint256 vestingStartTime,
-                    uint256 rndStakedAmount
-                ) = IVestingControllerERC721(VC_TOKEN).getInvestmentInfo(
-                        tokenId
-                    );
+                (, , , , uint256 rndStakedAmount) = VC_TOKEN.getInvestmentInfo(
+                    tokenId
+                );
                 stakedOnTokenId[i] = rndStakedAmount;
-                delete (rndTokenAmount);
-                delete (rndClaimedAmount);
-                delete (vestingPeriod);
-                delete (vestingStartTime);
             }
             // Iterate over investments and get the required amount to unstake
             for (uint256 i = 0; i <= tokenIds.length; i++) {
@@ -328,7 +283,7 @@ contract SafetyModuleERC20 is
             // Iterate over unstake amount array and call the modifyStakedAmount on VC
             for (uint256 i = 0; i <= toUnstakedOnTokenId.length; i++) {
                 // modify staked amount on VC
-                IVestingControllerERC721(VC_TOKEN).modifyStakedAmount(
+                VC_TOKEN.modifyStakedAmount(
                     tokenIds[i],
                     toUnstakedOnTokenId[i]
                 );
@@ -339,17 +294,13 @@ contract SafetyModuleERC20 is
         }
 
         // Burn stake tokens and transfer amount to recipient address
-        burn(_msgSender(), amount);
-        transfer(recipient, amount);
+        _burn(_msgSender(), amount);
+        _transfer(address(this), recipient, amount);
         emit RedeemStaked(_msgSender(), recipient, amount);
     }
 
-    function stakeNew(
-        bool vested,
-        uint256 tokenId,
-        uint256 amount
-    ) public {
-        if (vested) {
+    function stakeNew(uint256 tokenId, uint256 amount) public {
+        if (tokenId != 0) {
             _stakeOnTokenId(tokenId, amount);
         } else {
             _stakeOnRND(amount);
@@ -359,15 +310,15 @@ contract SafetyModuleERC20 is
     function _stakeOnRND(uint256 amount) internal {
         require(amount != 0, "SM: Stake amount cannot be zero");
         // Set increase allowance for SM
-        IRandToken(RND_TOKEN).setAllowanceForSM(_msgSender(), amount);
+        RND_TOKEN.setAllowanceForSM(_msgSender(), amount);
         // Transfer RND from staker to SM
-        IRandToken(RND_TOKEN).transferFrom(_msgSender(), address(this), amount);
+        RND_TOKEN.transferFrom(_msgSender(), address(this), amount);
 
         // SM registers staked amount in SM storage and VC storage
         // Set onBehalf amounts on SM
         onBehalf[_msgSender()][_msgSender()] += amount;
         // SM mints sRND tokens for the user
-        mint(_msgSender(), amount);
+        _mint(_msgSender(), amount);
         emit Staked(amount);
     }
 
@@ -380,7 +331,7 @@ contract SafetyModuleERC20 is
             uint256 vestingPeriod,
             uint256 vestingStartTime,
             uint256 rndStakedAmount
-        ) = IVestingControllerERC721(VC_TOKEN).getInvestmentInfo(tokenId);
+        ) = VC_TOKEN.getInvestmentInfo(tokenId);
         delete (vestingPeriod);
         delete (vestingStartTime);
         require(
@@ -388,22 +339,15 @@ contract SafetyModuleERC20 is
             "SM: Not enough stakable amount on VC tokenId"
         );
         // Set allowance on tokens owned by VC
-        IVestingControllerERC721(VC_TOKEN).setAllowanceForSM(amount);
+        VC_TOKEN.setAllowanceForSM(amount);
         // Transfer RND from VC to SM
-        IVestingControllerERC721(VC_TOKEN).transferFrom(
-            address(VC_TOKEN),
-            address(this),
-            amount
-        );
+        VC_TOKEN.transferFrom(address(VC_TOKEN), address(this), amount);
         // Set onBehalf amounts
         onBehalf[_msgSender()][address(VC_TOKEN)] += amount;
         // Register staked amount on VC
-        IVestingControllerERC721(VC_TOKEN).modifyStakedAmount(
-            tokenId,
-            rndStakedAmount + amount
-        );
+        VC_TOKEN.modifyStakedAmount(tokenId, rndStakedAmount + amount);
         // SM mints sRND tokens for the user
-        mint(_msgSender(), amount);
+        _mint(_msgSender(), amount);
         emit StakedOnTokenId(tokenId, amount);
     }
 
@@ -438,27 +382,6 @@ contract SafetyModuleERC20 is
         _unpause();
     }
 
-    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
-        _mint(to, amount);
-    }
-
-    function burn(address from, uint256 amount)
-        public
-        virtual
-        onlyRole(BURNER_ROLE)
-    {
-        _burn(from, amount);
-    }
-
-    function _transfer(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) internal virtual override {
-        revert("SM: Transfer of staked tokens is prohibited!");
-    }
-
-    /// @inheritdoc	ERC20Upgradeable
     function _beforeTokenTransfer(
         address from,
         address to,
