@@ -39,8 +39,8 @@ contract SafetyModuleERC20 is
     bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
 
     mapping(address => uint256) rewards;
-    mapping(address => mapping(address => uint256)) onBehalf;
-    mapping(address => uint256) stakerCooldown;
+    mapping(address => mapping(address => uint256)) public onBehalf;
+    mapping(address => uint256) public stakerCooldown;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -73,137 +73,6 @@ contract SafetyModuleERC20 is
         UNSTAKE_WINDOW = _unstake_window;
     }
 
-    // Stakes the users funds in the SM
-    // If the user is a vesting investor then the stake function will use his vested balance first and only later the vested RND
-    function stake(uint256 amount) public {
-        require(amount != 0, "SM: Stake amount cannot be zero");
-        // SM checks if the user has a total token amount he wants to stake
-        uint256 alreadyStaked = balanceOf(_msgSender());
-        uint256 VCbalance = VC_TOKEN.balanceOf(_msgSender());
-        uint256 availableForStaking;
-        uint256 availableForStakingOnVC;
-        uint256 availableForStakingOnRND;
-        uint256[] memory tokenIds;
-        uint256[] memory stakeableOnTokenId;
-
-        // Calculate vesting users balance over his investments
-        if (VCbalance > 0) {
-            uint256 totalToken;
-            uint256 totalClaimed;
-
-            for (uint256 i = 0; i <= VCbalance; i++) {
-                uint256 tokenId = VC_TOKEN.tokenOfOwnerByIndex(_msgSender(), i);
-                //tokenIds.push(tokenId);
-                tokenIds[i] = tokenId;
-                (
-                    uint256 rndTokenAmount,
-                    uint256 rndClaimedAmount,
-                    ,
-                    ,
-
-                ) = VC_TOKEN.getInvestmentInfo(tokenId);
-
-                totalToken += rndTokenAmount;
-                totalClaimed += rndClaimedAmount;
-                stakeableOnTokenId[i] = rndTokenAmount - rndClaimedAmount;
-            }
-            availableForStakingOnVC = totalToken - totalClaimed - alreadyStaked;
-
-            // Add non-vested RND balance
-            availableForStakingOnRND += RND_TOKEN.balanceOf(_msgSender());
-            availableForStaking =
-                availableForStakingOnVC +
-                availableForStakingOnRND;
-        } else {
-            // If the user is not a vesting user simply check his RND balance
-            availableForStaking = RND_TOKEN.balanceOf(_msgSender());
-        }
-        require(
-            amount <= availableForStaking,
-            "SM: Amount is too high to stake, no avaiable stakable balance"
-        );
-
-        // SM sets an allowance for itself and transfers RND from VC to SM in amount
-        uint256 vc_amount = amount - availableForStakingOnRND;
-        uint256 rnd_amount = amount - vc_amount;
-        if (availableForStakingOnVC != 0) {
-            if (amount > availableForStakingOnVC) {
-                // Get from VC and RND
-                // Getting allowance from VC and RND
-                VC_TOKEN.setAllowanceForSM(vc_amount);
-                RND_TOKEN.setAllowanceForSM(_msgSender(), rnd_amount);
-                // Transfer RND from VC to SM
-                VC_TOKEN.transferFrom(
-                    address(VC_TOKEN),
-                    address(this),
-                    vc_amount
-                );
-                // Transfer RND from staker to SM
-                RND_TOKEN.transferFrom(_msgSender(), address(this), rnd_amount);
-            } else {
-                // Get from VC only
-                // Getting allowance from VC
-                VC_TOKEN.setAllowanceForSM(amount);
-                // Transfer RND from VC to SM
-                VC_TOKEN.transferFrom(
-                    address(VC_TOKEN),
-                    address(this),
-                    vc_amount
-                );
-            }
-        } else {
-            // Get from RND only
-            // Set increase allowance for SM
-            RND_TOKEN.setAllowanceForSM(_msgSender(), amount);
-            // Transfer RND from staker to SM
-            RND_TOKEN.transferFrom(_msgSender(), address(this), amount);
-        }
-
-        // SM registers staked amount in SM storage and VC storage
-        // Set onBehalf amounts on SM
-        onBehalf[_msgSender()][_msgSender()] += rnd_amount > 0 ? rnd_amount : 0;
-
-        if (vc_amount > 0) {
-            // Set onBehalf amounts on SM
-            onBehalf[_msgSender()][address(VC_TOKEN)] += vc_amount;
-
-            // Loop over investment tokens and register staked amount in historical order from oldest token to newest
-            uint256 toStake = vc_amount;
-
-            // If first investment token does not cover stake amount loop through more
-            if (toStake > stakeableOnTokenId[0]) {
-                for (uint256 i = 0; i <= tokenIds.length; i++) {
-                    if (toStake > stakeableOnTokenId[i]) {
-                        // If investment[i] does not cover toStake amount
-                        VC_TOKEN.modifyStakedAmount(
-                            tokenIds[i],
-                            stakeableOnTokenId[i] <= toStake
-                                ? stakeableOnTokenId[i]
-                                : toStake
-                        );
-                        toStake -= stakeableOnTokenId[i];
-                    } else {
-                        // If investment[i] can cover toStake amount
-                        VC_TOKEN.modifyStakedAmount(tokenIds[i], toStake);
-                        toStake -= toStake;
-                    }
-                    // Do not continue for loop if toStake is depleated
-                    if (toStake == 0) {
-                        break;
-                    }
-                }
-            } else {
-                // [] Need to add it to the already staked amount!!!
-                // In line 108 the rndStakedAmount return values must be added to an array
-                VC_TOKEN.modifyStakedAmount(tokenIds[0], vc_amount);
-            }
-        }
-
-        // SM mints sRND tokens for the user
-        _mint(_msgSender(), amount);
-        emit Staked(amount);
-    }
-
     function cooldown() public {
         require(
             balanceOf(_msgSender()) > 0,
@@ -213,10 +82,119 @@ contract SafetyModuleERC20 is
         emit CooldownStaked(_msgSender());
     }
 
-    // Redeems users staked tokens after cooldown period ended and still within unstake window
-    // If the user is a vesting investor then his vested tokens will be prioritized for redemption
-    function redeem(address recipient, uint256 amount) public {
+    // // Redeems users staked tokens after cooldown period ended and still within unstake window
+    // // If the user is a vesting investor then his vested tokens will be prioritized for redemption
+    // function redeem(address recipient, uint256 amount) public {
+    //     require(amount > 0, "SM: Redeem amount cannot be zero");
+    //     require(
+    //         balanceOf(_msgSender()) >= amount,
+    //         "SM: Not enough staked balance"
+    //     );
+    //     require(stakerCooldown[_msgSender()] > 0, "SM: No cooldown initiated");
+    //     require(
+    //         block.timestamp > stakerCooldown[_msgSender()] + COOLDOWN_SECONDS,
+    //         "SM: Still under cooldown period"
+    //     );
+    //     // If unstake period is passed, reset cooldown for user
+    //     if (
+    //         block.timestamp >
+    //         stakerCooldown[_msgSender()] + COOLDOWN_SECONDS + UNSTAKE_WINDOW
+    //     ) {
+    //         stakerCooldown[_msgSender()] = 0;
+    //         require(
+    //             block.timestamp -
+    //                 stakerCooldown[_msgSender()] +
+    //                 COOLDOWN_SECONDS <=
+    //                 UNSTAKE_WINDOW,
+    //             "SM: Unstake period finished, cooldown reset"
+    //         );
+    //     }
+    //     uint256 balanceOfStaker = balanceOf(_msgSender());
+    //     uint256 vcBalanceOfStaker = onBehalf[_msgSender()][address(VC_TOKEN)];
+    //     uint256 ownBalanceOfStaker = onBehalf[_msgSender()][_msgSender()];
+
+    //     require(
+    //         balanceOfStaker == vcBalanceOfStaker + ownBalanceOfStaker,
+    //         "SM: Unequal tokens minted and onBehalf amounts"
+    //     );
+
+    //     // If user has only RND
+    //     if (amount <= ownBalanceOfStaker) {
+    //         onBehalf[_msgSender()][_msgSender()] -= amount;
+    //     } else {
+    //         // If user also has vesting tokens
+    //         // Null his own tokens
+    //         balanceOfStaker -= ownBalanceOfStaker;
+    //         onBehalf[_msgSender()][_msgSender()] = 0;
+    //         // Substract unstaked amount from VC staked amounts
+    //         // by iterating over his investment tokens from oldest to newest
+    //         uint256 VCbalance = VC_TOKEN.balanceOf(_msgSender());
+    //         uint256[] memory tokenIds = new uint256[](VCbalance);
+    //         uint256[] memory stakedOnTokenId = new uint256[](VCbalance);
+
+    //         // Iterate over investments
+    //         for (uint256 i = 0; i < VCbalance; i++) {
+    //             uint256 tokenId = VC_TOKEN.tokenOfOwnerByIndex(_msgSender(), i);
+    //             tokenIds[i] = tokenId;
+    //             (, , , , uint256 rndStakedAmount) = VC_TOKEN.getInvestmentInfo(
+    //                 tokenId
+    //             );
+    //             stakedOnTokenId[i] = rndStakedAmount;
+    //         }
+    //         uint256[] memory toUnstakedOnTokenId = new uint256[](
+    //             tokenIds.length
+    //         );
+    //         uint256 toUnstakedOnTokenIdCounter;
+    //         // Iterate over investments and get the required amount to unstake
+    //         for (uint256 i = 0; i < tokenIds.length; i++) {
+    //             if (vcBalanceOfStaker > stakedOnTokenId[i]) {
+    //                 toUnstakedOnTokenId[i] = vcBalanceOfStaker;
+    //                 vcBalanceOfStaker -= stakedOnTokenId[i];
+    //                 toUnstakedOnTokenIdCounter += 1;
+    //             } else {
+    //                 toUnstakedOnTokenId[i] = vcBalanceOfStaker;
+    //                 break;
+    //             }
+    //         }
+
+    //         // Iterate over unstake amount array and call the modifyStakedAmount on VC
+    //         for (uint256 i = 0; i < toUnstakedOnTokenIdCounter; i++) {
+    //             // modify staked amount on VC
+    //             VC_TOKEN.modifyStakedAmount(
+    //                 tokenIds[i],
+    //                 toUnstakedOnTokenId[i]
+    //             );
+    //             onBehalf[_msgSender()][
+    //                 address(VC_TOKEN)
+    //             ] -= toUnstakedOnTokenId[i];
+    //         }
+    //     }
+
+    //     // Burn stake tokens
+    //     _burn(_msgSender(), amount);
+    //     // Transfer RND amount to recipient address or back to VC
+    //     // If there is no vesting investment in the amount
+    //     if (vcBalanceOfStaker == 0) {
+    //         RND_TOKEN.transfer(recipient, amount);
+    //     } else {
+    //         if (vcBalanceOfStaker > 0 && ownBalanceOfStaker == 0) {
+    //             RND_TOKEN.transfer(address(VC_TOKEN), amount);
+    //         } else {
+    //             // If there is vesting investment also and own
+    //             RND_TOKEN.transfer(recipient, ownBalanceOfStaker);
+    //             RND_TOKEN.transfer(address(VC_TOKEN), vcBalanceOfStaker);
+    //         }
+    //     }
+    //     // [] could divide event amount into vc amount and vested rnd amounts
+    //     emit RedeemStaked(_msgSender(), recipient, amount);
+    // }
+
+    modifier redeemable(uint256 amount) {
         require(amount > 0, "SM: Redeem amount cannot be zero");
+        require(
+            balanceOf(_msgSender()) >= amount,
+            "SM: Not enough staked balance"
+        );
         require(stakerCooldown[_msgSender()] > 0, "SM: No cooldown initiated");
         require(
             block.timestamp > stakerCooldown[_msgSender()] + COOLDOWN_SECONDS,
@@ -236,86 +214,70 @@ contract SafetyModuleERC20 is
                 "SM: Unstake period finished, cooldown reset"
             );
         }
+        _;
+    }
+
+    function redeemNew(
+        uint256 tokenId,
+        uint256 amount,
+        address recipient
+    ) public redeemable(amount) {
+        /////// CAN BE DELETED IN FINAL /////////
         uint256 balanceOfStaker = balanceOf(_msgSender());
         uint256 vcBalanceOfStaker = onBehalf[_msgSender()][address(VC_TOKEN)];
         uint256 ownBalanceOfStaker = onBehalf[_msgSender()][_msgSender()];
 
-        // [] optionally added - can be removed, main use for testing
         require(
             balanceOfStaker == vcBalanceOfStaker + ownBalanceOfStaker,
             "SM: Unequal tokens minted and onBehalf amounts"
         );
+        /////// CAN BE DELETED IN FINAL /////////
 
-        // If user has only RND
-        if (amount <= ownBalanceOfStaker) {
-            onBehalf[_msgSender()][_msgSender()] -= amount;
+        // Redeem without vesting investment
+        if (tokenId == 0) {
+            _redeemOnRND(amount, recipient);
         } else {
-            // If user also has vesting tokens
-            // Null his own tokens
-            balanceOfStaker -= ownBalanceOfStaker;
-            onBehalf[_msgSender()][_msgSender()] = 0;
-            // Substract unstaked amount from VC staked amounts
-            // by iterating over his investment tokens from oldest to newest
-            uint256 VCbalance = VC_TOKEN.balanceOf(_msgSender());
-            uint256[] memory tokenIds;
-            uint256[] memory stakedOnTokenId;
-            uint256[] memory toUnstakedOnTokenId;
-            // Iterate over investments
-            for (uint256 i = 0; i <= VCbalance; i++) {
-                uint256 tokenId = VC_TOKEN.tokenOfOwnerByIndex(_msgSender(), i);
-                //tokenIds.push(tokenId);
-                tokenIds[i] = tokenId;
-                (, , , , uint256 rndStakedAmount) = VC_TOKEN.getInvestmentInfo(
-                    tokenId
-                );
-                stakedOnTokenId[i] = rndStakedAmount;
-            }
-            // Iterate over investments and get the required amount to unstake
-            for (uint256 i = 0; i <= tokenIds.length; i++) {
-                if (vcBalanceOfStaker > stakedOnTokenId[i]) {
-                    toUnstakedOnTokenId[i] = vcBalanceOfStaker;
-                    vcBalanceOfStaker -= stakedOnTokenId[i];
-                } else {
-                    toUnstakedOnTokenId[i] = vcBalanceOfStaker;
-                    break;
-                }
-            }
-            // Iterate over unstake amount array and call the modifyStakedAmount on VC
-            for (uint256 i = 0; i <= toUnstakedOnTokenId.length; i++) {
-                // modify staked amount on VC
-                VC_TOKEN.modifyStakedAmount(
-                    tokenIds[i],
-                    toUnstakedOnTokenId[i]
-                );
-                onBehalf[_msgSender()][
-                    address(VC_TOKEN)
-                ] -= toUnstakedOnTokenId[i];
-            }
+            // Redeem on vesting investment token
+            _redeemOnTokenId(tokenId, amount);
         }
 
-        // Burn stake tokens and transfer amount to recipient address
-        _burn(_msgSender(), amount);
-        _transfer(address(this), recipient, amount);
         emit RedeemStaked(_msgSender(), recipient, amount);
     }
 
+    function _redeemOnTokenId(uint256 tokenId, uint256 amount) internal {
+        uint256 vcBalanceOfStaker = onBehalf[_msgSender()][address(VC_TOKEN)];
+        require(
+            vcBalanceOfStaker >= amount,
+            "SM: Redeem amount is higher than avaiable on staked VC token"
+        );
+        onBehalf[_msgSender()][address(VC_TOKEN)] -= amount;
+
+        (, , , , uint256 rndStakedAmount) = VC_TOKEN.getInvestmentInfo(tokenId);
+        VC_TOKEN.modifyStakedAmount(tokenId, rndStakedAmount - amount);
+        _burn(_msgSender(), amount);
+        RND_TOKEN.transfer(address(VC_TOKEN), amount);
+    }
+
+    function _redeemOnRND(uint256 amount, address recipient) internal {
+        _burn(_msgSender(), amount);
+        onBehalf[_msgSender()][_msgSender()] -= amount;
+        RND_TOKEN.transfer(recipient, amount);
+    }
+
     function stakeNew(uint256 tokenId, uint256 amount) public {
-        if (tokenId != 0) {
-            _stakeOnTokenId(tokenId, amount);
-        } else {
+        require(amount != 0, "SM: Stake amount cannot be zero");
+        // Stake without vesting investment
+        if (tokenId == 0) {
             _stakeOnRND(amount);
+        } else {
+            // Stake on vesting investment token
+            _stakeOnTokenId(tokenId, amount);
         }
     }
 
     function _stakeOnRND(uint256 amount) internal {
-        require(amount != 0, "SM: Stake amount cannot be zero");
-        // Set increase allowance for SM
-        RND_TOKEN.setAllowanceForSM(_msgSender(), amount);
-        // Transfer RND from staker to SM
-        RND_TOKEN.transferFrom(_msgSender(), address(this), amount);
-
+        RND_TOKEN.approveAndTransfer(_msgSender(), address(this), amount);
         // SM registers staked amount in SM storage and VC storage
-        // Set onBehalf amounts on SM
         onBehalf[_msgSender()][_msgSender()] += amount;
         // SM mints sRND tokens for the user
         _mint(_msgSender(), amount);
@@ -323,29 +285,30 @@ contract SafetyModuleERC20 is
     }
 
     function _stakeOnTokenId(uint256 tokenId, uint256 amount) internal {
-        require(amount != 0, "SM: Stake amount cannot be zero");
+        require(
+            VC_TOKEN.ownerOf(tokenId) == _msgSender(),
+            "SM: Can only stake own VC tokens"
+        );
         // Get stakeable amount from VC
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount,
-            uint256 vestingPeriod,
-            uint256 vestingStartTime,
+            ,
+            ,
             uint256 rndStakedAmount
         ) = VC_TOKEN.getInvestmentInfo(tokenId);
-        delete (vestingPeriod);
-        delete (vestingStartTime);
         require(
             rndTokenAmount - rndClaimedAmount - rndStakedAmount >= amount,
             "SM: Not enough stakable amount on VC tokenId"
         );
-        // Set allowance on tokens owned by VC
-        VC_TOKEN.setAllowanceForSM(amount);
-        // Transfer RND from VC to SM
-        VC_TOKEN.transferFrom(address(VC_TOKEN), address(this), amount);
+
+        RND_TOKEN.approveAndTransfer(address(VC_TOKEN), address(this), amount);
+
         // Set onBehalf amounts
         onBehalf[_msgSender()][address(VC_TOKEN)] += amount;
         // Register staked amount on VC
-        VC_TOKEN.modifyStakedAmount(tokenId, rndStakedAmount + amount);
+        uint256 newStakedAmount = rndStakedAmount + amount;
+        VC_TOKEN.modifyStakedAmount(tokenId, newStakedAmount);
         // SM mints sRND tokens for the user
         _mint(_msgSender(), amount);
         emit StakedOnTokenId(tokenId, amount);
@@ -374,12 +337,58 @@ contract SafetyModuleERC20 is
         emit VCAddressUpdated(newAddress);
     }
 
+    function updateCooldownPeriod(uint256 newPeriod)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        COOLDOWN_SECONDS = newPeriod;
+    }
+
+    function updateUnstakePeriod(uint256 newPeriod)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        UNSTAKE_WINDOW = newPeriod;
+    }
+
+    function updateOnBehalfAmount(
+        address addr1,
+        address addr2,
+        uint256 newAmount
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        onBehalf[addr1][addr2] = newAmount;
+    }
+
+    function burn(address account, uint256 amount)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _burn(account, amount);
+    }
+
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();
     }
 
     function unpause() public onlyRole(PAUSER_ROLE) {
         _unpause();
+    }
+
+    function transfer(address to, uint256 amount)
+        public
+        pure
+        override
+        returns (bool)
+    {
+        revert("SM: Cannot transfer staked tokens");
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) public pure override returns (bool) {
+        revert("SM: Cannot transfer staked tokens");
     }
 
     function _beforeTokenTransfer(
