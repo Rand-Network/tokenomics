@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
@@ -28,6 +29,7 @@ contract VestingControllerERC721 is
 {
     // Events
     event BaseURIChanged(string baseURI);
+    event ContractURIChanged(string contractURI);
     event ClaimedAmount(uint256 tokenId, address recipient, uint256 amount);
     event StakedAmountModified(uint256 tokenId, uint256 amount);
     event NewInvestmentTokenMinted(
@@ -40,12 +42,15 @@ contract VestingControllerERC721 is
         uint256 tokenId
     );
     event InvestmentTransferred(address recipient, uint256 amount);
+    event RNDTransferred(address recipient, uint256 amount);
     event FetchedRND(uint256 amount);
     event MultiSigAddressUpdated(address newAddress);
     event RNDAddressUpdated(IERC20Upgradeable newAddress);
+    event SMAddressUpdated(IERC20Upgradeable newAddress);
 
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using StringsUpgradeable for uint256;
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -112,6 +117,9 @@ contract VestingControllerERC721 is
         _grantRole(BACKEND_ROLE, _backendAddress);
         _grantRole(BACKEND_ROLE, address(this));
         _grantRole(SM_ROLE, address(SM_TOKEN));
+
+        // Increase counter so tokenId 0 is left empty
+        _tokenIdCounter.increment();
     }
 
     modifier onlyInvestorOrRand(uint256 tokenId) {
@@ -124,6 +132,10 @@ contract VestingControllerERC721 is
         );
         _;
     }
+
+    ////////////////////////////////////////////////////////////////////
+    ///////////////////  Investment Related ////////////////////////////
+    ////////////////////////////////////////////////////////////////////
 
     /// @notice View function to get amount of claimable tokens from vested investment token
     /// @dev only accessible by the investor's wallet, the backend address and safety module contract
@@ -165,29 +177,6 @@ contract VestingControllerERC721 is
         rndStakedAmount = vestingToken[tokenId].rndStakedAmount;
     }
 
-    /// @notice Function for Safety Module to increase the staked RND amount
-    /// @dev emits StakedAmountModifier() and only accessible by the Safety Module contract via SM_ROLE
-    /// @param tokenId the tokenId for which to increase staked amount
-    /// @param amount the amount of tokens to increase staked amount
-    function modifyStakedAmount(uint256 tokenId, uint256 amount)
-        external
-        onlyRole(SM_ROLE)
-    {
-        require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
-        vestingToken[tokenId].rndStakedAmount = amount;
-        emit StakedAmountModified(tokenId, amount);
-    }
-
-    /// @notice Function to allow SM to transfer funds when vesting investor stakes
-    /// @dev only accessible by the Safety Module contract via SM_ROLE
-    /// @param amount the amount of tokens to increase allowance for SM as spender on tokens of VC
-    function setAllowanceForSM(uint256 amount) external onlyRole(SM_ROLE) {
-        IERC20Upgradeable(RND_TOKEN).safeIncreaseAllowance(
-            address(SM_TOKEN),
-            amount
-        );
-    }
-
     /// @notice Claim function to withdraw vested tokens
     /// @dev emits ClaimedAmount() and only accessible by the investor's wallet, the backend address and safety module contract
     /// @param tokenId is the id of investment to submit the claim on
@@ -200,7 +189,7 @@ contract VestingControllerERC721 is
         uint256 claimable = _calculateClaimableTokens(tokenId);
         require(claimable >= amount, "VC: amount is more than claimable");
         _addClaimedTokens(amount, tokenId);
-        IERC20Upgradeable(RND_TOKEN).safeTransfer(recipient, amount);
+        RND_TOKEN.safeTransfer(recipient, amount);
         emit ClaimedAmount(tokenId, recipient, amount);
     }
 
@@ -244,25 +233,6 @@ contract VestingControllerERC721 is
                 investment.rndStakedAmount;
         }
     }
-
-    /// @notice Transfers RND Tokens to non-vesting investor, its used to distribute public sale tokens by backend
-    /// @dev emits InvestmentTransferred() and only accessible with MINTER_ROLE
-    /// @param recipient is the address to whom the token should be transferred to
-    /// @param rndTokenAmount is the amount of the total investment
-    function transferTokens(address recipient, uint256 rndTokenAmount)
-        public
-        onlyRole(MINTER_ROLE)
-    {
-        require(rndTokenAmount > 0, "VC: Amount must be more than zero");
-        IERC20Upgradeable(RND_TOKEN).safeTransferFrom(
-            MultiSigRND,
-            recipient,
-            rndTokenAmount
-        );
-        emit InvestmentTransferred(recipient, rndTokenAmount);
-    }
-
-    // [] implement function to send locked tokens from VC to an address - e.g.: somebody lost his vesting wallet? is it needed?
 
     /// @notice Mints a token and associates an investment to it and sets tokenURI
     /// @dev emits NewInvestmentTokenMinted() and only accessible with MINTER_ROLE
@@ -318,16 +288,55 @@ contract VestingControllerERC721 is
         );
     }
 
+    ////////////////////////////////////////////////////////////////////
+    //////////////////////  Util related ///////////////////////////////
+    ////////////////////////////////////////////////////////////////////
+
+    /// @notice Transfers RND Tokens to non-vesting investor, its used to distribute public sale tokens by backend
+    /// @dev emits InvestmentTransferred() and only accessible with MINTER_ROLE
+    /// @param recipient is the address to whom the token should be transferred to
+    /// @param rndTokenAmount is the amount of the total investment
+    function distributeTokens(address recipient, uint256 rndTokenAmount)
+        public
+        onlyRole(MINTER_ROLE)
+    {
+        require(rndTokenAmount > 0, "VC: Amount must be more than zero");
+        RND_TOKEN.safeTransferFrom(MultiSigRND, recipient, rndTokenAmount);
+        emit InvestmentTransferred(recipient, rndTokenAmount);
+    }
+
+    /// @notice Transfers RND Tokens to an address in order to get funds for SM or release tokens stuck on VC
+    /// @dev emits RNDTransferred() and only accessible with SM_ROLE
+    /// @param recipient is the address to whom the token should be transferred to
+    /// @param rndTokenAmount is the amount of the total investment
+    function transferRNDFromVC(address recipient, uint256 rndTokenAmount)
+        public
+        onlyRole(SM_ROLE)
+    {
+        require(rndTokenAmount > 0, "VC: Amount must be more than zero");
+        RND_TOKEN.safeTransferFrom(address(this), recipient, rndTokenAmount);
+        emit RNDTransferred(recipient, rndTokenAmount);
+    }
+
+    /// @notice Function for Safety Module to increase the staked RND amount
+    /// @dev emits StakedAmountModifier() and only accessible by the Safety Module contract via SM_ROLE
+    /// @param tokenId the tokenId for which to increase staked amount
+    /// @param amount the amount of tokens to increase staked amount
+    function modifyStakedAmount(uint256 tokenId, uint256 amount)
+        external
+        onlyRole(SM_ROLE)
+    {
+        require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
+        vestingToken[tokenId].rndStakedAmount = amount;
+        emit StakedAmountModified(tokenId, amount);
+    }
+
     /// @notice Function which allows VC to pull RND funds when minting an investment
-    /// @dev emit FetchedRND(), needs allowance from MultiSig
+    /// @dev emit FetchedRND(), needs allowance from MultiSig on initial RND supply
     /// @param amount of tokens to fetch from the Rand Multisig when minting a new investment
     /// @return bool
     function _getRND(uint256 amount) internal returns (bool) {
-        IERC20Upgradeable(RND_TOKEN).safeTransferFrom(
-            MultiSigRND,
-            address(this),
-            amount
-        );
+        RND_TOKEN.safeTransferFrom(MultiSigRND, address(this), amount);
         emit FetchedRND(amount);
         return true;
     }
@@ -354,6 +363,21 @@ contract VestingControllerERC721 is
         emit RNDAddressUpdated(newAddress);
     }
 
+    /// @notice Function to let Rand to update the address of the Safety Module
+    /// @dev emits SMAddressUpdated() and only accessible by DEFAULT_ADMIN_ROLE
+    /// @param newAddress where the new Rand Token is located
+    function updateSMAddress(IERC20Upgradeable newAddress)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        SM_TOKEN = newAddress;
+        emit SMAddressUpdated(newAddress);
+    }
+
+    ////////////////////////////////////////////////////////////////////
+    /////////////////////  Import related //////////////////////////////
+    ////////////////////////////////////////////////////////////////////
+
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();
     }
@@ -371,15 +395,6 @@ contract VestingControllerERC721 is
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
         return tokenId;
-    }
-
-    function setBaseURI(string memory newURI) public onlyRole(MINTER_ROLE) {
-        baseURI = newURI;
-        emit BaseURIChanged(baseURI);
-    }
-
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
     }
 
     function _beforeTokenTransfer(
@@ -411,13 +426,69 @@ contract VestingControllerERC721 is
         super._burn(tokenId);
     }
 
+    function _transfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal override(ERC721Upgradeable) {
+        bool isClaimedAll;
+        if (vestingToken[tokenId].exists) {
+            uint256 rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
+            uint256 rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
+            isClaimedAll = rndTokenAmount - rndClaimedAmount == 0
+                ? true
+                : false;
+        }
+        require(
+            isClaimedAll,
+            "VC: Transfer of token is prohibited until investment is totally claimed"
+        );
+        super._transfer(from, to, tokenId);
+    }
+
+    function setBaseURI(string memory newURI) public onlyRole(MINTER_ROLE) {
+        baseURI = newURI;
+        emit BaseURIChanged(baseURI);
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
+    }
+
     function tokenURI(uint256 tokenId)
         public
         view
         override(ERC721Upgradeable)
         returns (string memory)
     {
-        return super.tokenURI(tokenId);
+        //return super.tokenURI(tokenId);
+        require(
+            _exists(tokenId),
+            "ERC721Metadata: URI query for nonexistent token"
+        );
+        string memory baseURIString = _baseURI();
+        bool isClaimedAll;
+        if (vestingToken[tokenId].exists) {
+            uint256 rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
+            uint256 rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
+            isClaimedAll = rndTokenAmount - rndClaimedAmount == 0
+                ? true
+                : false;
+        }
+
+        return
+            bytes(baseURIString).length > 0
+                ? isClaimedAll
+                    ? string(abi.encodePacked(baseURI, tokenId.toString(), "_"))
+                    : string(abi.encodePacked(baseURI, tokenId.toString()))
+                : "";
+    }
+
+    function contractURI() public view returns (string memory) {
+        return
+            bytes(baseURI).length > 0
+                ? string(abi.encodePacked(_baseURI(), "contract_uri"))
+                : "";
     }
 
     function supportsInterface(bytes4 interfaceId)
