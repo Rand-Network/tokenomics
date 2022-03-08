@@ -50,8 +50,7 @@ contract AddressRegistry is
         onlyRole(READER_ROLE)
         returns (address contractAddress)
     {
-        address[] memory tempArray = addressStorage[name];
-        return tempArray[tempArray.length - 1];
+        return addressStorage[name][addressStorage[name].length - 1];
     }
 
     function getAllAddress(string calldata name)
