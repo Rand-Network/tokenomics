@@ -44,7 +44,7 @@ contract AddressRegistry is
         return addressId;
     }
 
-    function getAddress(string memory name)
+    function getAddress(string calldata name)
         public
         view
         onlyRole(READER_ROLE)
@@ -54,7 +54,7 @@ contract AddressRegistry is
         return tempArray[tempArray.length - 1];
     }
 
-    function getAllAddress(string memory name)
+    function getAllAddress(string calldata name)
         public
         view
         onlyRole(READER_ROLE)
@@ -71,18 +71,24 @@ contract AddressRegistry is
         require(tempStringByte.length > 0, "Registry: No contract name set");
         require(contractAddress != address(0), "Registry: No address set");
         require(_existInArray(name), "Registry: Contract name does not exists");
+        require(
+            addressStorage[name][addressStorage[name].length - 1] !=
+                contractAddress,
+            "Registry: New address is the same as the current"
+        );
 
         addressStorage[name].push(contractAddress);
         emit AddressChanged(name, contractAddress);
     }
 
-    function setNewAddress(string memory name, address contractAddress)
+    function setNewAddress(string calldata name, address contractAddress)
         public
         onlyRole(UPDATER_ROLE)
     {
         bytes memory tempStringByte = bytes(name);
         require(tempStringByte.length > 0, "Registry: No name set");
         require(contractAddress != address(0), "Registry: No address set");
+        require(!_existInArray(name), "Registry: Contract name already exists");
 
         addressId.push(name);
         addressStorage[name].push(contractAddress);

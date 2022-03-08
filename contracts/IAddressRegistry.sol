@@ -7,7 +7,7 @@ interface IAddressRegistry{
   function READER_ROLE (  ) external view returns ( bytes32 );
   function UPDATER_ROLE (  ) external view returns ( bytes32 );
   function getAddress ( string memory name ) external view returns ( address contractAddress );
-  function getAllAddress ( string memory name ) external view returns ( address[] memory tempArray );
+  function getAllAddress ( string memory name ) external view returns ( address[] memory );
   function getRegistryList (  ) external view returns ( string[] memory );
   function getRoleAdmin ( bytes32 role ) external view returns ( bytes32 );
   function grantRole ( bytes32 role, address account ) external;
