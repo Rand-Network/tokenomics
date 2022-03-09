@@ -26,14 +26,44 @@ task("upgradeProxy", "Upgrades proxy with OZ upgrades plugin")
   .addPositionalParam("contractFactory", "Name of the contract")
   .setAction(async ({ proxyAddress, contractFactory }) => {
     const accounts = await ethers.getSigners();
-    balanceOf = await ethers.provider.getBalance(accounts[0].address);
+    var balanceOf = await ethers.provider.getBalance(accounts[0].address);
     console.log(accounts[0].address, '(balance:', ethers.utils.formatEther(balanceOf), ')');
-    ContractFactory = await ethers.getContractFactory(contractFactory);
+    const ContractFactory = await ethers.getContractFactory(contractFactory);
+    //tx = await upgrades.prepareUpgrade(proxyAddress, ContractFactory);
     tx = await upgrades.upgradeProxy(
       proxyAddress,
       ContractFactory
     );
-    return tx;
+    console.log(tx);
+  });
+
+task("upgradeProxyAndVerify", "Upgrades proxy with OZ upgrades plugin and verifies new implementation")
+  .addPositionalParam("proxyAddress", "Address of the proxy contract")
+  .addPositionalParam("contractFactory", "Name of the contract")
+  .setAction(async ({ proxyAddress, contractFactory }) => {
+    const accounts = await ethers.getSigners();
+    var balanceOf = await ethers.provider.getBalance(accounts[0].address);
+    console.log(accounts[0].address, '(balance:', ethers.utils.formatEther(balanceOf), ')');
+    const ContractFactory = await ethers.getContractFactory(contractFactory);
+    //tx = await upgrades.prepareUpgrade(proxyAddress, ContractFactory);
+    tx = await upgrades.upgradeProxy(
+      proxyAddress,
+      ContractFactory,
+      { timeout: 120000 }
+    );
+    tx_upgrade = tx.deployTransaction;
+    await tx_upgrade.wait(1);
+    console.log("Proxy upgraded!");
+
+    newImplementation = await upgrades.erc1967.getImplementationAddress(tx.address);
+    await hre.run("verify:verify", { address: newImplementation }).catch(function (error) {
+      if (error.message == 'Contract source code already verified') {
+        console.error('Contract source code already verified');
+      }
+      else {
+        console.error(error);
+      }
+    });
   });
 
 task("abi2interface", "Generates solidity interface contracts from ABIs")
@@ -48,12 +78,25 @@ task("abi2ipfs", "Uploads ABI to IPFS and pins using Pinata")
     json_abi = await abi2json(contract);
     //console.log(json_abi);
     await pinata.pinJSONToIPFS(JSON.parse(json_abi)).then((result) => {
-      console.log(`Successful upload of ${contract} to IPFS:\nhttps://cloudflare-ipfs.com/ipfs/${result.IpfsHash}\n`);
+      console.log(`Successful upload of ${contract} to IPFS:\nhttps://ipfs.io/ipfs/${result.IpfsHash}\n`);
       console.log(result);
     }).catch((err) => {
       console.log(err);
     });
+  });
 
+task("folder2ipfs", "Uploads JSONs to IPFS and pins using Pinata")
+  .addPositionalParam("folder", "")
+  .setAction(async ({ folder }) => {
+    project_path = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
+    sourcePath = project_path + '/' + folder;
+    console.log(sourcePath);
+    await pinata.pinFromFS(sourcePath).then((result) => {
+      console.log(result);
+      console.log(`Successful upload of ${folder} to IPFS:\nhttps://cloudflare-ipfs.com/ipfs/${result.IpfsHash}\n`);
+    }).catch((err) => {
+      console.log(err);
+    });
   });
 
 task("flatten-clean", "Flattens and cleans soldity contract for Etherscan single file verification")
