@@ -91,11 +91,10 @@ async function main() {
   await RandRegistry.setNewAddress("VC", RandVC.address);
   await RandRegistry.setNewAddress("SM", RandSM.address);
 
-  await RandVC.grantRole(SM_ROLE, RandSM.address);
-  await RandToken.grantRole(SM_ROLE, RandSM.address);
-
   // Adding approve for the RandVC to mint investments
-  await RandToken.approve(RandVC.address, ethers.utils.parseEther('1000'));
+  approve_amount = '1000';
+  await RandToken.approve(RandVC.address, ethers.utils.parseEther(approve_amount));
+  console.log('Approved amount on Multisig RND tokens for VC:', approve_amount);
 
   // Verify contracts
   txRandRegistry = RandRegistry.deployTransaction;
