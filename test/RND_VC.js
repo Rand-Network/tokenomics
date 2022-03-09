@@ -278,7 +278,7 @@ describe("Rand Token with Vesting Controller", function () {
       }
     });
     it("Checking claimable tokens", async function () {
-      claimable = rndTokenAmount.div(vestingPeriod).mul(3);
+      claimable = rndTokenAmount.div(vestingPeriod).mul(4);
       expect(await RandVC.connect(alice.address).getClaimableTokens(e_tokenId)).to.be.equal(claimable);
     });
     it("Get full investment info", async function () {
@@ -306,7 +306,7 @@ describe("Rand Token with Vesting Controller", function () {
 
         }
         // Added 3 due to previous transactions mined since than 
-        periods_mined = periods.add(3);
+        periods_mined = periods.add(4);
       }
       // Testnet
       else {
@@ -353,17 +353,23 @@ describe("Rand Token with Vesting Controller", function () {
     });
   });
 
-  describe("VC interaction with SM", function () {
-    it("Checking token balance before staking", async function () {
-      expect(await RandVC.connect(backend).getInvestmentInfo(0));
+  describe("SM functionality", function () {
+    it("Staking funds of RND", async function () {
     });
-    it("Registering staked amount for investment", async function () {
+    it("Staking funds of VC RND", async function () {
+    });
+    it("Redeeming tokens of RND", async function () {
+    });
+    it("Redeeming tokens of VC RND", async function () {
     });
   });
 
   // describe("Upgrading deployment of RND-ERC20 and VC-ERC721", function () {
   //   it("Upgrading RND", async function () { });
   //   it("Upgrading VC", async function () { });
+  //   it("Upgrading SM", async function () { });
+  //   it("Upgrading Registry", async function () { });
+
   // });
 
 });
