@@ -15,21 +15,27 @@ function sleep(ms) {
 
 describe("Rand Token with Vesting Controller", function () {
 
+  // Deployment params for initializer
   const RNDdeployParams = {
-    _name: "Rand Token ERC20",
-    _symbol: "RND",
+    _name: "Token ERC20",
+    _symbol: "tRND",
     _initialSupply: BigNumber.from(200e6),
-    _multisigVault: 0
+    _registry: ""
   };
 
   const VCdeployParams = {
-    _name: "Rand Vesting Controller ERC721",
-    _symbol: "vRND",
-    _rndTokenContract: 0, //RandToken.address,
-    _smTokenContract: 0, //RandToken.address,
+    _name: "Vesting Controller ERC721",
+    _symbol: "tvRND",
     _periodSeconds: 1,
-    _multiSigAddress: 0,
-    _backendAddress: 0
+    _registry: ""
+  };
+
+  const SMdeployParams = {
+    _name: "Safety Module ERC20",
+    _symbol: "tsRND",
+    _cooldown_seconds: 120, // 604800 7 days
+    _unstake_window: 240,
+    _registry: ""
   };
 
   let Token;
@@ -61,84 +67,78 @@ describe("Rand Token with Vesting Controller", function () {
     console.log(alice.address);
     console.log(backend.address);
 
+    Registry = await ethers.getContractFactory("AddressRegistry");
     Token = await ethers.getContractFactory("RandToken");
     VestingController = await ethers.getContractFactory("VestingControllerERC721");
+    SafetyModule = await ethers.getContractFactory("SafetyModuleERC20");
 
-    RNDdeployParams._multisigVault = owner.address;
+    multisig_address = owner.address;
+    oz_defender = backend.address;
+
+    RandRegistry = await upgrades.deployProxy(
+      Registry,
+      [multisig_address],
+      { kind: "uups" });
+    console.log('Deployed Registry proxy at:', RandRegistry.address);
+
+    await RandRegistry.setNewAddress("MS", multisig_address);
+    await RandRegistry.setNewAddress("OZ", oz_defender);
+
+    RNDdeployParams._registry = RandRegistry.address;
+    VCdeployParams._registry = RandRegistry.address;
+    SMdeployParams._registry = RandRegistry.address;
 
     RandToken = await upgrades.deployProxy(
       Token,
       Object.values(RNDdeployParams),
       { kind: "uups" });
-
     console.log('Deployed Token proxy at:', RandToken.address);
-
-    VCdeployParams._rndTokenContract = RandToken.address;
-    VCdeployParams._smTokenContract = owner.address;
-    VCdeployParams._multiSigAddress = owner.address;
-    VCdeployParams._backendAddress = backend.address;
 
     RandVC = await upgrades.deployProxy(
       VestingController,
       Object.values(VCdeployParams),
       { kind: "uups" });
+    console.log('Deployed VC proxy at:', RandVC.address);
+
+    RandSM = await upgrades.deployProxy(
+      SafetyModule,
+      Object.values(SMdeployParams),
+      { kind: "uups" });
+    console.log('Deployed SM proxy at:', RandSM.address);
 
     // Wait for confirmations
     if (chainId !== localNode) {
       txRandToken = RandToken.deployTransaction;
       txRandVC = RandVC.deployTransaction;
+      txRandSM = RandSM.deployTransaction;
+      txRandReg = RandRegistry.deployTransaction;
       await txRandToken.wait(numConfirmation);
       await txRandVC.wait(numConfirmation);
+      await txRandSM.wait(numConfirmation);
+      await txRandReg.wait(numConfirmation);
     }
 
-    console.log('Deployed VC proxy at:', RandVC.address);
-
-    // Setting SM contract address on Rand Token
-    await RandToken.updateSMAddress(owner.address);
-    SM_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('SM_ROLE'));
-    console.log('Does owner has SM_ROLE on RND: ', await RandToken.hasRole(SM_ROLE, owner.address));
-
-    //RandTokenImpl = await ProxyAdminContract.getProxyImplementation(RandToken.address);
-    //RandVCImpl = await ProxyAdminContract.getProxyImplementation(RandVC.address);
-    // On ropsten it always returned with error code=UNPREDICTABLE_GAS_LIMIT for the above calls
-    // https://docs.openzeppelin.com/contracts/4.x/api/proxy#TransparentUpgradeableProxy-implementation--
-    RandTokenImpl = await ethers.provider.getStorageAt(RandToken.address, '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc');
-    RandTokenImpl = await ethers.utils.hexStripZeros(RandTokenImpl);
-    RandTokenImpl = await ethers.utils.getAddress(RandTokenImpl);
+    RandRegistryImpl = await upgrades.erc1967.getImplementationAddress(RandRegistry.address);
+    console.log('Deployed Registry implementation at:', RandRegistryImpl);
+    RandTokenImpl = await upgrades.erc1967.getImplementationAddress(RandToken.address);
     console.log('Deployed Token implementation at:', RandTokenImpl);
-    RandVCImpl = await ethers.provider.getStorageAt(RandVC.address, '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc');
-    RandVCImpl = await ethers.utils.hexStripZeros(RandVCImpl);
-    RandVCImpl = await ethers.utils.getAddress(RandVCImpl);
+    RandVCImpl = await upgrades.erc1967.getImplementationAddress(RandVC.address);
     console.log('Deployed VC implementation at:', RandVCImpl);
+    RandSMImpl = await upgrades.erc1967.getImplementationAddress(RandSM.address);
+    console.log('Deployed SM implementation at:', RandSMImpl);
 
-    if (chainId !== localNode) {
+    // Set roles and addresses
+    await RandRegistry.setNewAddress("RND", RandToken.address);
+    await RandRegistry.setNewAddress("VC", RandVC.address);
+    await RandRegistry.setNewAddress("SM", RandSM.address);
 
-      this.timeout(0);
-
-      await hre.run("verify:verify", { address: RandTokenImpl }).catch(function (error) {
-        if (error.message == 'Contract source code already verified') {
-          console.error('Contract source code already verified');
-        }
-        else {
-          console.error(error);
-        }
-      });
-
-      await hre.run("verify:verify", { address: RandVCImpl }).catch(function (error) {
-        if (error.message == 'Contract source code already verified') {
-          console.error('Contract source code already verified');
-        }
-        else {
-          console.error(error);
-        }
-      });
-    }
   });
 
   describe("Deployment of RND-ERC20 and VC-ERC721", function () {
     it("Setting and checking owners of RND & VC", async function () {
       MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('MINTER_ROLE'));
       expect(await RandToken.hasRole(MINTER_ROLE, owner.address));
+      expect(await RandVC.hasRole(MINTER_ROLE, owner.address));
     });
   });
 
@@ -278,7 +278,7 @@ describe("Rand Token with Vesting Controller", function () {
       }
     });
     it("Checking claimable tokens", async function () {
-      claimable = rndTokenAmount.div(vestingPeriod).mul(4);
+      claimable = rndTokenAmount.div(vestingPeriod).mul(3);
       expect(await RandVC.connect(alice.address).getClaimableTokens(e_tokenId)).to.be.equal(claimable);
     });
     it("Get full investment info", async function () {
@@ -305,8 +305,8 @@ describe("Rand Token with Vesting Controller", function () {
           await ethers.provider.send('evm_mine');
 
         }
-        // Added 4 due to previous transactions mined since than 
-        periods_mined = periods.add(4);
+        // Added 3 due to previous transactions mined since than 
+        periods_mined = periods.add(3);
       }
       // Testnet
       else {
@@ -357,23 +357,7 @@ describe("Rand Token with Vesting Controller", function () {
     it("Checking token balance before staking", async function () {
       expect(await RandVC.connect(backend).getInvestmentInfo(0));
     });
-    it("Setting allowance for SM in amount of stake", async function () {
-      // Using owner as SM as in before updateSMAddress
-      tx = await RandVC.connect(owner).setAllowanceForSM(100);
-
-      tx.wait(numConfirmation);
-      expect(await RandToken.connect(owner).allowance(RandVC.address, owner.address)).to.be.equal(100);
-      // Should not be able from alice
-      if (chainId !== localNode) {
-        await await RandVC.connect(alice).setAllowanceForSM(100).catch(function (error) {
-          expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
-        });
-      } else {
-        await expectRevert.unspecified(RandVC.connect(alice).setAllowanceForSM(100));
-      }
-    });
     it("Registering staked amount for investment", async function () {
-
     });
   });
 
