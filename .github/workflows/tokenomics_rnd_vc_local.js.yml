@@ -20,7 +20,6 @@ env:
   ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
   MOONSCAN_API_KEY: ${{ secrets.MOONSCAN_API_KEY }}
   
-
 on:
   push:
     branches:
@@ -31,6 +30,7 @@ on:
       - development
       - main
 
+
 jobs:
   build:
 
@@ -39,7 +39,6 @@ jobs:
     strategy:
       matrix:
         node-version: [16.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
     - uses: actions/checkout@v2
