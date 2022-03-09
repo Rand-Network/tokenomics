@@ -12,6 +12,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "./IAddressRegistry.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
@@ -44,9 +45,7 @@ contract VestingControllerERC721 is
     event InvestmentTransferred(address recipient, uint256 amount);
     event RNDTransferred(address recipient, uint256 amount);
     event FetchedRND(uint256 amount);
-    event MultiSigAddressUpdated(address newAddress);
-    event RNDAddressUpdated(IERC20Upgradeable newAddress);
-    event SMAddressUpdated(IERC20Upgradeable newAddress);
+    event RegistryAddressUpdated(IAddressRegistry newAddress);
 
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -55,16 +54,13 @@ contract VestingControllerERC721 is
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
-    bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
-    bytes32 public constant SM_ROLE = keccak256("SM_ROLE");
+    //bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
 
     CountersUpgradeable.Counter private _tokenIdCounter;
 
     uint256 public PERIOD_SECONDS;
-    IERC20Upgradeable public RND_TOKEN;
-    IERC20Upgradeable public SM_TOKEN;
-    address public MultiSigRND;
     string public baseURI;
+    IAddressRegistry REGISTRY;
 
     struct VestingInvestment {
         uint256 rndTokenAmount;
@@ -84,19 +80,14 @@ contract VestingControllerERC721 is
     /// @dev for upgradability its necessary to use initialize instead of simple constructor
     /// @param _erc721_name Name of the token like `Rand Vesting Controller ERC721`
     /// @param _erc721_symbol Short symbol like `vRND`
-    /// @param _rndTokenContract Address of the Rand Token ERC20 token contract, can be modified later
-    /// @param _smTokenContract Address of the Safety Module ERC20 token contract, can be modified later
     /// @param _periodSeconds Amount of seconds to set 1 period to like 60*60*24 for 1 day
-    /// @param _multisigVault Address of the Rand Token Multisig contract
-    /// @param _backendAddress Address of the backend like OZ Defender
+    /// @param _registry is the address of address registry
+
     function initialize(
         string calldata _erc721_name,
         string calldata _erc721_symbol,
-        IERC20Upgradeable _rndTokenContract,
-        IERC20Upgradeable _smTokenContract,
         uint256 _periodSeconds,
-        address _multisigVault,
-        address _backendAddress
+        IAddressRegistry _registry
     ) public initializer {
         __ERC721_init(_erc721_name, _erc721_symbol);
         __ERC721Enumerable_init();
@@ -104,19 +95,16 @@ contract VestingControllerERC721 is
         __AccessControl_init();
         __ERC721Burnable_init();
 
-        RND_TOKEN = _rndTokenContract;
-        SM_TOKEN = _smTokenContract;
         PERIOD_SECONDS = _periodSeconds;
-        MultiSigRND = _multisigVault;
+        REGISTRY = _registry;
 
+        address _multisigVault = REGISTRY.getAddress("MS");
+        address _backendAddress = REGISTRY.getAddress("OZ");
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
-        _grantRole(MINTER_ROLE, _backendAddress);
         _grantRole(BURNER_ROLE, _multisigVault);
-        _grantRole(BACKEND_ROLE, _backendAddress);
-        _grantRole(BACKEND_ROLE, address(this));
-        _grantRole(SM_ROLE, address(SM_TOKEN));
+        _grantRole(MINTER_ROLE, _backendAddress);
 
         // Increase counter so tokenId 0 is left empty
         _tokenIdCounter.increment();
@@ -124,11 +112,18 @@ contract VestingControllerERC721 is
 
     modifier onlyInvestorOrRand(uint256 tokenId) {
         bool isTokenOwner = ownerOf(tokenId) == _msgSender();
-        bool hasBACKEND_ROLE = hasRole(BACKEND_ROLE, _msgSender());
-        bool hasSM_ROLE = hasRole(SM_ROLE, _msgSender());
+        bool hasSM_ROLE = REGISTRY.getAddress("SM") == _msgSender();
         require(
-            isTokenOwner || hasBACKEND_ROLE || hasSM_ROLE,
+            isTokenOwner || hasSM_ROLE,
             "VC: No access role for this address"
+        );
+        _;
+    }
+
+    modifier onlySM() {
+        require(
+            REGISTRY.getAddress("SM") == _msgSender(),
+            "VC: Not accessible by msg.sender"
         );
         _;
     }
@@ -189,7 +184,10 @@ contract VestingControllerERC721 is
         uint256 claimable = _calculateClaimableTokens(tokenId);
         require(claimable >= amount, "VC: amount is more than claimable");
         _addClaimedTokens(amount, tokenId);
-        RND_TOKEN.safeTransfer(recipient, amount);
+        IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransfer(
+            recipient,
+            amount
+        );
         emit ClaimedAmount(tokenId, recipient, amount);
     }
 
@@ -301,7 +299,11 @@ contract VestingControllerERC721 is
         onlyRole(MINTER_ROLE)
     {
         require(rndTokenAmount > 0, "VC: Amount must be more than zero");
-        RND_TOKEN.safeTransferFrom(MultiSigRND, recipient, rndTokenAmount);
+        IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransferFrom(
+            REGISTRY.getAddress("MS"),
+            recipient,
+            rndTokenAmount
+        );
         emit InvestmentTransferred(recipient, rndTokenAmount);
     }
 
@@ -311,10 +313,14 @@ contract VestingControllerERC721 is
     /// @param rndTokenAmount is the amount of the total investment
     function transferRNDFromVC(address recipient, uint256 rndTokenAmount)
         public
-        onlyRole(SM_ROLE)
+        onlySM
     {
         require(rndTokenAmount > 0, "VC: Amount must be more than zero");
-        RND_TOKEN.safeTransferFrom(address(this), recipient, rndTokenAmount);
+        IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransferFrom(
+            address(this),
+            recipient,
+            rndTokenAmount
+        );
         emit RNDTransferred(recipient, rndTokenAmount);
     }
 
@@ -324,7 +330,7 @@ contract VestingControllerERC721 is
     /// @param amount the amount of tokens to increase staked amount
     function modifyStakedAmount(uint256 tokenId, uint256 amount)
         external
-        onlyRole(SM_ROLE)
+        onlySM
     {
         require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
         vestingToken[tokenId].rndStakedAmount = amount;
@@ -336,42 +342,24 @@ contract VestingControllerERC721 is
     /// @param amount of tokens to fetch from the Rand Multisig when minting a new investment
     /// @return bool
     function _getRND(uint256 amount) internal returns (bool) {
-        RND_TOKEN.safeTransferFrom(MultiSigRND, address(this), amount);
+        IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransferFrom(
+            REGISTRY.getAddress("MS"),
+            address(this),
+            amount
+        );
         emit FetchedRND(amount);
         return true;
     }
 
-    /// @notice Function to let Rand to update the address of the Multisig
-    /// @dev emits MultiSigAddressUpdated() and only accessible by DEFAULT_ADMIN_ROLE
-    /// @param newAddress where the new Multisig is located
-    function updateMultiSigRNDAddress(address newAddress)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        MultiSigRND = newAddress;
-        emit MultiSigAddressUpdated(newAddress);
-    }
-
-    /// @notice Function to let Rand to update the address of the Rand Token
-    /// @dev emits RNDAddressUpdated() and only accessible by DEFAULT_ADMIN_ROLE
-    /// @param newAddress where the new Rand Token is located
-    function updateRNDAddress(IERC20Upgradeable newAddress)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        RND_TOKEN = newAddress;
-        emit RNDAddressUpdated(newAddress);
-    }
-
     /// @notice Function to let Rand to update the address of the Safety Module
-    /// @dev emits SMAddressUpdated() and only accessible by DEFAULT_ADMIN_ROLE
-    /// @param newAddress where the new Rand Token is located
-    function updateSMAddress(IERC20Upgradeable newAddress)
+    /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
+    /// @param newAddress where the new Safety Module contract is located
+    function updateRegistryAddress(IAddressRegistry newAddress)
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        SM_TOKEN = newAddress;
-        emit SMAddressUpdated(newAddress);
+        REGISTRY = newAddress;
+        emit RegistryAddressUpdated(newAddress);
     }
 
     ////////////////////////////////////////////////////////////////////
@@ -446,7 +434,10 @@ contract VestingControllerERC721 is
         super._transfer(from, to, tokenId);
     }
 
-    function setBaseURI(string memory newURI) public onlyRole(MINTER_ROLE) {
+    function setBaseURI(string memory newURI)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         baseURI = newURI;
         emit BaseURIChanged(baseURI);
     }

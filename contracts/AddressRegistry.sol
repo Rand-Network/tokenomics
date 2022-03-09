@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -15,7 +14,6 @@ contract AddressRegistry is
 {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
-    bytes32 public constant READER_ROLE = keccak256("READER_ROLE");
 
     event NewAddressSet(string indexed name);
     event AddressChanged(string indexed name, address contractAddress);
@@ -31,23 +29,16 @@ contract AddressRegistry is
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
-        _grantRole(READER_ROLE, _multisigVault);
         _grantRole(UPDATER_ROLE, _multisigVault);
     }
 
-    function getRegistryList()
-        public
-        view
-        onlyRole(READER_ROLE)
-        returns (string[] memory)
-    {
+    function getRegistryList() public view returns (string[] memory) {
         return addressId;
     }
 
     function getAddress(string calldata name)
         public
         view
-        onlyRole(READER_ROLE)
         returns (address contractAddress)
     {
         return addressStorage[name][addressStorage[name].length - 1];
@@ -56,7 +47,6 @@ contract AddressRegistry is
     function getAllAddress(string calldata name)
         public
         view
-        onlyRole(READER_ROLE)
         returns (address[] memory)
     {
         return addressStorage[name];

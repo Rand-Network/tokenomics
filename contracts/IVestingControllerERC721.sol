@@ -2,28 +2,25 @@
 pragma solidity ^0.8.0;
 
 interface IVestingControllerERC721{
-  function BACKEND_ROLE (  ) external view returns ( bytes32 );
   function BURNER_ROLE (  ) external view returns ( bytes32 );
   function DEFAULT_ADMIN_ROLE (  ) external view returns ( bytes32 );
   function MINTER_ROLE (  ) external view returns ( bytes32 );
-  function MultiSigRND (  ) external view returns ( address );
   function PAUSER_ROLE (  ) external view returns ( bytes32 );
   function PERIOD_SECONDS (  ) external view returns ( uint256 );
-  function RND_TOKEN (  ) external view returns ( address );
-  function SM_ROLE (  ) external view returns ( bytes32 );
-  function SM_TOKEN (  ) external view returns ( address );
   function approve ( address to, uint256 tokenId ) external;
   function balanceOf ( address owner ) external view returns ( uint256 );
   function baseURI (  ) external view returns ( string memory );
   function burn ( uint256 tokenId ) external;
   function claimTokens ( uint256 tokenId, uint256 amount ) external;
+  function contractURI (  ) external view returns ( string memory );
+  function distributeTokens ( address recipient, uint256 rndTokenAmount ) external;
   function getApproved ( uint256 tokenId ) external view returns ( address );
   function getClaimableTokens ( uint256 tokenId ) external view returns ( uint256 );
   function getInvestmentInfo ( uint256 tokenId ) external view returns ( uint256 rndTokenAmount, uint256 rndClaimedAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 rndStakedAmount );
   function getRoleAdmin ( bytes32 role ) external view returns ( bytes32 );
   function grantRole ( bytes32 role, address account ) external;
   function hasRole ( bytes32 role, address account ) external view returns ( bool );
-  function initialize ( string memory _erc721_name, string memory _erc721_symbol, address _rndTokenContract, address _smTokenContract, uint256 _periodSeconds, address _multisigVault, address _backendAddress ) external;
+  function initialize ( string memory _erc721_name, string memory _erc721_symbol, uint256 _periodSeconds, address _registry ) external;
   function isApprovedForAll ( address owner, address operator ) external view returns ( bool );
   function mintNewInvestment ( address recipient, uint256 rndTokenAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 cliffPeriod ) external returns ( uint256 tokenId );
   function modifyStakedAmount ( uint256 tokenId, uint256 amount ) external;
@@ -35,7 +32,6 @@ interface IVestingControllerERC721{
   function revokeRole ( bytes32 role, address account ) external;
   function safeTransferFrom ( address from, address to, uint256 tokenId ) external;
   function safeTransferFrom ( address from, address to, uint256 tokenId, bytes memory _data ) external;
-  function setAllowanceForSM ( uint256 amount ) external;
   function setApprovalForAll ( address operator, bool approved ) external;
   function setBaseURI ( string memory newURI ) external;
   function supportsInterface ( bytes4 interfaceId ) external view returns ( bool );
@@ -45,10 +41,9 @@ interface IVestingControllerERC721{
   function tokenURI ( uint256 tokenId ) external view returns ( string memory );
   function totalSupply (  ) external view returns ( uint256 );
   function transferFrom ( address from, address to, uint256 tokenId ) external;
-  function transferTokens ( address recipient, uint256 rndTokenAmount ) external;
+  function transferRNDFromVC ( address recipient, uint256 rndTokenAmount ) external;
   function unpause (  ) external;
-  function updateMultiSigRNDAddress ( address newAddress ) external;
-  function updateRNDAddress ( address newAddress ) external;
+  function updateRegistryAddress ( address newAddress ) external;
   function upgradeTo ( address newImplementation ) external;
   function upgradeToAndCall ( address newImplementation, bytes memory data ) external;
 }

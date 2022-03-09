@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 interface IAddressRegistry{
   function DEFAULT_ADMIN_ROLE (  ) external view returns ( bytes32 );
   function PAUSER_ROLE (  ) external view returns ( bytes32 );
-  function READER_ROLE (  ) external view returns ( bytes32 );
   function UPDATER_ROLE (  ) external view returns ( bytes32 );
   function getAddress ( string memory name ) external view returns ( address contractAddress );
   function getAllAddress ( string memory name ) external view returns ( address[] memory );
