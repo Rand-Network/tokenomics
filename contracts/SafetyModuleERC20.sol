@@ -124,36 +124,19 @@ contract SafetyModuleERC20 is
         /////// CAN BE DELETED IN FINAL /////////
     }
 
+    function redeem(uint256 amount) public redeemable(amount) amountChecking {
+        // Redeem without vesting investment
+        _redeemOnRND(amount);
+        emit RedeemStaked(_msgSender(), _msgSender(), amount);
+    }
+
     function redeem(uint256 tokenId, uint256 amount)
         public
         redeemable(amount)
         amountChecking
     {
-        // Redeem without vesting investment
-        if (tokenId == 0) {
-            _redeemOnRND(amount, _msgSender());
-        } else {
-            // Redeem on vesting investment token
-            _redeemOnTokenId(tokenId, amount);
-        }
-
+        _redeemOnTokenId(tokenId, amount);
         emit RedeemStaked(_msgSender(), _msgSender(), amount);
-    }
-
-    function redeem(
-        uint256 tokenId,
-        uint256 amount,
-        address recipient
-    ) public redeemable(amount) amountChecking {
-        // Redeem without vesting investment
-        if (tokenId == 0) {
-            _redeemOnRND(amount, recipient);
-        } else {
-            // Redeem on vesting investment token
-            _redeemOnTokenId(tokenId, amount);
-        }
-
-        emit RedeemStaked(_msgSender(), recipient, amount);
     }
 
     function _redeemOnTokenId(uint256 tokenId, uint256 amount) internal {
@@ -184,21 +167,22 @@ contract SafetyModuleERC20 is
         IRandToken(REGISTRY.getAddress("RND")).transfer(address(_vc), amount);
     }
 
-    function _redeemOnRND(uint256 amount, address recipient) internal {
+    function _redeemOnRND(uint256 amount) internal {
         _burn(_msgSender(), amount);
         onBehalf[_msgSender()][_msgSender()] -= amount;
-        IRandToken(REGISTRY.getAddress("RND")).transfer(recipient, amount);
+        IRandToken(REGISTRY.getAddress("RND")).transfer(_msgSender(), amount);
     }
 
     function stake(uint256 tokenId, uint256 amount) public {
         require(amount != 0, "SM: Stake amount cannot be zero");
-        // Stake without vesting investment
-        if (tokenId == 0) {
-            _stakeOnRND(amount);
-        } else {
-            // Stake on vesting investment token
-            _stakeOnTokenId(tokenId, amount);
-        }
+        _stakeOnTokenId(tokenId, amount);
+        emit StakedOnTokenId(tokenId, amount);
+    }
+
+    function stake(uint256 amount) public {
+        require(amount != 0, "SM: Stake amount cannot be zero");
+        _stakeOnRND(amount);
+        emit Staked(amount);
     }
 
     function _stakeOnRND(uint256 amount) internal {
@@ -211,7 +195,6 @@ contract SafetyModuleERC20 is
         onBehalf[_msgSender()][_msgSender()] += amount;
         // SM mints sRND tokens for the user
         _mint(_msgSender(), amount);
-        emit Staked(amount);
     }
 
     function _stakeOnTokenId(uint256 tokenId, uint256 amount) internal {
@@ -252,7 +235,6 @@ contract SafetyModuleERC20 is
         );
         // SM mints sRND tokens for the user
         _mint(_msgSender(), amount);
-        emit StakedOnTokenId(tokenId, amount);
     }
 
     /// @notice Function to let Rand to update the address of the Safety Module
