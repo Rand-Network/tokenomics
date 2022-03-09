@@ -54,7 +54,6 @@ contract VestingControllerERC721 is
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
-    //bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
 
     CountersUpgradeable.Counter private _tokenIdCounter;
 
@@ -107,14 +106,15 @@ contract VestingControllerERC721 is
         _grantRole(MINTER_ROLE, _backendAddress);
 
         // Increase counter so tokenId 0 is left empty
-        _tokenIdCounter.increment();
+        //_tokenIdCounter.increment();
     }
 
     modifier onlyInvestorOrRand(uint256 tokenId) {
         bool isTokenOwner = ownerOf(tokenId) == _msgSender();
-        bool hasSM_ROLE = REGISTRY.getAddress("SM") == _msgSender();
+        bool isBackend = REGISTRY.getAddress("OZ") == _msgSender();
+        bool isSM = REGISTRY.getAddress("SM") == _msgSender();
         require(
-            isTokenOwner || hasSM_ROLE,
+            isTokenOwner || isBackend || isSM,
             "VC: No access role for this address"
         );
         _;
