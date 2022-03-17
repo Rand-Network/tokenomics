@@ -40,6 +40,12 @@ async function main() {
     _registry: ""
   };
 
+  const NFTdeployParams = {
+    _name: "Rand Early Investors NFT",
+    _symbol: "RandNFT",
+    _registry: ""
+  };
+
   Registry = await ethers.getContractFactory("AddressRegistry");
   Token = await ethers.getContractFactory("RandToken");
   VestingController = await ethers.getContractFactory("VestingControllerERC721");
@@ -60,36 +66,40 @@ async function main() {
   RNDdeployParams._registry = RandRegistry.address;
   VCdeployParams._registry = RandRegistry.address;
   SMdeployParams._registry = RandRegistry.address;
+  NFTdeployParams._registry = RandRegistry.address;
 
   RandToken = await upgrades.deployProxy(
     Token,
     Object.values(RNDdeployParams),
     { kind: "uups" });
   console.log('Deployed Token proxy at:', RandToken.address);
+  await RandRegistry.setNewAddress("RND", RandToken.address);
 
   RandVC = await upgrades.deployProxy(
     VestingController,
     Object.values(VCdeployParams),
     { kind: "uups" });
-
   console.log('Deployed VC proxy at:', RandVC.address);
+  await RandRegistry.setNewAddress("VC", RandVC.address);
 
   RandSM = await upgrades.deployProxy(
     SafetyModule,
     Object.values(SMdeployParams),
     { kind: "uups" });
   console.log('Deployed SM proxy at:', RandSM.address);
+  await RandRegistry.setNewAddress("SM", RandSM.address);
+
+  RandNFT = await upgrades.deployProxy(
+    InvestorsNFT,
+    Object.values(NFTdeployParams),
+    { kind: "uups" });
+  console.log('Deployed NFT proxy at:', RandNFT.address);
+  await RandRegistry.setNewAddress("NFT", RandNFT.address);
 
   // Wait for confirmations
   const numberOfConfirmationsOnTestnet = 1;
   numConfirmation = chainId !== localNode ? numberOfConfirmationsOnTestnet : 0;
   console.log('Number of confirmations to wait:', numConfirmation);
-
-
-  // Set roles and addresses
-  await RandRegistry.setNewAddress("RND", RandToken.address);
-  await RandRegistry.setNewAddress("VC", RandVC.address);
-  await RandRegistry.setNewAddress("SM", RandSM.address);
 
   // Adding approve for the RandVC to mint investments
   approve_amount = '1000';
@@ -97,13 +107,16 @@ async function main() {
   console.log('Approved amount on Multisig RND tokens for VC:', approve_amount);
 
   // Verify contracts
-  txRandRegistry = RandRegistry.deployTransaction;
   txRandToken = RandToken.deployTransaction;
   txRandVC = RandVC.deployTransaction;
   txRandSM = RandSM.deployTransaction;
+  txRandReg = RandRegistry.deployTransaction;
+  txRandNFT = RandNFT.deployTransaction;
   await txRandToken.wait(numConfirmation);
   await txRandVC.wait(numConfirmation);
   await txRandSM.wait(numConfirmation);
+  await txRandReg.wait(numConfirmation);
+  await txRandNFT.wait(numConfirmation);
 
   RandRegistryImpl = await upgrades.erc1967.getImplementationAddress(RandRegistry.address);
   console.log('Deployed Registry implementation at:', RandRegistryImpl);
@@ -113,6 +126,8 @@ async function main() {
   console.log('Deployed VC implementation at:', RandVCImpl);
   RandSMImpl = await upgrades.erc1967.getImplementationAddress(RandSM.address);
   console.log('Deployed SM implementation at:', RandSMImpl);
+  RandNFTImpl = await upgrades.erc1967.getImplementationAddress(RandNFT.address);
+  console.log('Deployed NFT implementation at:', RandNFTImpl);
 
   // Verify contracts
   if (chainId !== localNode) {
@@ -144,6 +159,14 @@ async function main() {
     });
 
     await hre.run("verify:verify", { address: RandRegistryImpl }).catch(function (error) {
+      if (error.message == 'Contract source code already verified') {
+        console.error('Contract source code already verified');
+      }
+      else {
+        console.error(error);
+      }
+    });
+    await hre.run("verify:verify", { address: RandNFTImpl }).catch(function (error) {
       if (error.message == 'Contract source code already verified') {
         console.error('Contract source code already verified');
       }
