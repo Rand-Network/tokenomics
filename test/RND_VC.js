@@ -8,6 +8,7 @@ const {
   expectEvent,  // Assertions for emitted events
   expectRevert, // Assertions for transactions that should fail
 } = require('@openzeppelin/test-helpers');
+const { executeContractCallWithSigners } = require("@gnosis.pm/safe-contracts");
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -38,15 +39,23 @@ describe("Rand Token with Vesting Controller", function () {
     _registry: ""
   };
 
+  const NFTdeployParams = {
+    _name: "Rand Early Investors NFT",
+    _symbol: "RandNFT",
+    _registry: ""
+  };
+
   let Token;
   let VestingController;
   let RandToken;
   let RandVC;
+  let RandNFT;
   let owner;
   let alice;
   let backend;
   let gotNetwork, chainId, localNode;
   let mint_tx, e_tokenId;
+  let tokenId, vestingPeriod;
 
   before(async function () {
 
@@ -71,6 +80,7 @@ describe("Rand Token with Vesting Controller", function () {
     Token = await ethers.getContractFactory("RandToken");
     VestingController = await ethers.getContractFactory("VestingControllerERC721");
     SafetyModule = await ethers.getContractFactory("SafetyModuleERC20");
+    InvestorsNFT = await ethers.getContractFactory("InvestorsNFT");
 
     multisig_address = owner.address;
     oz_defender = backend.address;
@@ -87,24 +97,35 @@ describe("Rand Token with Vesting Controller", function () {
     RNDdeployParams._registry = RandRegistry.address;
     VCdeployParams._registry = RandRegistry.address;
     SMdeployParams._registry = RandRegistry.address;
+    NFTdeployParams._registry = RandRegistry.address;
 
     RandToken = await upgrades.deployProxy(
       Token,
       Object.values(RNDdeployParams),
       { kind: "uups" });
     console.log('Deployed Token proxy at:', RandToken.address);
+    await RandRegistry.setNewAddress("RND", RandToken.address);
 
     RandVC = await upgrades.deployProxy(
       VestingController,
       Object.values(VCdeployParams),
       { kind: "uups" });
     console.log('Deployed VC proxy at:', RandVC.address);
+    await RandRegistry.setNewAddress("VC", RandVC.address);
 
     RandSM = await upgrades.deployProxy(
       SafetyModule,
       Object.values(SMdeployParams),
       { kind: "uups" });
     console.log('Deployed SM proxy at:', RandSM.address);
+    await RandRegistry.setNewAddress("SM", RandSM.address);
+
+    RandNFT = await upgrades.deployProxy(
+      InvestorsNFT,
+      Object.values(NFTdeployParams),
+      { kind: "uups" });
+    console.log('Deployed NFT proxy at:', RandNFT.address);
+    await RandRegistry.setNewAddress("NFT", RandNFT.address);
 
     // Wait for confirmations
     if (chainId !== localNode) {
@@ -112,10 +133,12 @@ describe("Rand Token with Vesting Controller", function () {
       txRandVC = RandVC.deployTransaction;
       txRandSM = RandSM.deployTransaction;
       txRandReg = RandRegistry.deployTransaction;
+      txRandNFT = RandNFT.deployTransaction;
       await txRandToken.wait(numConfirmation);
       await txRandVC.wait(numConfirmation);
       await txRandSM.wait(numConfirmation);
       await txRandReg.wait(numConfirmation);
+      await txRandNFT.wait(numConfirmation);
     }
 
     RandRegistryImpl = await upgrades.erc1967.getImplementationAddress(RandRegistry.address);
@@ -126,11 +149,8 @@ describe("Rand Token with Vesting Controller", function () {
     console.log('Deployed VC implementation at:', RandVCImpl);
     RandSMImpl = await upgrades.erc1967.getImplementationAddress(RandSM.address);
     console.log('Deployed SM implementation at:', RandSMImpl);
-
-    // Set roles and addresses
-    await RandRegistry.setNewAddress("RND", RandToken.address);
-    await RandRegistry.setNewAddress("VC", RandVC.address);
-    await RandRegistry.setNewAddress("SM", RandSM.address);
+    RandNFTImple = await upgrades.erc1967.getImplementationAddress(RandNFT.address);
+    console.log('Deployed NFT implementation at:', RandNFTImple);
 
   });
 
@@ -235,7 +255,7 @@ describe("Rand Token with Vesting Controller", function () {
       await tx.wait(numConfirmation);
       // Minting a sample investment token
 
-      mint_tx = await RandVC.mintNewInvestment(
+      mint_tx = await RandVC['mintNewInvestment(address,uint256,uint256,uint256,uint256)'](
         recipient,
         rndTokenAmount,
         vestingPeriod,
@@ -243,7 +263,7 @@ describe("Rand Token with Vesting Controller", function () {
         cliffPeriod,
       );
       await mint_tx.wait(numConfirmation);
-      mint_tx = await RandVC.mintNewInvestment(
+      mint_tx = await RandVC['mintNewInvestment(address,uint256,uint256,uint256,uint256)'](
         recipient,
         rndTokenAmount,
         vestingPeriod,
@@ -253,20 +273,12 @@ describe("Rand Token with Vesting Controller", function () {
       const rc = await mint_tx.wait(numConfirmation);
       const event = rc.events.find(event => event.event === 'NewInvestmentTokenMinted');
       e_tokenId = event.args.tokenId;
-      console.log('Minted token:', e_tokenId);
+      //console.log('Minted token:', e_tokenId);
     });
     it("Checking name, symbol and supply", async function () {
       expect(await RandVC.name()).to.equal(VCdeployParams._name);
       expect(await RandVC.symbol()).to.equal(VCdeployParams._symbol);
       expect(await RandVC.totalSupply()).to.equal(2);
-    });
-    it("Setting and checking tokenURI", async function () {
-      const tokenURI = "http://rand.network/token/";
-      tx = await RandVC.setBaseURI(tokenURI);
-      await tx.wait(numConfirmation);
-      const expectedURI = tokenURI + e_tokenId;
-      console.log(expectedURI);
-      expect(await RandVC.tokenURI(e_tokenId)).to.equal(expectedURI);
     });
     it("Should not be able to burn tokens", async function () {
       if (chainId !== localNode) {
@@ -278,7 +290,7 @@ describe("Rand Token with Vesting Controller", function () {
       }
     });
     it("Checking claimable tokens", async function () {
-      claimable = rndTokenAmount.div(vestingPeriod).mul(4);
+      claimable = rndTokenAmount.div(vestingPeriod).mul(3);
       expect(await RandVC.connect(alice.address).getClaimableTokens(e_tokenId)).to.be.equal(claimable);
     });
     it("Get full investment info", async function () {
@@ -303,10 +315,9 @@ describe("Rand Token with Vesting Controller", function () {
         periods = cliffPeriod.add(period);
         for (let i = 1; i <= periods; i++) {
           await ethers.provider.send('evm_mine');
-
         }
         // Added 3 due to previous transactions mined since than 
-        periods_mined = periods.add(4);
+        periods_mined = periods.add(3);
       }
       // Testnet
       else {
@@ -364,12 +375,80 @@ describe("Rand Token with Vesting Controller", function () {
     });
   });
 
+  describe("Investors NFT functionality", function () {
+
+    before(async function () {
+      // solidity timestamp
+      last_block = await ethers.provider.getBlock();
+      created_ts = last_block.timestamp;
+      recipient = alice.address;
+      vestingStartTime = BigNumber.from(created_ts);
+      rndTokenAmount = ethers.utils.parseEther('100');
+      vestingPeriod = BigNumber.from("10");
+      cliffPeriod = BigNumber.from("1");
+      tokenId_100 = 100;
+      tokenId_101 = 101;
+      // Add allowance for VC to fetch tokens in claim
+      tx = await RandToken.increaseAllowance(RandVC.address, rndTokenAmount.mul(2));
+      await tx.wait(numConfirmation);
+      // Minting a sample investment token
+
+      mint_tx_2 = await RandVC['mintNewInvestment(address,uint256,uint256,uint256,uint256,uint256)'](
+        recipient,
+        rndTokenAmount,
+        vestingPeriod,
+        vestingStartTime,
+        cliffPeriod,
+        tokenId_100
+      );
+      const rc1 = await mint_tx_2.wait(numConfirmation);
+      const event1 = rc1.events.find(event => event.event === 'NewInvestmentTokenMinted');
+      e_tokenId1 = event1.args.tokenId;
+
+      mint_tx_2 = await RandVC['mintNewInvestment(address,uint256,uint256,uint256,uint256,uint256)'](
+        recipient,
+        rndTokenAmount,
+        vestingPeriod,
+        vestingStartTime,
+        cliffPeriod,
+        tokenId_101
+      );
+      const rc2 = await mint_tx_2.wait(numConfirmation);
+      const event2 = rc2.events.find(event => event.event === 'NewInvestmentTokenMinted');
+      e_tokenId2 = event2.args.tokenId;
+      //console.log('Minted token:', e_tokenId);
+    });
+    it("Setting base URI", async function () {
+      await RandNFT.setBaseURI("ipfs://someHash/");
+    });
+    it("Checking contractURI", async function () {
+      expect(await RandNFT.contractURI()).to.equal("ipfs://someHash/contract_uri");
+    });
+    it("Checking tokenURI", async function () {
+      expect(await RandNFT.connect(alice).tokenURI(tokenId_100)).to.equal(`ipfs://someHash/${tokenId_100}`);
+      expect(await RandNFT.connect(alice).tokenURI(tokenId_101)).to.equal(`ipfs://someHash/${tokenId_101}`);
+      for (let i = 0; i < 10; i++) {
+        await ethers.provider.send('evm_mine');
+      }
+      claimableAmount = await RandVC.connect(alice).getClaimableTokens(e_tokenId1);
+      await RandVC.connect(alice).claimTokens(e_tokenId1, rndTokenAmount);
+      claimableAmount2 = await RandVC.connect(alice).getClaimableTokens(e_tokenId1);
+      expect(claimableAmount2).to.equal(0);
+      expect(await RandNFT.tokenURI(tokenId_100)).to.equal(`ipfs://someHash/${tokenId_100}_`);
+      // Assert stored tokenIds
+      expect(await RandVC.connect(backend).getTokenIdOfNFT(tokenId_100)).to.equal(e_tokenId1);
+      expect(await RandVC.connect(backend).getTokenIdOfNFT(tokenId_101)).to.equal(e_tokenId2);
+    });
+    it("Should not be able to burn", async function () {
+      await expectRevert.unspecified(RandNFT.connect(alice).burn(tokenId_100));
+    });
+  });
+
   // describe("Upgrading deployment of RND-ERC20 and VC-ERC721", function () {
   //   it("Upgrading RND", async function () { });
   //   it("Upgrading VC", async function () { });
   //   it("Upgrading SM", async function () { });
   //   it("Upgrading Registry", async function () { });
-
   // });
 
 });

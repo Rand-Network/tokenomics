@@ -15,3 +15,5 @@ artifacts
 .eslintrc.js
 .eslintignore
 bin
+
+.DS_Store
