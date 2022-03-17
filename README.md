@@ -45,12 +45,15 @@ function mintNewInvestment(
 ```
 This function will mint a new NFT token, and assign a `VestingInvestment` struct to the newly created `tokenId`. It would also emit event `NewInvestmentTokenMinted`.
 
-### NFT functionality
+## Investors NFT (ERC721)
+For early investors Rand is gifting a special NFT that is based on the level of the initial investment of the investor. These NFT tokens are held in a separate `ERC721` contract. 
+
 To set the `baseURI` the `setBaseURI(string memory newURI)` must be called e.g: `setBaseURI("ipfs://QmfYu4vZFNRgsnwb8cCnzF4y8ceQfcCMuyj5wm1xT7tre6/")`. This IPFS path must point to a folder containing each of the separate JSON Metadata files for each `tokenId`. 
+ **IMPORTANT NOTE**: You must include the ending `/` to the `baseURI` to properly return the `tokenURI`.
 
 The `tokenURI(uint256 tokenId)` is an overriden function as it returns an alternative IPFS address for vesting investment NFT that are deplated (total amount is claimed), so it would show another image for the NFT.
 
-NFT tokens are only transerable when the investment is deplated totally, so it will limit dumping of vesting investments through ERC721 transfers. This only limits transfer for those NFT tokens, which contain an investment by checking if `VestingInvestment.exists == true`.
+NFT tokens are only transerable when the investment is deplated totally. This is enforced by the override `_transfer()` of the `ERC721`.
 
 Sample IPFS JSON folder:
 ```
@@ -62,7 +65,7 @@ uri/sample_to_deploy_ipfs
 └── contract_uri
 ```
 
-Repository contains a `hardhat task`  to automate IPFS uploading. To use this prepare the folder containing the JSONs, then follow this example:
+Repository contains a `hardhat task`  to automate IPFS uploading for URIs. To use this prepare the folder containing the JSONs, then follow this example:
 
 ```
 ➜  tokenomics git:(Safety-Module-ERC20) ✗ hh folder2ipfs uri/sample_to_deploy_ipfs

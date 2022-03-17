@@ -1,11 +1,11 @@
 {
-    "name": "Rand Black Level | Claimed",
+    "name": "Rand Red Level | Claimed",
     "description": "Friendly OpenSea Creature that enjoys long swims in the ocean.",
     "image": "./Rand_Empty.png",
     "attributes": [
         {
             "trait_type": "Level",
-            "value": "Black"
+            "value": "Red"
         },
         {
             "trait_type": "Status",

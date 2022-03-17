@@ -1,6 +1,15 @@
 {
-    "name": "Token #2",
+    "name": "Rand Blue Level",
     "description": "Friendly OpenSea Creature that enjoys long swims in the ocean.",
-    "image": "https://storage.googleapis.com/opensea-prod.appspot.com/creature/50.png",
-    "attributes": []
+    "image": "./Rand_Blue-active.png",
+    "attributes": [
+        {
+            "trait_type": "Level",
+            "value": "Blue"
+        },
+        {
+            "trait_type": "Status",
+            "value": "Vesting in progress"
+        }
+    ]
 }

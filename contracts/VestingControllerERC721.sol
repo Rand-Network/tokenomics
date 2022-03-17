@@ -13,6 +13,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./IAddressRegistry.sol";
+import "./IInvestorsNFT.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
@@ -58,6 +59,8 @@ contract VestingControllerERC721 is
     CountersUpgradeable.Counter private _tokenIdCounter;
 
     uint256 public PERIOD_SECONDS;
+    // Mapping to store VC tokenIds to NFT tokenIds
+    mapping(uint256 => uint256) private nftTokenToVCToken;
     string public baseURI;
     IAddressRegistry REGISTRY;
 
@@ -104,9 +107,6 @@ contract VestingControllerERC721 is
         _grantRole(MINTER_ROLE, _multisigVault);
         _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _backendAddress);
-
-        // Increase counter so tokenId 0 is left empty
-        //_tokenIdCounter.increment();
     }
 
     modifier onlyInvestorOrRand(uint256 tokenId) {
@@ -164,12 +164,37 @@ contract VestingControllerERC721 is
             uint256 rndStakedAmount
         )
     {
+        // nftTokenToVCToken[tokenId] != 0
         require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
+
         rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
         rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
         vestingPeriod = vestingToken[tokenId].vestingPeriod;
         vestingStartTime = vestingToken[tokenId].vestingStartTime;
         rndStakedAmount = vestingToken[tokenId].rndStakedAmount;
+    }
+
+    /// @notice View function to get information about a vested investment token exclusively for the Investors NFT contract
+    /// @dev only accessible by the investors NFT contract
+    /// @param nftTokenId is the id of the token for which to get info
+    /// @return rndTokenAmount is the amount of the total investment
+    /// @return rndClaimedAmount amounts of tokens an investor already claimed and received
+    function getInvestmentInfoForNFT(uint256 nftTokenId)
+        external
+        view
+        returns (uint256 rndTokenAmount, uint256 rndClaimedAmount)
+    {
+        require(
+            REGISTRY.getAddress("NFT") == _msgSender(),
+            "VC: Only Investors NFT allowed to call"
+        );
+        require(
+            nftTokenToVCToken[nftTokenId] != 0,
+            "VC: nftTokenId does not exist"
+        );
+        uint256 tokenId = nftTokenToVCToken[nftTokenId];
+        rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
+        rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
     }
 
     /// @notice Claim function to withdraw vested tokens
@@ -239,7 +264,7 @@ contract VestingControllerERC721 is
     /// @param vestingPeriod number of periods the investment is vested for
     /// @param vestingStartTime the timestamp when the vesting starts to kick-in
     /// @param cliffPeriod is the number of periods the vestingStartTime is shifted by
-    /// @return tokenId the id of the minted token
+    /// @return tokenId the id of the minted token on VC
     function mintNewInvestment(
         address recipient,
         uint256 rndTokenAmount,
@@ -247,13 +272,65 @@ contract VestingControllerERC721 is
         uint256 vestingStartTime,
         uint256 cliffPeriod
     ) public onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+        // Minting vesting investment inside VC
+        tokenId = _mintNewInvestment(
+            recipient,
+            rndTokenAmount,
+            vestingPeriod,
+            vestingStartTime,
+            cliffPeriod
+        );
+    }
+
+    /// @notice Mints a token and associates an investment to it and sets tokenURI and also mints an investors NFT
+    /// @dev emits NewInvestmentTokenMinted() and only accessible with MINTER_ROLE
+    /// @param recipient is the address to whom the investment token should be minted to
+    /// @param rndTokenAmount is the amount of the total investment
+    /// @param vestingPeriod number of periods the investment is vested for
+    /// @param vestingStartTime the timestamp when the vesting starts to kick-in
+    /// @param cliffPeriod is the number of periods the vestingStartTime is shifted by
+    /// @param nftTokenId is the tokenId to be used on the investors NFT when minting
+    /// @return tokenId the id of the minted token on VC
+
+    function mintNewInvestment(
+        address recipient,
+        uint256 rndTokenAmount,
+        uint256 vestingPeriod,
+        uint256 vestingStartTime,
+        uint256 cliffPeriod,
+        uint256 nftTokenId
+    ) public onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+        // Minting vesting investment inside VC
+        tokenId = _mintNewInvestment(
+            recipient,
+            rndTokenAmount,
+            vestingPeriod,
+            vestingStartTime,
+            cliffPeriod
+        );
+        // Minting NFT investment for early investors
+        IInvestorsNFT(REGISTRY.getAddress("NFT")).mintInvestmentNFT(
+            recipient,
+            nftTokenId
+        );
+        // Storing the VC tokenId to the corresponding NFT tokenId
+        nftTokenToVCToken[nftTokenId] = tokenId;
+    }
+
+    function _mintNewInvestment(
+        address recipient,
+        uint256 rndTokenAmount,
+        uint256 vestingPeriod,
+        uint256 vestingStartTime,
+        uint256 cliffPeriod
+    ) internal returns (uint256 tokenId) {
         // Fetching RND from Multisig
         require(
             _getRND(rndTokenAmount),
             "VC: Cannot request required RND from Multisig"
         );
         // Incrementing token counter and minting new token to recipient
-        tokenId = safeMint(recipient);
+        tokenId = _safeMint(recipient);
 
         // Initializing investment struct and assigning to the newly minted token
         if (vestingStartTime == 0) {
@@ -362,6 +439,15 @@ contract VestingControllerERC721 is
         emit RegistryAddressUpdated(newAddress);
     }
 
+    function getTokenIdOfNFT(uint256 tokenIdNFT)
+        public
+        view
+        onlyRole(MINTER_ROLE)
+        returns (uint256 tokenId)
+    {
+        tokenId = nftTokenToVCToken[tokenIdNFT];
+    }
+
     ////////////////////////////////////////////////////////////////////
     /////////////////////  Import related //////////////////////////////
     ////////////////////////////////////////////////////////////////////
@@ -374,7 +460,7 @@ contract VestingControllerERC721 is
         _unpause();
     }
 
-    function safeMint(address to)
+    function _safeMint(address to)
         internal
         onlyRole(MINTER_ROLE)
         returns (uint256)
@@ -432,54 +518,6 @@ contract VestingControllerERC721 is
             "VC: Transfer of token is prohibited until investment is totally claimed"
         );
         super._transfer(from, to, tokenId);
-    }
-
-    function setBaseURI(string memory newURI)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        baseURI = newURI;
-        emit BaseURIChanged(baseURI);
-    }
-
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
-    }
-
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721Upgradeable)
-        returns (string memory)
-    {
-        //return super.tokenURI(tokenId);
-        require(
-            _exists(tokenId),
-            "ERC721Metadata: URI query for nonexistent token"
-        );
-        string memory baseURIString = _baseURI();
-        bool isClaimedAll;
-        if (vestingToken[tokenId].exists) {
-            uint256 rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
-            uint256 rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
-            isClaimedAll = rndTokenAmount - rndClaimedAmount == 0
-                ? true
-                : false;
-        }
-
-        return
-            bytes(baseURIString).length > 0
-                ? isClaimedAll
-                    ? string(abi.encodePacked(baseURI, tokenId.toString(), "_"))
-                    : string(abi.encodePacked(baseURI, tokenId.toString()))
-                : "";
-    }
-
-    function contractURI() public view returns (string memory) {
-        return
-            bytes(baseURI).length > 0
-                ? string(abi.encodePacked(_baseURI(), "contract_uri"))
-                : "";
     }
 
     function supportsInterface(bytes4 interfaceId)
