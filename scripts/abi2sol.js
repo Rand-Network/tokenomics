@@ -12,7 +12,13 @@ async function getInOrOut(type, inputs, methodMutability) {
     let out = '';
     for (let i = 0; i < inputs.length; i += 1) {
         out += inputs[i].type;
-        if ((inputs[i].type == 'string' || inputs[i].type == 'bytes') && methodMutability !== 'view') {
+        //if ((inputs[i].type == 'string' || inputs[i].type == 'bytes') && methodMutability !== 'view') {
+        if ((inputs[i].type == 'string' ||
+            inputs[i].type == 'bytes' ||
+            inputs[i].type == 'address[]' ||
+            inputs[i].type == 'string[]' ||
+            inputs[i].type == 'bytes[]' ||
+            inputs[i].type == 'bytes')) {
             out += ' memory';
         }
 
@@ -69,8 +75,8 @@ async function getMethodInterface(method) {
 }
 
 async function ABI2Solidity(abi, name) {
-    const LICENSE = '// SPDX-License-Identifier: MIT\n'
-    const PRAGMA = 'pragma solidity ^0.8.0;\n\n'
+    const LICENSE = '// SPDX-License-Identifier: MIT\n';
+    const PRAGMA = 'pragma solidity ^0.8.0;\n\n';
     const HEADER = 'interface I' + name + '{\n';
     const FOOTER = '}\n';
     const jsonfile = JSON.parse(abi);
@@ -89,7 +95,7 @@ async function abi2sol(filepath) {
     console.log('Converting ABI to an interface contract');
     project_path = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
 
-    input = project_path + '/artifacts/contracts/' + filepath + '.sol/' + filepath + '.json'
+    input = project_path + '/artifacts/contracts/' + filepath + '.sol/' + filepath + '.json';
     jsonfile = await readfileasync(input);
     jsonfile = JSON.stringify(jsonfile['abi']);
 
@@ -106,4 +112,13 @@ async function abi2sol(filepath) {
     console.log('Abi2Sol converted.');
 }
 
-module.exports = { abi2sol };
+async function abi2json(filepath) {
+    project_path = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
+    input = project_path + '/artifacts/contracts/' + filepath + '.sol/' + filepath + '.json';
+    jsonfile = await readfileasync(input);
+    jsonfile = JSON.stringify(jsonfile['abi']);
+    //jsonfile = JSON.parse(jsonfile['abi']);
+    return jsonfile;
+}
+
+module.exports = { abi2sol, abi2json };

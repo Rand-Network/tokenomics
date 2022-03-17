@@ -1,26 +1,7 @@
 require('@openzeppelin/hardhat-upgrades');
 require("@nomiclabs/hardhat-etherscan");
-const { BigNumber } = require("ethers")
+const { BigNumber } = require("ethers");
 const { ethers, upgrades, network } = require("hardhat");
-
-async function deployContractWithProxy(contractName, initParams, numConfirmation, proxyKind = 'uups') {
-  // Deploying contracts
-  let Contract = await ethers.getContractFactory(contractName);
-  let ContractProxy = await upgrades.deployProxy(
-    Contract,
-    Object.values(initParams),
-    { kind: proxyKind });
-
-  // Wait for confirmations
-  if (chainId !== localNode) {
-    console.log('Number of confirmations to wait after deployment:', numConfirmation)
-    txContractDeployment = ContractProxy.deployTransaction;
-    await txContractDeployment.wait(numConfirmation);
-  }
-
-  return ContractProxy, Contract
-
-}
 
 async function main() {
 
@@ -32,36 +13,53 @@ async function main() {
 
   // Fetching keys
   [owner, alice, backend] = await ethers.getSigners();
+  console.log("Deployer address:", owner.address);
+  console.log("Alice address:", alice.address);
+  console.log("Backend address:", backend.address);
 
   // Deployment params for initializer
   const RNDdeployParams = {
-    _name: "Rand Token ERC20",
-    _symbol: "RND",
+    _name: "Token ERC20",
+    _symbol: "tRND",
     _initialSupply: BigNumber.from(200e6),
-    _multisigVault: owner.address
-  }
+    _registry: ""
+  };
 
   const VCdeployParams = {
-    _name: "Rand Vesting Controller ERC721",
-    _symbol: "vRND",
-    _rndTokenContract: 0, //RandToken.address,
-    _smTokenContract: 0, //RandToken.address - as of now
+    _name: "Vesting Controller ERC721",
+    _symbol: "tvRND",
     _periodSeconds: 1,
-    _multiSigAddress: owner.address,
-    _backendAddress: backend.address
-  }
+    _registry: ""
+  };
 
-  const numberOfConfirmationsOnTestnet = 1;
-  numConfirmation = chainId !== localNode ? numberOfConfirmationsOnTestnet : 0
+  const SMdeployParams = {
+    _name: "Safety Module ERC20",
+    _symbol: "tsRND",
+    _cooldown_seconds: 120, // 604800 7 days
+    _unstake_window: 240,
+    _registry: ""
+  };
 
-  // Deploying contracts
-  // Token Contract
-  // let RandToken, Token = await deployContractWithProxy(
-  //   "RandToken",
-  //   RNDdeployParams,
-  //   numConfirmation)
+  Registry = await ethers.getContractFactory("AddressRegistry");
   Token = await ethers.getContractFactory("RandToken");
   VestingController = await ethers.getContractFactory("VestingControllerERC721");
+  SafetyModule = await ethers.getContractFactory("SafetyModuleERC20");
+
+  multisig_address = owner.address;
+  oz_defender = owner.address;
+
+  RandRegistry = await upgrades.deployProxy(
+    Registry,
+    [multisig_address],
+    { kind: "uups" });
+  console.log('Deployed Registry proxy at:', RandRegistry.address);
+
+  await RandRegistry.setNewAddress("MS", multisig_address);
+  await RandRegistry.setNewAddress("OZ", oz_defender);
+
+  RNDdeployParams._registry = RandRegistry.address;
+  VCdeployParams._registry = RandRegistry.address;
+  SMdeployParams._registry = RandRegistry.address;
 
   RandToken = await upgrades.deployProxy(
     Token,
@@ -69,58 +67,92 @@ async function main() {
     { kind: "uups" });
   console.log('Deployed Token proxy at:', RandToken.address);
 
-  // Vesting Controller
-  VCdeployParams._rndTokenContract = RandToken.address;
-  VCdeployParams._smTokenContract = RandToken.address;
-  VCdeployParams._multiSigAddress = owner.address;
-  VCdeployParams._backendAddress = backend.address;
-
   RandVC = await upgrades.deployProxy(
     VestingController,
     Object.values(VCdeployParams),
     { kind: "uups" });
 
-  // let RandVC, VestingController = await deployContractWithProxy(
-  //   "VestingControllerERC721",
-  //   VCdeployParams,
-  //   numConfirmation)
-  // console.log('Deployed VC proxy at:', RandVC.address);
+  console.log('Deployed VC proxy at:', RandVC.address);
+
+  RandSM = await upgrades.deployProxy(
+    SafetyModule,
+    Object.values(SMdeployParams),
+    { kind: "uups" });
+  console.log('Deployed SM proxy at:', RandSM.address);
 
   // Wait for confirmations
-  numConfirmation = chainId !== localNode ? numberOfConfirmationsOnTestnet : 0
-  console.log('Number of confirmations to wait:', numConfirmation)
-  if (chainId !== localNode) {
-    txRandToken = RandToken.deployTransaction;
-    txRandVC = RandVC.deployTransaction;
-    await txRandToken.wait(numConfirmation);
-    await txRandVC.wait(numConfirmation);
-  }
+  const numberOfConfirmationsOnTestnet = 1;
+  numConfirmation = chainId !== localNode ? numberOfConfirmationsOnTestnet : 0;
+  console.log('Number of confirmations to wait:', numConfirmation);
+
+
+  // Set roles and addresses
+  await RandRegistry.setNewAddress("RND", RandToken.address);
+  await RandRegistry.setNewAddress("VC", RandVC.address);
+  await RandRegistry.setNewAddress("SM", RandSM.address);
+
+  // Adding approve for the RandVC to mint investments
+  approve_amount = '1000';
+  await RandToken.approve(RandVC.address, ethers.utils.parseEther(approve_amount));
+  console.log('Approved amount on Multisig RND tokens for VC:', approve_amount);
 
   // Verify contracts
+  txRandRegistry = RandRegistry.deployTransaction;
   txRandToken = RandToken.deployTransaction;
-  await txRandToken.wait(1);
-  RandTokenImpl = await ethers.provider.getStorageAt(RandToken.address, '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc');
-  RandTokenImpl = await ethers.utils.hexStripZeros(RandTokenImpl);
-  RandTokenImpl = await ethers.utils.getAddress(RandTokenImpl);
-  RandVCImpl = await ethers.provider.getStorageAt(RandVC.address, '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc');
-  RandVCImpl = await ethers.utils.hexStripZeros(RandVCImpl);
-  RandVCImpl = await ethers.utils.getAddress(RandVCImpl);
+  txRandVC = RandVC.deployTransaction;
+  txRandSM = RandSM.deployTransaction;
+  await txRandToken.wait(numConfirmation);
+  await txRandVC.wait(numConfirmation);
+  await txRandSM.wait(numConfirmation);
+
+  RandRegistryImpl = await upgrades.erc1967.getImplementationAddress(RandRegistry.address);
+  console.log('Deployed Registry implementation at:', RandRegistryImpl);
+  RandTokenImpl = await upgrades.erc1967.getImplementationAddress(RandToken.address);
+  console.log('Deployed Token implementation at:', RandTokenImpl);
+  RandVCImpl = await upgrades.erc1967.getImplementationAddress(RandVC.address);
   console.log('Deployed VC implementation at:', RandVCImpl);
+  RandSMImpl = await upgrades.erc1967.getImplementationAddress(RandSM.address);
+  console.log('Deployed SM implementation at:', RandSMImpl);
 
   // Verify contracts
-  try {
-    await hre.run("verify:verify", {
-      address: RandToken.address,
-      constructorArguments: Object.values(RNDdeployParams)
+  if (chainId !== localNode) {
+    await hre.run("verify:verify", { address: RandTokenImpl }).catch(function (error) {
+      if (error.message == 'Contract source code already verified') {
+        console.error('Contract source code already verified');
+      }
+      else {
+        console.error(error);
+      }
     });
-  } catch (error) {
-    console.error(error);
+
+    await hre.run("verify:verify", { address: RandVCImpl }).catch(function (error) {
+      if (error.message == 'Contract source code already verified') {
+        console.error('Contract source code already verified');
+      }
+      else {
+        console.error(error);
+      }
+    });
+
+    await hre.run("verify:verify", { address: RandSMImpl }).catch(function (error) {
+      if (error.message == 'Contract source code already verified') {
+        console.error('Contract source code already verified');
+      }
+      else {
+        console.error(error);
+      }
+    });
+
+    await hre.run("verify:verify", { address: RandRegistryImpl }).catch(function (error) {
+      if (error.message == 'Contract source code already verified') {
+        console.error('Contract source code already verified');
+      }
+      else {
+        console.error(error);
+      }
+    });
   }
-  try {
-    await hre.run("verify:verify", { address: RandVCImpl });
-  } catch (error) {
-    console.error(error);
-  }
+
 }
 
 main()
