@@ -18,6 +18,7 @@ interface IVestingControllerERC721{
   function getInvestmentInfo ( uint256 tokenId ) external view returns ( uint256 rndTokenAmount, uint256 rndClaimedAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 rndStakedAmount );
   function getInvestmentInfoForNFT ( uint256 nftTokenId ) external view returns ( uint256 rndTokenAmount, uint256 rndClaimedAmount );
   function getRoleAdmin ( bytes32 role ) external view returns ( bytes32 );
+  function getTokenIdOfNFT ( uint256 tokenIdNFT ) external view returns ( uint256 tokenId );
   function grantRole ( bytes32 role, address account ) external;
   function hasRole ( bytes32 role, address account ) external view returns ( bool );
   function initialize ( string memory _erc721_name, string memory _erc721_symbol, uint256 _periodSeconds, address _registry ) external;
