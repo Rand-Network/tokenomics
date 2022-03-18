@@ -7,6 +7,7 @@ require("solidity-coverage");
 require('dotenv').config();
 const { ContractFactory } = require("ethers");
 const { abi2sol, abi2json } = require("./scripts/abi2sol.js");
+const { deploy_testnet } = require("./scripts/deploy_testnet_task.js");
 const { execute, cleanFile } = require("./scripts/flatten.js");
 
 const pinataSDK = require('@pinata/sdk');
@@ -107,6 +108,15 @@ task("flatten-clean", "Flattens and cleans soldity contract for Etherscan single
     await execute(`mv ${contract}.flatten.cleaned ${contract}.flatten`);
   });
 
+task("deploy", "Deploys to a network and optionally verifies and mints sample investment")
+  .addFlag("verify", "To verify the contract on the deployed network with Etherscan API")
+  .addFlag("initialize", "To initially mint some investments and do allowances")
+  .setAction(async ({ verify, initialize }) => {
+    console.log("Starting deployment..");
+    console.log("initialize:%s,\nverify:%s\n------------", initialize, verify);
+    await deploy_testnet(initialize, verify);
+  });
+
 
 gasPriceApis = {
   goerli: 'https://api-goerli.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
@@ -168,13 +178,14 @@ module.exports = {
       url: process.env.RINKEBY_TESTNET_URL || '',
       accounts: accountkeys,
       timeout: 5 * 60 * 1e3,
-      gasPrice: 200e9
+      //gasPrice: 200e9,
+      gas: 2100000
     },
     goerli: {
       url: process.env.GOERLI_TESTNET_URL || '',
       accounts: accountkeys,
       timeout: 5 * 60 * 1e3,
-      gasPrice: 200e9
+      //gasPrice: 200e9
     },
     ropsten: {
       url: process.env.ROPSTEN_TESTNET_URL || '',
