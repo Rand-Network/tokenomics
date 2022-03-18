@@ -27,6 +27,7 @@ contract SafetyModuleERC20 is
     event CooldownStaked(address staker);
     event RedeemStaked(address staker, address recipient, uint256 amount);
     event RegistryAddressUpdated(IAddressRegistry newAddress);
+    event PeriodUpdated(string periodType, uint256 newAmount);
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -253,6 +254,7 @@ contract SafetyModuleERC20 is
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         COOLDOWN_SECONDS = newPeriod;
+        emit PeriodUpdated("Cooldown", newPeriod);
     }
 
     function updateUnstakePeriod(uint256 newPeriod)
@@ -260,6 +262,7 @@ contract SafetyModuleERC20 is
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UNSTAKE_WINDOW = newPeriod;
+        emit PeriodUpdated("Unstake", newPeriod);
     }
 
     function burn(address account, uint256 amount)
