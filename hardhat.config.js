@@ -22,26 +22,11 @@ task("accounts", "Prints the list of accounts", async () => {
   }
 });
 
-task("upgradeProxy", "Upgrades proxy with OZ upgrades plugin")
-  .addPositionalParam("proxyAddress", "Address of the proxy contract")
-  .addPositionalParam("contractFactory", "Name of the contract")
-  .setAction(async ({ proxyAddress, contractFactory }) => {
-    const accounts = await ethers.getSigners();
-    var balanceOf = await ethers.provider.getBalance(accounts[0].address);
-    console.log(accounts[0].address, '(balance:', ethers.utils.formatEther(balanceOf), ')');
-    const ContractFactory = await ethers.getContractFactory(contractFactory);
-    //tx = await upgrades.prepareUpgrade(proxyAddress, ContractFactory);
-    tx = await upgrades.upgradeProxy(
-      proxyAddress,
-      ContractFactory
-    );
-    console.log(tx);
-  });
-
 task("upgradeProxyAndVerify", "Upgrades proxy with OZ upgrades plugin and verifies new implementation")
   .addPositionalParam("proxyAddress", "Address of the proxy contract")
   .addPositionalParam("contractFactory", "Name of the contract")
-  .setAction(async ({ proxyAddress, contractFactory }) => {
+  .addFlag("verify", "To verify new implementation with Etherscan API")
+  .setAction(async ({ proxyAddress, contractFactory, verify }) => {
     const accounts = await ethers.getSigners();
     var balanceOf = await ethers.provider.getBalance(accounts[0].address);
     console.log(accounts[0].address, '(balance:', ethers.utils.formatEther(balanceOf), ')');
@@ -55,16 +40,18 @@ task("upgradeProxyAndVerify", "Upgrades proxy with OZ upgrades plugin and verifi
     tx_upgrade = tx.deployTransaction;
     await tx_upgrade.wait(1);
     console.log("Proxy upgraded!");
+    if (verify) {
+      newImplementation = await upgrades.erc1967.getImplementationAddress(tx.address);
+      await hre.run("verify:verify", { address: newImplementation }).catch(function (error) {
+        if (error.message == 'Contract source code already verified') {
+          console.error('Contract source code already verified');
+        }
+        else {
+          console.error(error);
+        }
+      });
+    }
 
-    newImplementation = await upgrades.erc1967.getImplementationAddress(tx.address);
-    await hre.run("verify:verify", { address: newImplementation }).catch(function (error) {
-      if (error.message == 'Contract source code already verified') {
-        console.error('Contract source code already verified');
-      }
-      else {
-        console.error(error);
-      }
-    });
   });
 
 task("abi2interface", "Generates solidity interface contracts from ABIs")

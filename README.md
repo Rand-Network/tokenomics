@@ -8,13 +8,47 @@ These contracts are the following:
 - Safety Module (SM) ERC20
 - Governance (rDAO) 
 
-## Hardhat
+## Basic usage
 
 To run the repository test follow these steps:
 ```
 npm install .
 npx hardhat node &
 npx hardhat test
+```
+
+## Hardhat tasks implemented for ease of development and testing
+There are several custom hardhat tasks have been implemented for deployment, upgrading, abi to interface conversion, contract flattening, ipfs uploads.
+
+#### Examples
+
+**abi2interface** generates an interface file from a `contract` name and save it to the contracts folder. 
+```
+hh abi2interface VestingControllerERC721
+```
+**abi2ipfs** generates an interface file from a `contract` name and uploads it to `IPFS` and pins using Pinata service. It returns the IPFS hash and clickable link. **NOTE: pinata API key is needed in the .env file **
+```
+hh abi2ipfs VestingControllerERC721
+```
+**deploy** deploys a contract using the `scripts/deploy_testnet_taks.js` script. It allows for verifying using Etherscan API and initial settings like granting allowance to the VestingController and minting a few sample investments.**NOTE: Etherscan API key is needed in the .env file **
+```
+hh deploy --verify --initialize
+```
+**flatten-clean** Flattens files for Etherscan manual single-file verification process.
+```
+hh flatten-clean contracts/VestingControllerERC721.sol
+```
+**folder2ipfs** Uploads a complete folder to `IPFS` and pins using Pinata service. It returns the IPFS hash and clickable link. **NOTE: pinata API key is needed in the .env file **
+```
+hh folder2ipfs uri/sample_to_deploy_ipfs_generated
+```
+**upgradeProxy** Upgrades a proxy with a new implementation. First it deploys the new implementation and sets the proxy for the new implementation as of OpenZeppelin Upgrades library.
+```
+hh upgradeProxy <eth_contract_address> VestingControllerERC721
+```
+**upgradeProxyAndVerify** Upgrades a proxy with a new implementation. First it deploys the new implementation and sets the proxy for the new implementation as of OpenZeppelin Upgrades library. Additionally it also verifies the new implementation using Etherscan API. **NOTE: Etherscan API key is needed in the .env file **
+```
+hh upgradeProxyAndVerify --verify <eth_contract_address> VestingControllerERC721
 ```
 
 ## RandToken

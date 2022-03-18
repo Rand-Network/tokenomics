@@ -191,6 +191,7 @@ async function deploy_testnet(initialize = false, verify = false) {
 
   // Verify contracts
   if (chainId !== localNode && verify) {
+    console.log("Starting verification process...");
     await hre.run("verify:verify", { address: RandTokenImpl }).catch(function (error) {
       if (error.message == 'Contract source code already verified') {
         console.error('Contract source code already verified');
