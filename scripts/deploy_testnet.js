@@ -50,6 +50,7 @@ async function main() {
   Token = await ethers.getContractFactory("RandToken");
   VestingController = await ethers.getContractFactory("VestingControllerERC721");
   SafetyModule = await ethers.getContractFactory("SafetyModuleERC20");
+  InvestorsNFT = await ethers.getContractFactory("InvestorsNFT");
 
   multisig_address = owner.address;
   oz_defender = owner.address;
