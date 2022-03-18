@@ -30,6 +30,10 @@ hh abi2interface VestingControllerERC721
 ```
 hh abi2ipfs VestingControllerERC721
 ```
+**verify** Verifying the contract using Etherscan API. **NOTE: Etherscan API key is needed in the .env file **
+```
+hh verify <eth_contract_address>
+```
 **deploy** deploys a contract using the `scripts/deploy_testnet_taks.js` script. It allows for verifying using Etherscan API and initial settings like granting allowance to the VestingController and minting a few sample investments.**NOTE: Etherscan API key is needed in the .env file **
 ```
 hh deploy --verify --initialize
