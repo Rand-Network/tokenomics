@@ -49,4 +49,4 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm install .
-    - run: npx hardhat test --network hardhat
+    - run: npx hardhat test
