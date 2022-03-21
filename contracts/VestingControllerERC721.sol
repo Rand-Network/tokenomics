@@ -113,8 +113,9 @@ contract VestingControllerERC721 is
         bool isTokenOwner = ownerOf(tokenId) == _msgSender();
         bool isBackend = REGISTRY.getAddress("OZ") == _msgSender();
         bool isSM = REGISTRY.getAddress("SM") == _msgSender();
+        bool isGov = REGISTRY.getAddress("GOV") == _msgSender();
         require(
-            isTokenOwner || isBackend || isSM,
+            isTokenOwner || isBackend || isSM || isGov,
             "VC: No access role for this address"
         );
         _;
