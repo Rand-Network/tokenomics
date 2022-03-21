@@ -1,5 +1,12 @@
 module.exports = {
     chains: {
+        development: {
+            chainId: 31337,
+            urls: {
+                apiURL: "https://api.etherscan.io/api",
+                browserURL: "https://etherscan.io",
+            },
+        },
         mainnet: {
             chainId: 1,
             urls: {

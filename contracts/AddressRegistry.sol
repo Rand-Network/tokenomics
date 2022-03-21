@@ -82,12 +82,12 @@ contract AddressRegistry is
         if (!_existInArray(name)) {
             return true;
         }
-        
+
         addressId.push(name);
         addressStorage[name].push(contractAddress);
         emit NewAddressSet(name);
         emit AddressChanged(name, contractAddress);
-        return true
+        return true;
     }
 
     function _existInArray(string calldata name) internal view returns (bool) {

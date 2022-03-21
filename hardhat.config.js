@@ -131,6 +131,10 @@ task("verifyProxy", "Verifies a proxy on Etherscan using the current network so 
   .addParam("proxy", "Address of the proxy contract to verify")
   .addParam("implementation", "Address of the implementation contract")
   .setAction(async ({ proxy, implementation }) => {
+    if (chain_id == 31337) {
+      console.log("Unable to verify proxy on local development network. Exiting...");
+      return;
+    }
     console.log("Starting verification.");
     data = {
       "address": proxy,
