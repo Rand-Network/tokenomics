@@ -73,16 +73,21 @@ contract AddressRegistry is
     function setNewAddress(string calldata name, address contractAddress)
         public
         onlyRole(UPDATER_ROLE)
+        returns (bool)
     {
         bytes memory tempStringByte = bytes(name);
         require(tempStringByte.length > 0, "Registry: No name set");
         require(contractAddress != address(0), "Registry: No address set");
-        require(!_existInArray(name), "Registry: Contract name already exists");
-
+        //require(!_existInArray(name), "Registry: Contract name already exists");
+        if (!_existInArray(name)) {
+            return true;
+        }
+        
         addressId.push(name);
         addressStorage[name].push(contractAddress);
         emit NewAddressSet(name);
         emit AddressChanged(name, contractAddress);
+        return true
     }
 
     function _existInArray(string calldata name) internal view returns (bool) {

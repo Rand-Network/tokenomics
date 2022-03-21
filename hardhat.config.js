@@ -9,10 +9,33 @@ const { ContractFactory } = require("ethers");
 const { abi2sol, abi2json } = require("./scripts/abi2sol.js");
 const { deploy_testnet } = require("./scripts/deploy_testnet_task.js");
 const { execute, cleanFile } = require("./scripts/flatten.js");
-
+const { chains } = require("./scripts/EtherscanChainConfig.js");
+const axios = require('axios');
 const pinataSDK = require('@pinata/sdk');
 const { json } = require("hardhat/internal/core/params/argumentTypes");
 const pinata = pinataSDK(process.env.PINATA_KEY, process.env.PINATA_SECRET);
+
+// Get network id
+function findNetworInArgs(item, index, arr) {
+  //console.log(item, index, arr);
+  if (item == '--network') {
+    network_id = arr[index + 1];
+    network_dict = chains[network_id];
+    network_id = network_dict.urls.apiURL;
+    chain_id = network_dict.chainId;
+    // 1,3,4,5,42 eth
+    // 1287 moonbase
+    if (chain_id == 1287) {
+      etherscan_api_key = process.env.MOONSCAN_API_KEY;
+    }
+    else {
+      etherscan_api_key = process.env.ETHERSCAN_API_KEY;
+    }
+  }
+}
+var network_id;
+var chain_id;
+process.argv.forEach(findNetworInArgs);
 
 task("accounts", "Prints the list of accounts", async () => {
   const accounts = await ethers.getSigners();
@@ -104,6 +127,51 @@ task("deploy", "Deploys to a network and optionally verifies and mints sample in
     await deploy_testnet(initialize, verify);
   });
 
+task("verifyProxy", "Verifies a proxy on Etherscan using the current network so Read/Write as proxy is avaiable")
+  .addParam("proxy", "Address of the proxy contract to verify")
+  .addParam("implementation", "Address of the implementation contract")
+  .setAction(async ({ proxy, implementation }) => {
+    console.log("Starting verification.");
+    data = {
+      "address": proxy,
+      "expectedimplementation": implementation
+    };
+    url = `${network_id}?module=contract&action=verifyproxycontract&apikey=${etherscan_api_key}`;
+
+    await axios({
+      method: "post",
+      url: url,
+      data: data,
+    })
+      .then(function (response) {
+        //handle success
+        console.log(response.data);
+      })
+      .catch(function (response) {
+        //handle error
+        console.log(response);
+      });
+
+
+    // axios.post(`${network_id}/api?module=contract&action=verifyproxycontract&apikey=${etherscan_api_key}`, {
+    //   "address": proxy,
+    //   "expectedimplementation": implementation
+    // })
+    //   .then(function (response) {
+    //     console.log(response);
+    //     axios.get(`${network_id}/module=contract&action=checkproxyverification&guid${response}=&apikey=${etherscan_api_key}`)
+    //       .then(function (response_2) {
+    //         console.log(response_2);
+    //       })
+    //       .catch(function (error) {
+    //         console.log(error);
+    //       });
+    //   })
+    //   .catch(function (error) {
+    //     console.log(error);
+    //   });
+  });
+
 
 gasPriceApis = {
   goerli: 'https://api-goerli.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
@@ -153,7 +221,7 @@ module.exports = {
       url: process.env.MOONBEAM_URL || '',
       accounts: accountkeys,
     },
-    moonbase: {
+    moonbaseAlpha: {
       url: process.env.MOONBASE_URL || '',
       accounts: accountkeys,
     },
