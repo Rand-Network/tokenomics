@@ -119,3 +119,11 @@ https://cloudflare-ipfs.com/ipfs/QmU4JZXUmee8aakZYSqZQVkDjPQALNzXnNPeJMyctUjUoe
 ```
 
 ## SafetyModuleERC20
+
+## Governance
+
+Governance is simple contract to summarize balances from multiple contracts for an account address. It uses the standard `balanceOf` function of `RND` and `SM`, while iterating over all the account holders investment tokens inside `VC` and summarize each individual investment by the following formula:
+```
+VC balanceOf = rndTokenAmount - rndClaimedAmount - rndStakedAmount
+```
+Governance contract does not use an ERC20 standard just simply implements the `balanceOf(account)` and `totalSupply()` functions so Automata Witness will be able to query these to calculating governance voting on a DAO proposal.
