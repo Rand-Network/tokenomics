@@ -79,8 +79,8 @@ contract AddressRegistry is
         require(tempStringByte.length > 0, "Registry: No name set");
         require(contractAddress != address(0), "Registry: No address set");
         //require(!_existInArray(name), "Registry: Contract name already exists");
-        if (!_existInArray(name)) {
-            return true;
+        if (_existInArray(name)) {
+            return false;
         }
 
         addressId.push(name);
@@ -91,7 +91,7 @@ contract AddressRegistry is
     }
 
     function _existInArray(string calldata name) internal view returns (bool) {
-        for (uint256 i; i < addressId.length; i++) {
+        for (uint256 i = 0; i < addressId.length; i++) {
             if (
                 keccak256(abi.encodePacked(addressId[i])) ==
                 keccak256(abi.encodePacked(name))
