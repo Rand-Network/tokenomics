@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "./RewardDistributionManager.sol";
 import "./IVestingControllerERC721.sol";
 import "./IRandToken.sol";
 import "./IAddressRegistry.sol";
@@ -20,7 +21,8 @@ contract SafetyModuleERC20 is
     UUPSUpgradeable,
     ERC20Upgradeable,
     PausableUpgradeable,
-    AccessControlUpgradeable
+    AccessControlUpgradeable,
+    RewardDistributionManager
 {
     event Staked(uint256 amount);
     event StakedOnTokenId(uint256 tokenId, uint256 amount);
@@ -30,9 +32,6 @@ contract SafetyModuleERC20 is
     event PeriodUpdated(string periodType, uint256 newAmount);
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    // IVestingControllerERC721 public VC_TOKEN;
-    // IRandToken public RND_TOKEN;
 
     uint256 public COOLDOWN_SECONDS;
     uint256 public UNSTAKE_WINDOW;
@@ -57,11 +56,13 @@ contract SafetyModuleERC20 is
         string memory _symbol,
         uint256 _cooldown_seconds,
         uint256 _unstake_window,
-        IAddressRegistry _registry
+        IAddressRegistry _registry,
+        address _emissionManager
     ) public initializer {
         __ERC20_init(_name, _symbol);
         __Pausable_init();
         __AccessControl_init();
+        __RewardDistributionManager_init(_emissionManager);
 
         REGISTRY = _registry;
         address _multisigVault = REGISTRY.getAddress("MS");
