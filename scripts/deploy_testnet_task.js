@@ -37,6 +37,22 @@ const _GovDeployParams = {
   _registry: ""
 };
 
+async function get_factories() {
+  Registry = await ethers.getContractFactory("AddressRegistry");
+  Token = await ethers.getContractFactory("RandToken");
+  VestingController = await ethers.getContractFactory("VestingControllerERC721");
+  SafetyModule = await ethers.getContractFactory("SafetyModuleERC20");
+  InvestorsNFT = await ethers.getContractFactory("InvestorsNFT");
+  Governance = await ethers.getContractFactory("Governance");
+
+  return { Registry, Token, VestingController, SafetyModule, InvestorsNFT, Governance };
+}
+
+async function get_wallets() {
+  [owner, alice, backend] = await ethers.getSigners();
+  return { owner, alice, backend };
+}
+
 async function deploy_testnet(
   initialize = false,
   verify = false,
@@ -81,9 +97,14 @@ async function deploy_testnet(
     [multisig_address],
     { kind: "uups" });
   console.log('Deployed Registry proxy at:', RandRegistry.address);
+  txRandReg = RandRegistry.deployTransaction;
+  await txRandReg.wait(numConfirmation);
 
-  await RandRegistry.setNewAddress("MS", multisig_address);
-  await RandRegistry.setNewAddress("OZ", oz_defender);
+  // Initializing Registry
+  tx = await RandRegistry.setNewAddress("MS", multisig_address);
+  await tx.wait(numConfirmation);
+  tx = await RandRegistry.setNewAddress("OZ", oz_defender);
+  await tx.wait(numConfirmation);
 
   RNDdeployParams._registry = RandRegistry.address;
   VCdeployParams._registry = RandRegistry.address;
@@ -96,50 +117,52 @@ async function deploy_testnet(
     Object.values(RNDdeployParams),
     { kind: "uups" });
   console.log('Deployed Token proxy at:', RandToken.address);
-  await RandRegistry.setNewAddress("RND", RandToken.address);
+  txRandToken = RandToken.deployTransaction;
+  await txRandToken.wait(numConfirmation);
+  tx = await RandRegistry.setNewAddress("RND", RandToken.address);
+  await tx.wait(numConfirmation);
 
   RandVC = await upgrades.deployProxy(
     VestingController,
     Object.values(VCdeployParams),
     { kind: "uups" });
   console.log('Deployed VC proxy at:', RandVC.address);
-  await RandRegistry.setNewAddress("VC", RandVC.address);
+  txRandVC = RandVC.deployTransaction;
+  await txRandVC.wait(numConfirmation);
+  tx = await RandRegistry.setNewAddress("VC", RandVC.address);
+  await tx.wait(numConfirmation);
 
   RandSM = await upgrades.deployProxy(
     SafetyModule,
     Object.values(SMdeployParams),
     { kind: "uups" });
   console.log('Deployed SM proxy at:', RandSM.address);
-  await RandRegistry.setNewAddress("SM", RandSM.address);
+  txRandSM = RandSM.deployTransaction;
+  await txRandSM.wait(numConfirmation);
+  tx = await RandRegistry.setNewAddress("SM", RandSM.address);
+  await tx.wait(numConfirmation);
 
   RandNFT = await upgrades.deployProxy(
     InvestorsNFT,
     Object.values(NFTdeployParams),
     { kind: "uups" });
   console.log('Deployed NFT proxy at:', RandNFT.address);
-  await RandRegistry.setNewAddress("NFT", RandNFT.address);
+  txRandNFT = RandNFT.deployTransaction;
+  await txRandNFT.wait(numConfirmation);
+  tx = await RandRegistry.setNewAddress("NFT", RandNFT.address);
+  await tx.wait(numConfirmation);
 
   RandGov = await upgrades.deployProxy(
     Governance,
     Object.values(GovDeployParams),
     { kind: "uups" });
   console.log('Deployed Gov proxy at:', RandGov.address);
-  await RandRegistry.setNewAddress("GOV", RandGov.address);
+  txRandGov = RandGov.deployTransaction;
+  await txRandGov.wait(numConfirmation);
+  tx = await RandRegistry.setNewAddress("GOV", RandGov.address);
+  await tx.wait(numConfirmation);
 
   // Verify contracts
-  txRandToken = RandToken.deployTransaction;
-  txRandVC = RandVC.deployTransaction;
-  txRandSM = RandSM.deployTransaction;
-  txRandReg = RandRegistry.deployTransaction;
-  txRandNFT = RandNFT.deployTransaction;
-  txRandGov = RandGov.deployTransaction;
-  await txRandToken.wait(numConfirmation);
-  await txRandVC.wait(numConfirmation);
-  await txRandSM.wait(numConfirmation);
-  await txRandReg.wait(numConfirmation);
-  await txRandNFT.wait(numConfirmation);
-  await txRandGov.wait(numConfirmation);
-
   console.log("");
   RandRegistryImpl = await upgrades.erc1967.getImplementationAddress(RandRegistry.address);
   console.log('Deployed Registry implementation at:', RandRegistryImpl);
@@ -261,12 +284,22 @@ async function deploy_testnet(
         console.error(error);
       }
     });
+    await hre.run("verify:verify", { address: RandGovImpl }).catch(function (error) {
+      if (error.message == 'Contract source code already verified') {
+        console.error('Contract source code already verified');
+      }
+      else {
+        console.error(error);
+      }
+    });
   }
   return RandToken, RandVC, RandSM, RandNFT, RandGov, RandRegistry;
 }
 
 module.exports = {
   deploy_testnet,
+  get_factories,
+  get_wallets,
   _RNDdeployParams,
   _VCdeployParams,
   _SMdeployParams,
