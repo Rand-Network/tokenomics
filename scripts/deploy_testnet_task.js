@@ -1,6 +1,8 @@
 require('@openzeppelin/hardhat-upgrades');
 require("@nomiclabs/hardhat-etherscan");
-const { BigNumber } = require("ethers");
+const { BigNumber, ethers } = require("ethers");
+
+
 
 // Deployment params for initializer
 const _RNDdeployParams = {
@@ -38,6 +40,7 @@ const _GovDeployParams = {
 };
 
 async function get_factories() {
+
   Registry = await ethers.getContractFactory("AddressRegistry");
   Token = await ethers.getContractFactory("RandToken");
   VestingController = await ethers.getContractFactory("VestingControllerERC721");
@@ -185,7 +188,7 @@ async function deploy_testnet(
     recipient = alice.address;
     vestingStartTime = BigNumber.from(created_ts);
     rndTokenAmount = ethers.utils.parseEther('100');
-    vestingPeriod = BigNumber.from("86400"); // 1 week
+    vestingPeriod = BigNumber.from("864000"); // 1 week
     cliffPeriod = BigNumber.from("1");
     tokenId_100 = 1;
     tokenId_101 = 2;
