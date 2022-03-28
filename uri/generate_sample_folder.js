@@ -29,12 +29,12 @@ function copyfunction(item) {
 }
 
 file_arr = [
-    './sample_folder/Rand_Blue-active.png',
-    './sample_folder/Rand_Black-active.png',
-    './sample_folder/Rand_Red-active.png',
-    './sample_folder/Rand_Gold-active.png',
-    './sample_folder/Rand_Empty.png',
-    './sample_folder/contract_uri.json'
+    // './sample_folder/Rand_Blue-active.png',
+    // './sample_folder/Rand_Black-active.png',
+    // './sample_folder/Rand_Red-active.png',
+    // './sample_folder/Rand_Gold-active.png',
+    // './sample_folder/Rand_Empty.png',
+    './sample_folder/contract_uri'
 ];
 
 file_arr.forEach(copyfunction);

@@ -1,7 +1,7 @@
 {
     "name": "Rand Black Level | Claimed",
     "description": "Friendly OpenSea Creature that enjoys long swims in the ocean.",
-    "image": "./Rand_Empty.png",
+    "image": "https://ipfs.io/ipfs/QmazvkvmEfhtDvYJRVzy7SYXJCPnFyu5b6v2kvNamUsdhe/Rand_Empty.png",
     "attributes": [
         {
             "trait_type": "Level",
