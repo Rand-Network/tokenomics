@@ -1,6 +1,7 @@
 require('@openzeppelin/hardhat-upgrades');
 require("@nomiclabs/hardhat-etherscan");
-const { BigNumber, ethers } = require("ethers");
+const { BigNumber } = require("ethers");
+require("ethers");
 
 
 
