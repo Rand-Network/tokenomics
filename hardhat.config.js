@@ -252,6 +252,11 @@ module.exports = {
       timeout: 5 * 60 * 1e3,
       gasPrice: 200e9
     },
+    polygonMumbai: {
+      url: process.env.POLYGON_TESTNET_URL || '',
+      accounts: accountkeys,
+      timeout: 5 * 60 * 1e3,
+    },
   },
   etherscan: {
     apiKey: {
@@ -260,7 +265,9 @@ module.exports = {
       ropsten: process.env.ETHERSCAN_API_KEY,
       mainnet: process.env.ETHERSCAN_API_KEY,
       //moonbeam: process.env.MOONSCAN_API_KEY,
-      moonbaseAlpha: process.env.MOONSCAN_API_KEY
+      moonbaseAlpha: process.env.MOONSCAN_API_KEY,
+      polygonMumbai: process.env.POLYGONSCAN_API_KEY,
+      polygon: process.env.POLYGONSCAN_API_KEY,
     }
   },
   solidity: {
