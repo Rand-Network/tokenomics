@@ -56,18 +56,18 @@ contract SafetyModuleERC20 is
         string memory _symbol,
         uint256 _cooldown_seconds,
         uint256 _unstake_window,
-        IAddressRegistry _registry,
-        address _emissionManager
+        IAddressRegistry _registry
     ) public initializer {
         __ERC20_init(_name, _symbol);
         __Pausable_init();
         __AccessControl_init();
-        __RewardDistributionManager_init(_emissionManager);
 
         REGISTRY = _registry;
         address _multisigVault = REGISTRY.getAddress("MS");
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
+
+        __RewardDistributionManager_init(_multisigVault);
 
         COOLDOWN_SECONDS = _cooldown_seconds;
         UNSTAKE_WINDOW = _unstake_window;
