@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./RewardDistributionManager.sol";
+import "./RewardDistributionManagerV2.sol";
 import "./IVestingControllerERC721.sol";
 import "./IRandToken.sol";
 import "./IAddressRegistry.sol";
@@ -22,7 +22,7 @@ contract SafetyModuleERC20 is
     ERC20Upgradeable,
     PausableUpgradeable,
     AccessControlUpgradeable,
-    RewardDistributionManager
+    RewardDistributionManagerV2
 {
     event Staked(uint256 amount);
     event StakedOnTokenId(uint256 tokenId, uint256 amount);

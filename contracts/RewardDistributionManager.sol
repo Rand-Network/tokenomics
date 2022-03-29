@@ -81,7 +81,7 @@ contract RewardDistributionManager is Initializable, ContextUpgradeable {
         _;
     }
 
-    function claimableRewards(address _asset) public retuns(uint256) {
+    function claimableRewards(address _asset) public view returns (uint256) {
         return _earned(_asset, _msgSender());
     }
 
