@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
@@ -82,6 +82,7 @@ contract InvestorsNFT is
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;
@@ -102,6 +103,7 @@ contract InvestorsNFT is
 
     function mintInvestmentNFT(address to, uint256 tokenId)
         external
+        whenNotPaused
         onlyRole(MINTER_ROLE)
         returns (uint256)
     {
@@ -125,6 +127,7 @@ contract InvestorsNFT is
         public
         virtual
         override
+        whenNotPaused
         onlyRole(BURNER_ROLE)
     {
         require(
@@ -149,9 +152,7 @@ contract InvestorsNFT is
         ) = IVestingControllerERC721(REGISTRY.getAddress("VC"))
                 .getInvestmentInfoForNFT(tokenId);
 
-        bool isClaimedAll = rndTokenAmount - rndClaimedAmount == 0
-            ? true
-            : false;
+        bool isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
         require(
             isClaimedAll,
             "NFT: Transfer of token is prohibited until investment is totally claimed"
@@ -161,6 +162,7 @@ contract InvestorsNFT is
 
     function setBaseURI(string memory newURI)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         baseURI = newURI;
@@ -189,9 +191,7 @@ contract InvestorsNFT is
         ) = IVestingControllerERC721(REGISTRY.getAddress("VC"))
                 .getInvestmentInfoForNFT(tokenId);
 
-        bool isClaimedAll = rndTokenAmount - rndClaimedAmount == 0
-            ? true
-            : false;
+        bool isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
 
         return
             bytes(baseURIString).length > 0

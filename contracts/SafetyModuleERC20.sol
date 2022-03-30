@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./IVestingControllerERC721.sol";
 import "./IRandToken.sol";
 import "./IAddressRegistry.sol";
@@ -20,7 +20,8 @@ contract SafetyModuleERC20 is
     UUPSUpgradeable,
     ERC20Upgradeable,
     PausableUpgradeable,
-    AccessControlUpgradeable
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable
 {
     event Staked(uint256 amount);
     event StakedOnTokenId(uint256 tokenId, uint256 amount);
@@ -28,8 +29,6 @@ contract SafetyModuleERC20 is
     event RedeemStaked(address staker, address recipient, uint256 amount);
     event RegistryAddressUpdated(IAddressRegistry newAddress);
     event PeriodUpdated(string periodType, uint256 newAmount);
-
-    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // IVestingControllerERC721 public VC_TOKEN;
     // IRandToken public RND_TOKEN;
@@ -98,49 +97,26 @@ contract SafetyModuleERC20 is
             stakerCooldown[_msgSender()] + COOLDOWN_SECONDS + UNSTAKE_WINDOW
         ) {
             stakerCooldown[_msgSender()] = 0;
-            require(
-                block.timestamp -
-                    stakerCooldown[_msgSender()] +
-                    COOLDOWN_SECONDS <=
-                    UNSTAKE_WINDOW,
-                "SM: Unstake period finished, cooldown reset"
-            );
+            revert("SM: Unstake period finished, cooldown reset");
         }
         _;
     }
 
-    modifier amountChecking() {
-        /////// CAN BE DELETED IN FINAL /////////
-        uint256 balanceOfStaker = balanceOf(_msgSender());
-        uint256 vcBalanceOfStaker = onBehalf[_msgSender()][
-            REGISTRY.getAddress("VC")
-        ];
-        uint256 ownBalanceOfStaker = onBehalf[_msgSender()][_msgSender()];
-
-        require(
-            balanceOfStaker == vcBalanceOfStaker + ownBalanceOfStaker,
-            "SM: Unequal tokens minted and onBehalf amounts"
-        );
-        _;
-        /////// CAN BE DELETED IN FINAL /////////
-    }
-
-    function redeem(uint256 amount) public redeemable(amount) amountChecking {
+    function redeem(uint256 amount) public whenNotPaused redeemable(amount) {
         // Redeem without vesting investment
         _redeemOnRND(amount);
         emit RedeemStaked(_msgSender(), _msgSender(), amount);
     }
 
-    function redeem(uint256 tokenId, uint256 amount)
-        public
-        redeemable(amount)
-        amountChecking
-    {
+    function redeem(uint256 tokenId, uint256 amount) public redeemable(amount) {
         _redeemOnTokenId(tokenId, amount);
         emit RedeemStaked(_msgSender(), _msgSender(), amount);
     }
 
-    function _redeemOnTokenId(uint256 tokenId, uint256 amount) internal {
+    function _redeemOnTokenId(uint256 tokenId, uint256 amount)
+        internal
+        nonReentrant
+    {
         uint256 vcBalanceOfStaker = onBehalf[_msgSender()][
             REGISTRY.getAddress("VC")
         ];
@@ -165,28 +141,40 @@ contract SafetyModuleERC20 is
         );
 
         // Transfer tokens
-        IRandToken(REGISTRY.getAddress("RND")).transfer(address(_vc), amount);
+        require(
+            IRandToken(REGISTRY.getAddress("RND")).transfer(
+                address(_vc),
+                amount
+            ),
+            "SM: Unable to transfer redeemed tokens"
+        );
     }
 
-    function _redeemOnRND(uint256 amount) internal {
+    function _redeemOnRND(uint256 amount) internal nonReentrant {
         _burn(_msgSender(), amount);
         onBehalf[_msgSender()][_msgSender()] -= amount;
-        IRandToken(REGISTRY.getAddress("RND")).transfer(_msgSender(), amount);
+        require(
+            IRandToken(REGISTRY.getAddress("RND")).transfer(
+                _msgSender(),
+                amount
+            ),
+            "SM: Unable to transfer redeemed tokens"
+        );
     }
 
-    function stake(uint256 tokenId, uint256 amount) public {
+    function stake(uint256 tokenId, uint256 amount) public whenNotPaused {
         require(amount != 0, "SM: Stake amount cannot be zero");
         _stakeOnTokenId(tokenId, amount);
         emit StakedOnTokenId(tokenId, amount);
     }
 
-    function stake(uint256 amount) public {
+    function stake(uint256 amount) public whenNotPaused {
         require(amount != 0, "SM: Stake amount cannot be zero");
         _stakeOnRND(amount);
         emit Staked(amount);
     }
 
-    function _stakeOnRND(uint256 amount) internal {
+    function _stakeOnRND(uint256 amount) internal nonReentrant {
         IRandToken(REGISTRY.getAddress("RND")).approveAndTransfer(
             _msgSender(),
             address(this),
@@ -198,7 +186,10 @@ contract SafetyModuleERC20 is
         _mint(_msgSender(), amount);
     }
 
-    function _stakeOnTokenId(uint256 tokenId, uint256 amount) internal {
+    function _stakeOnTokenId(uint256 tokenId, uint256 amount)
+        internal
+        nonReentrant
+    {
         // Fetching address from registry
         address _vc = REGISTRY.getAddress("VC");
 
@@ -243,6 +234,7 @@ contract SafetyModuleERC20 is
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;
@@ -251,6 +243,7 @@ contract SafetyModuleERC20 is
 
     function updateCooldownPeriod(uint256 newPeriod)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         COOLDOWN_SECONDS = newPeriod;
@@ -259,6 +252,7 @@ contract SafetyModuleERC20 is
 
     function updateUnstakePeriod(uint256 newPeriod)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UNSTAKE_WINDOW = newPeriod;
@@ -267,6 +261,7 @@ contract SafetyModuleERC20 is
 
     function burn(address account, uint256 amount)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         _burn(account, amount);
@@ -279,23 +274,6 @@ contract SafetyModuleERC20 is
     function unpause() public onlyRole(PAUSER_ROLE) {
         _unpause();
     }
-
-    // function transfer(address to, uint256 amount)
-    //     public
-    //     pure
-    //     override
-    //     returns (bool)
-    // {
-    //     revert("SM: Cannot transfer staked tokens");
-    // }
-    //
-    // function transferFrom(
-    //     address from,
-    //     address to,
-    //     uint256 amount
-    // ) public pure override returns (bool) {
-    //     revert("SM: Cannot transfer staked tokens");
-    // }
 
     function _beforeTokenTransfer(
         address from,
