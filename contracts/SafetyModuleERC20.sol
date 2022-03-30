@@ -24,10 +24,18 @@ contract SafetyModuleERC20 is
     AccessControlUpgradeable,
     RewardDistributionManagerV2
 {
-    event Staked(uint256 amount);
-    event StakedOnTokenId(uint256 tokenId, uint256 amount);
-    event CooldownStaked(address staker);
-    event RedeemStaked(address staker, address recipient, uint256 amount);
+    event Staked(address indexed user, uint256 amount);
+    event StakedOnTokenId(
+        address indexed user,
+        uint256 indexed tokenId,
+        uint256 amount
+    );
+    event CooldownStaked(address indexed staker);
+    event RedeemStaked(
+        address indexed user,
+        address indexed recipient,
+        uint256 amount
+    );
     event RegistryAddressUpdated(IAddressRegistry newAddress);
     event PeriodUpdated(string periodType, uint256 newAmount);
 
@@ -40,7 +48,7 @@ contract SafetyModuleERC20 is
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    mapping(address => uint256) rewards;
+    mapping(address => uint256) rewardsToclaim;
     mapping(address => mapping(address => uint256)) public onBehalf;
     mapping(address => uint256) public stakerCooldown;
 
@@ -110,33 +118,13 @@ contract SafetyModuleERC20 is
         _;
     }
 
-    modifier amountChecking() {
-        /////// CAN BE DELETED IN FINAL /////////
-        uint256 balanceOfStaker = balanceOf(_msgSender());
-        uint256 vcBalanceOfStaker = onBehalf[_msgSender()][
-            REGISTRY.getAddress("VC")
-        ];
-        uint256 ownBalanceOfStaker = onBehalf[_msgSender()][_msgSender()];
-
-        require(
-            balanceOfStaker == vcBalanceOfStaker + ownBalanceOfStaker,
-            "SM: Unequal tokens minted and onBehalf amounts"
-        );
-        _;
-        /////// CAN BE DELETED IN FINAL /////////
-    }
-
-    function redeem(uint256 amount) public redeemable(amount) amountChecking {
+    function redeem(uint256 amount) public redeemable(amount) {
         // Redeem without vesting investment
         _redeemOnRND(amount);
         emit RedeemStaked(_msgSender(), _msgSender(), amount);
     }
 
-    function redeem(uint256 tokenId, uint256 amount)
-        public
-        redeemable(amount)
-        amountChecking
-    {
+    function redeem(uint256 tokenId, uint256 amount) public redeemable(amount) {
         _redeemOnTokenId(tokenId, amount);
         emit RedeemStaked(_msgSender(), _msgSender(), amount);
     }
@@ -177,14 +165,32 @@ contract SafetyModuleERC20 is
 
     function stake(uint256 tokenId, uint256 amount) public {
         require(amount != 0, "SM: Stake amount cannot be zero");
+        uint256 rewards = _updateUserAssetState(
+            _msgSender(),
+            address(this),
+            balanceOf(_msgSender()),
+            totalSupply()
+        );
+        if (rewards != 0) {
+            rewardsToclaim[_msgSender()] += rewards;
+        }
         _stakeOnTokenId(tokenId, amount);
-        emit StakedOnTokenId(tokenId, amount);
+        emit StakedOnTokenId(_msgSender(), tokenId, amount);
     }
 
     function stake(uint256 amount) public {
         require(amount != 0, "SM: Stake amount cannot be zero");
+        uint256 rewards = _updateUserAssetState(
+            _msgSender(),
+            address(this),
+            balanceOf(_msgSender()),
+            totalSupply()
+        );
+        if (rewards != 0) {
+            rewardsToclaim[_msgSender()] += rewards;
+        }
         _stakeOnRND(amount);
-        emit Staked(amount);
+        emit Staked(_msgSender(), amount);
     }
 
     function _stakeOnRND(uint256 amount) internal {
