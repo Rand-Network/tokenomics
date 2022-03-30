@@ -206,7 +206,8 @@ contract SafetyModuleERC20 is
             uint256 rndStakedAmount
         ) = IVestingControllerERC721(_vc).getInvestmentInfo(tokenId);
         require(
-            rndTokenAmount - rndClaimedAmount - rndStakedAmount >= amount,
+            //rndTokenAmount - rndClaimedAmount - rndStakedAmount >= amount,
+            rndTokenAmount >= rndClaimedAmount + rndStakedAmount + amount,
             "SM: Not enough stakable amount on VC tokenId"
         );
 
