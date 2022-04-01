@@ -21,6 +21,7 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
     }
     // RND and RND/TOKEN BPT will be the two asset we manage
     mapping(address => AssetData) public assets;
+    address[] trackedAssets;
     IERC20Upgradeable rewardToken;
 
     // EMISSION_MANAGER will release funds for distribution
@@ -36,6 +37,7 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         EMISSION_MANAGER = _emissionManagerAddress;
     }
 
+    // [] implement trackedAssets addition - rethink asset configuration
     function updateAsset(
         address _asset,
         uint256 _emission,
