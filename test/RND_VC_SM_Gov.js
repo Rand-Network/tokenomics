@@ -9,13 +9,7 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require('@openzeppelin/test-helpers');
 const { executeContractCallWithSigners } = require("@gnosis.pm/safe-contracts");
-const {
-  deploy_testnet,
-  _RNDdeployParams,
-  _VCdeployParams,
-  _SMdeployParams,
-  _NFTdeployParams,
-  _GovDeployParams, } = require("../scripts/deploy_testnet_task.js");
+const { deploy_testnet } = require("../scripts/deploy_testnet_task.js");
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -23,61 +17,66 @@ function sleep(ms) {
 
 describe("Rand Token with Vesting Controller", function () {
 
-  // // Deployment params for initializer
-  // const RNDdeployParams = {
-  //   _name: "Token ERC20",
-  //   _symbol: "tRND",
-  //   _initialSupply: BigNumber.from(200e6),
-  //   _registry: ""
-  // };
+  // Deployment params for initializer
+  const _RNDdeployParams = {
+    _name: "Token ERC20",
+    _symbol: "tRND",
+    _initialSupply: BigNumber.from(200e6),
+    _registry: ""
+  };
 
-  // const VCdeployParams = {
-  //   _name: "Vesting Controller ERC721",
-  //   _symbol: "tvRND",
-  //   _periodSeconds: 1,
-  //   _registry: ""
-  // };
+  const _VCdeployParams = {
+    _name: "Vesting Controller ERC721",
+    _symbol: "tvRND",
+    _periodSeconds: 1,
+    _registry: ""
+  };
 
-  // const SMdeployParams = {
-  //   _name: "Safety Module ERC20",
-  //   _symbol: "tsRND",
-  //   _cooldown_seconds: 120, // 604800 7 days
-  //   _unstake_window: 240,
-  //   _registry: ""
-  // };
+  const _SMdeployParams = {
+    _name: "Safety Module ERC20",
+    _symbol: "tsRND",
+    _cooldown_seconds: 120, // 604800 7 days
+    _unstake_window: 240,
+    _registry: ""
+  };
 
-  // const NFTdeployParams = {
-  //   _name: "Rand Early Investors NFT",
-  //   _symbol: "RandNFT",
-  //   _registry: ""
-  // };
+  const _NFTdeployParams = {
+    _name: "Rand Early Investors NFT",
+    _symbol: "RandNFT",
+    _registry: ""
+  };
 
-  // const GovDeployParams = {
-  //   _name: "Rand Governance Aggregator",
-  //   _symbol: "gRND",
-  //   _registry: ""
-  // };
-
-
+  const _GovDeployParams = {
+    _name: "Rand Governance Aggregator",
+    _symbol: "gRND",
+    _registry: ""
+  };
 
   before(async function () {
 
     let owner;
     let alice;
     let backend;
-    let RandToken;
-    let RandVC;
-    let RandSM;
-    let RandNFT;
-    let RandGov;
-    let RandRegistry;
 
-    RandToken, RandVC, RandSM, RandNFT, RandGov, RandRegistry = await deploy_testnet();
+    deployed = await deploy_testnet(
+      initialize = false, verify = false,
+      RNDdeployParams = _RNDdeployParams,
+      VCdeployParams = _VCdeployParams,
+      SMdeployParams = _SMdeployParams,
+      NFTdeployParams = _NFTdeployParams,
+      GovDeployParams = _GovDeployParams);
+
+    let RandToken = deployed.RandToken,
+      RandVC = deployed.RandVC,
+      RandSM = deployed.RandSM,
+      RandNFT = deployed.RandNFT,
+      RandGov = deployed.RandGov,
+      RandRegistry = deployed.RandRegistry;
 
     [owner, alice, backend] = await ethers.getSigners();
-    console.log(owner.address);
-    console.log(alice.address);
-    console.log(backend.address);
+    // console.log(owner.address);
+    // console.log(alice.address);
+    // console.log(backend.address);
 
   });
 
@@ -270,6 +269,20 @@ describe("Rand Token with Vesting Controller", function () {
   });
 
   describe("SM functionality", function () {
+    before(async function () {
+      // Deploying Mock BPT token contract
+      let RandReserve = deployed.RandReserve;
+      MockToken = await ethers.getContractFactory("TestBalancerPoolToken");
+      BPT = await upgrades.deployProxy(
+        MockToken, [],
+        { kind: "uups" });
+      console.log('Deployed BTP Token proxy at:', BPT.address);
+      txRandBPTToken = BPT.deployTransaction;
+      await txRandBPTToken.wait(numConfirmation);
+
+      // Initialize
+
+    });
     it("Staking funds of RND", async function () {
     });
     it("Staking funds of VC RND", async function () {
@@ -353,7 +366,22 @@ describe("Rand Token with Vesting Controller", function () {
     let aliceTotalBalance;
 
     before(async function () {
-      RandToken, RandVC, RandSM, RandNFT, RandGov, RandRegistry = await deploy_testnet();
+      deployed = await deploy_testnet(
+        initialize = false, verify = false,
+        RNDdeployParams = _RNDdeployParams,
+        VCdeployParams = _VCdeployParams,
+        SMdeployParams = _SMdeployParams,
+        NFTdeployParams = _NFTdeployParams,
+        GovDeployParams = _GovDeployParams);
+
+      let RandToken = deployed.RandToken,
+        RandVC = deployed.RandVC,
+        RandSM = deployed.RandSM,
+        RandNFT = deployed.RandNFT,
+        RandGov = deployed.RandGov,
+        RandRegistry = deployed.RandRegistry;
+
+      //RandToken, RandVC, RandSM, RandNFT, RandGov, RandRegistry = await deploy_testnet();
       allowanceAmount = ethers.utils.parseEther('1000');
       tx = await RandToken.increaseAllowance(RandVC.address, allowanceAmount);
       // Mint a VC Investment - 200 RND total
@@ -391,11 +419,11 @@ describe("Rand Token with Vesting Controller", function () {
       aliceTotalBalance = ethers.utils.parseEther('300');
     });
     it("Checking balances", async function () {
-      console.log("alice gov balanceOf:", await RandGov.balanceOf(alice.address));
+      //console.log("alice gov balanceOf:", await RandGov.balanceOf(alice.address));
       expect(await RandGov.balanceOf(alice.address)).to.equal(aliceTotalBalance);
     });
     it("Checking totalSupply", async function () {
-      console.log("gov totalSupply:", await RandGov.totalSupply());
+      //console.log("gov totalSupply:", await RandGov.totalSupply());
       expect(await RandGov.totalSupply()).to.equal(ethers.utils.parseEther(_RNDdeployParams._initialSupply.toString()));
     });
   });
