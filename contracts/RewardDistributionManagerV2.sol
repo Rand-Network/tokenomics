@@ -28,8 +28,6 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
     address public EMISSION_MANAGER;
     uint256 public constant PRECISION = 18;
 
-    //constructor() {}
-
     function __RewardDistributionManager_init(address _emissionManagerAddress)
         internal
         onlyInitializing
@@ -37,15 +35,20 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         EMISSION_MANAGER = _emissionManagerAddress;
     }
 
-    // [] implement trackedAssets addition - rethink asset configuration
-    function updateAsset(
+    function _updateAsset(
         address _asset,
         uint256 _emission,
         uint256 _totalStaked
-    ) external {
-        AssetData storage asset = assets[_asset];
+    ) internal {
+        // Check if _asset already exists, add to trackedAssets[] if not
+        bool isExistsIntrackedAssets = false;
+        for (uint256 i; i < trackedAssets.length; i++) {
+            if (trackedAssets[i] == _asset) isExistsIntrackedAssets = true;
+        }
+        if (!isExistsIntrackedAssets) trackedAssets.push(_asset);
+        // Update asset configuration
         _updateAssetState(_asset, _totalStaked);
-        asset.emissionRate = _emission;
+        assets[_asset].emissionRate = _emission;
         emit AssetUpdated(_asset, _emission);
     }
 
