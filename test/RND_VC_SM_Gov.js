@@ -270,7 +270,10 @@ describe("Rand Token with Vesting Controller", function () {
 
   describe("SM functionality", function () {
     before(async function () {
-      // Deploying Mock BPT token contract
+      //
+      //    THIS PART IS FOR BPT Token testing, can be tested without BPT with the base implementation of single RND staking
+      //
+      // Deploying Mock BPT token contract, [owner] got the minted the supply
       let RandReserve = deployed.RandReserve;
       MockToken = await ethers.getContractFactory("TestBalancerPoolToken");
       BPT = await upgrades.deployProxy(
@@ -279,13 +282,66 @@ describe("Rand Token with Vesting Controller", function () {
       console.log('Deployed BTP Token proxy at:', BPT.address);
       txRandBPTToken = BPT.deployTransaction;
       await txRandBPTToken.wait(numConfirmation);
+      // Transfer [alice] some tokens
+      await BPT.transfer(alice.address, ethers.utils.parseEther("100"));
+      console.log("Alice BPT balance:", await BPT.balanceOf(alice.address));
 
-      // Initialize
+      await RandToken.transfer(alice.address, ethers.utils.parseEther("100"));
+      console.log("Alice RND balance:", await RandToken.balanceOf(alice.address));
 
+      // Init SM _updateAsset
+      emissionPerSec = 1000;
+      const update_tx = await RandSM.updateAsset(
+        await RandRegistry.getAddress("SM"),
+        emissionPerSec,
+        ethers.utils.parseEther("1")
+      );
+
+      // Tenderly init
+      //const SM = await hre.ethers.getContractFactory("SafetyModuleERC20");
+      // await hre.tenderly.persistArtifacts({
+      //   name: "SafetyModuleERC20",
+      //   address: RandSM.address
+      // });
+
+      // await hre.tenderly.push({
+      //   name: "SafetyModuleERC20",
+      //   address: RandSM.address,
+      // });
+
+      tokenId = await RandVC.tokenOfOwnerByIndex(alice.address, 0);
+      claimableOnTokenId = await RandVC.connect(alice).getClaimableTokens(tokenId);
+      // console.log("Alice VC RND info:", await RandVC.connect(alice).getInvestmentInfo(tokenId));
+      // console.log("sRND total supply:", await RandSM.totalSupply());
+      // console.log("SM RND balance:", await RandToken.balanceOf(RandSM.address));
+      // console.log("Alice RND balance:", await RandToken.balanceOf(alice.address));
+      // console.log("Alice sRND balance:", await RandSM.balanceOf(alice.address));
+      stakeAmount = ethers.utils.parseEther("1");
+      mine_periods = 100;
     });
     it("Staking funds of RND", async function () {
+      //console.log(await RandSM.assets(RandSM.address));
+      stake_tx_1 = await RandSM.connect(alice)["stake(uint256)"](stakeAmount);
+      //console.log(await RandSM.assets(RandSM.address));
+      //console.log("Alice sRND balance:", await RandSM.balanceOf(alice.address));
+      expect(await RandSM.balanceOf(alice.address)).to.equal(stakeAmount);
+      for (i = 0; i < mine_periods; i++) {
+        await hre.network.provider.send("evm_mine");
+      }
     });
     it("Staking funds of VC RND", async function () {
+      stake_tx_3 = await RandSM.connect(alice)["stake(uint256,uint256)"](tokenId, claimableOnTokenId);
+      // console.log("Alice sRND balance:", await RandSM.balanceOf(alice.address));
+      // console.log("SM RND balance:", await RandToken.balanceOf(RandSM.address));
+      // console.log(await RandSM.assets(RandSM.address));
+      for (i = 0; i < mine_periods - 1; i++) {
+        await hre.network.provider.send("evm_mine");
+      }
+      //console.log("Alice Total SM rewards", await RandSM.calculateTotalRewards(alice.address));
+      //console.log("Alice VC RND info:", await RandVC.connect(alice).getInvestmentInfo(tokenId));
+    });
+    it("Checking reward balances", async function () {
+      expect(await RandSM.calculateTotalRewards(alice.address)).to.equal(mine_periods * 2 * emissionPerSec);
     });
     it("Redeeming tokens of RND", async function () {
     });
@@ -428,11 +484,10 @@ describe("Rand Token with Vesting Controller", function () {
     });
   });
 
-  // describe("Upgrading deployment of RND-ERC20 and VC-ERC721", function () {
-  //   it("Upgrading RND", async function () { });
-  //   it("Upgrading VC", async function () { });
-  //   it("Upgrading SM", async function () { });
-  //   it("Upgrading Registry", async function () { });
-  // });
-
+  describe.skip("Upgrading deployment of RND-ERC20 and VC-ERC721", function () {
+    it("Upgrading RND", async function () { });
+    it("Upgrading VC", async function () { });
+    it("Upgrading SM", async function () { });
+    it("Upgrading Registry", async function () { });
+  });
 });

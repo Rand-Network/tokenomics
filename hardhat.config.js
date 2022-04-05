@@ -4,6 +4,7 @@ require("@openzeppelin/hardhat-defender");
 require('@nomiclabs/hardhat-etherscan');
 require("hardhat-gas-reporter");
 require("@atixlabs/hardhat-time-n-mine");
+require("@tenderly/hardhat-tenderly");
 require("solidity-coverage");
 require('dotenv').config();
 const { ContractFactory } = require("ethers");
@@ -309,5 +310,9 @@ module.exports = {
   },
   mocha: {
     timeout: 5 * 60 * 1e3
+  },
+  tenderly: {
+    username: process.env.TENDERLY_USERNAME,
+    project: process.env.TENDERLY_PROJECT
   }
 };

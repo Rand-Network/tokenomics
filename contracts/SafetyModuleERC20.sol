@@ -54,6 +54,7 @@ contract SafetyModuleERC20 is
     IAddressRegistry public REGISTRY;
 
     IERC20Upgradeable public REWARD_TOKEN;
+    IERC20Upgradeable public POOL_TOKEN;
     address public REWARDS_VAULT;
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -89,6 +90,14 @@ contract SafetyModuleERC20 is
 
         COOLDOWN_SECONDS = _cooldown_seconds;
         UNSTAKE_WINDOW = _unstake_window;
+    }
+
+    function updateAsset(
+        address _asset,
+        uint256 _emission,
+        uint256 _totalStaked
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _updateAsset(_asset, _emission, _totalStaked);
     }
 
     function cooldown() public {
@@ -216,13 +225,26 @@ contract SafetyModuleERC20 is
         emit Staked(_msgSender(), amount);
     }
 
+    function _stakeOnPoolTokens(uint256 amount) internal {
+        // Requires approve from user
+        IERC20Upgradeable(REGISTRY.getAddress("BPT")).transferFrom(
+            _msgSender(),
+            address(this),
+            amount
+        );
+        // SM registers staked amount in SM storage
+        onBehalf[_msgSender()][_msgSender()] += amount;
+        // SM mints sRND tokens for the user
+        _mint(_msgSender(), amount);
+    }
+
     function _stakeOnRND(uint256 amount) internal {
         IRandToken(REGISTRY.getAddress("RND")).approveAndTransfer(
             _msgSender(),
             address(this),
             amount
         );
-        // SM registers staked amount in SM storage and VC storage
+        // SM registers staked amount in SM storage
         onBehalf[_msgSender()][_msgSender()] += amount;
         // SM mints sRND tokens for the user
         _mint(_msgSender(), amount);
@@ -273,14 +295,12 @@ contract SafetyModuleERC20 is
         view
         returns (uint256)
     {
-        uint256 totalRewards;
-        for (uint256 i; i < trackedAssets.length; i++) {
-            totalRewards += _calculateRewards(
-                balanceOf(_msgSender()),
-                assets[trackedAssets[i]].assetIndex,
-                assets[trackedAssets[i]].userIndex[_msgSender()]
-            );
-        }
+        uint256 totalRewards = _getUnclaimedRewards(
+            _user,
+            balanceOf(_user),
+            totalSupply()
+        );
+
         return totalRewards + rewardsToclaim[_user];
     }
 

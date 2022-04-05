@@ -21,7 +21,7 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
     }
     // RND and RND/TOKEN BPT will be the two asset we manage
     mapping(address => AssetData) public assets;
-    address[] trackedAssets;
+    address[] public trackedAssets;
     IERC20Upgradeable rewardToken;
 
     // EMISSION_MANAGER will release funds for distribution
@@ -125,6 +125,7 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
 
         // Return the increase idx number by taking the emission for the spent time and divide with the total balance
         uint256 timedelta = block.timestamp - _lastUpdateTimestamp;
+
         return
             ((_emission * timedelta * (10**PRECISION)) / _totalBalance) +
             _currentIdx;
@@ -136,5 +137,29 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         uint256 _userIdx
     ) internal pure returns (uint256) {
         return (_userBalance * (_assetIdx - _userIdx)) / (10**(PRECISION));
+    }
+
+    function _getUnclaimedRewards(
+        address _user,
+        uint256 _userStake,
+        uint256 _totalSupply
+    ) internal view returns (uint256) {
+        uint256 accruedRewards = 0;
+
+        for (uint256 i; i < trackedAssets.length; i++) {
+            uint256 assetIndex = _newAssetIndex(
+                assets[trackedAssets[i]].assetIndex,
+                assets[trackedAssets[i]].emissionRate,
+                assets[trackedAssets[i]].lastUpdateTimestamp,
+                _totalSupply
+            );
+
+            accruedRewards += _calculateRewards(
+                _userStake,
+                assetIndex,
+                assets[trackedAssets[i]].userIndex[_user]
+            );
+        }
+        return accruedRewards;
     }
 }
