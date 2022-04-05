@@ -17,5 +17,5 @@ artifacts
 bin
 
 .DS_Store
-deployments/development_31337/SafetyModuleERC20.json
+deployments/
 tenderly.yaml
