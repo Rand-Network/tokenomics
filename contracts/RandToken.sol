@@ -56,11 +56,16 @@ contract RandToken is
         _mint(_multisigVault, _initialSupply * 10**decimals());
     }
 
+    /// @notice Function to allow Safety Module to move funds without multiple approve and transfer steps
+    /// @dev Aims to allow simple UX
+    /// @param owner is the address who's tokens are approved and transferred
+    /// @param recipient is the address where to transfer the funds
+    /// @param amount is the amount of transfer
     function approveAndTransfer(
         address owner,
         address recipient,
         uint256 amount
-    ) external {
+    ) external whenNotPaused {
         require(
             REGISTRY.getAddress("SM") == _msgSender(),
             "RND: Not accessible by msg.sender"
@@ -75,6 +80,7 @@ contract RandToken is
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;
@@ -89,12 +95,17 @@ contract RandToken is
         _unpause();
     }
 
-    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
+    function mint(address to, uint256 amount)
+        public
+        whenNotPaused
+        onlyRole(MINTER_ROLE)
+    {
         _mint(to, amount);
     }
 
     function burn(address account, uint256 amount)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         _burn(account, amount);

@@ -6,6 +6,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
+/// @title Rand.network RewardDistributionManagerV2
+/// @author @adradr - Adrian Lenard
+/// @notice Manages the rewards of staked tokens
+/// @dev Inherited by the SafetyModuleERC20
 contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
     event AssetUpdated(address asset, uint256 newEmission);
     event AssetIndexUpdated(address asset, uint256 index);
@@ -24,17 +28,13 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
     address[] public trackedAssets;
     IERC20Upgradeable rewardToken;
 
-    // EMISSION_MANAGER will release funds for distribution
-    address public EMISSION_MANAGER;
     uint256 public constant PRECISION = 18;
 
-    function __RewardDistributionManager_init(address _emissionManagerAddress)
-        internal
-        onlyInitializing
-    {
-        EMISSION_MANAGER = _emissionManagerAddress;
-    }
-
+    /// @notice Allow update of the asset emissions
+    /// @dev Need to expose on inherited contract with access control (preferably controlled by multisig)
+    /// @param _asset address of the asset which emission is controlled
+    /// @param _emission the emission rate in seconds
+    /// @param _totalStaked the total staked assets at the moment of update
     function _updateAsset(
         address _asset,
         uint256 _emission,
@@ -52,6 +52,11 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         emit AssetUpdated(_asset, _emission);
     }
 
+    /// @notice Updates assets state indices
+    /// @dev Needs implementation in staking logic in SM
+    /// @param _asset address of the asset which is updated
+    /// @param _totalStaked the total staked assets at the moment of update
+    /// @return newIdx the updated index state of the asset
     function _updateAssetState(address _asset, uint256 _totalStaked)
         internal
         returns (uint256)
@@ -83,6 +88,13 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         return newIdx;
     }
 
+    /// @notice Updates user's index for an asset
+    /// @dev Needs implementation in staking logic in SM
+    /// @param _user address of the user
+    /// @param _asset address of the asset which is updated
+    /// @param _userStake the total staked assets of the user at the moment of update
+    /// @param _totalStaked the total staked assets at the moment of update
+    /// @return accruedRewards which is total accumulated rewards for the user at the update
     function _updateUserAssetState(
         address _user,
         address _asset,
@@ -112,6 +124,13 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         return accruedRewards;
     }
 
+    /// @notice Calculates a new index for the asset
+    /// @dev Used in the `_updateAssetState` function
+    /// @param _currentIdx current index of the asset
+    /// @param _emission current emission rate of the asset
+    /// @param _lastUpdateTimestamp last update timestamp of the asset
+    /// @param _totalBalance total amount of tokens staked
+    /// @return the calculated new index
     function _newAssetIndex(
         uint256 _currentIdx,
         uint256 _emission,
@@ -131,6 +150,12 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
             _currentIdx;
     }
 
+    /// @notice Calculates rewards for a user based on indices
+    /// @dev Explain to a developer any extra details
+    /// @param _userBalance the balance of the user
+    /// @param _assetIdx index state of the asset
+    /// @param _userIdx index state of the user
+    /// @return the calculated user rewards
     function _calculateRewards(
         uint256 _userBalance,
         uint256 _assetIdx,
@@ -139,6 +164,12 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         return (_userBalance * (_assetIdx - _userIdx)) / (10**(PRECISION));
     }
 
+    /// @notice Calculates unclaimed rewards for a user over all tracked assets
+    /// @dev Needs adoption in the inherting contract
+    /// @param _user address of the user
+    /// @param _userStake total balance staked of the user
+    /// @param _totalSupply total supply of asset
+    /// @return accruedRewards which is total of all rewards over every asset
     function _getUnclaimedRewards(
         address _user,
         uint256 _userStake,

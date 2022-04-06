@@ -13,11 +13,6 @@ import "./IVestingControllerERC721.sol";
 import "./IRandToken.sol";
 import "./IAddressRegistry.sol";
 
-// [] REWARDS_VAULT implementation - how to handle rewards, where are they accumulated?
-// [x] rewards avaiable to claim are going to be RND only? What does BPT will generate?
-//     - rewards are going be only RND
-// [] setting the REWARD_TOKEN should be done with Registry or Init param
-
 /// @title Rand.network ERC20 Safety Module
 /// @author @adradr - Adrian Lenard
 /// @notice Customized implementation of the OpenZeppelin ERC20 standard to be used for the Safety Module
@@ -89,23 +84,32 @@ contract SafetyModuleERC20 is
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
 
-        __RewardDistributionManager_init(_multisigVault);
-
         COOLDOWN_SECONDS = _cooldown_seconds;
         UNSTAKE_WINDOW = _unstake_window;
         REWARDS_VAULT = _reserve;
         REWARD_TOKEN = IRandToken(_reward);
     }
 
+    /// @notice Exposed function to update an asset with new emission rate
+    /// @dev Calls the _updateAsset of RewardDistributionManager
+    /// @param _asset is the address of the asset to update
+    /// @param _emission is the rate of emission in seconds to update to
+    /// @param _totalStaked is total amount of stake for the asset
     function updateAsset(
         address _asset,
         uint256 _emission,
         uint256 _totalStaked
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         _updateAsset(_asset, _emission, _totalStaked);
     }
 
-    function cooldown() public {
+    ////////////////////////////////
+    // Reedeem staked asset
+    ////////////////////////////////
+
+    /// @notice Triggers cooldown period for the caller
+    /// @dev Check the actial COOLDOWN_PERIOD for lenght in seconds
+    function cooldown() public whenNotPaused {
         require(
             balanceOf(_msgSender()) > 0,
             "SM: No staked balance to cooldown"
@@ -142,7 +146,10 @@ contract SafetyModuleERC20 is
         _;
     }
 
-    function redeem(uint256 amount) public redeemable(amount) {
+    /// @notice Redeems the staked token without vesting, updates rewards and transfers funds
+    /// @dev Only used for non-vesting token redemption, needs to wait cooldown
+    /// @param amount is the uint256 amount to redeem
+    function redeem(uint256 amount) public whenNotPaused redeemable(amount) {
         require(amount != 0, "SM: Redeem amount cannot be zero");
 
         uint256 balanceOfMsgSender = balanceOf(_msgSender());
@@ -153,7 +160,15 @@ contract SafetyModuleERC20 is
         emit RedeemStaked(_msgSender(), _msgSender(), amount);
     }
 
-    function redeem(uint256 tokenId, uint256 amount) public redeemable(amount) {
+    /// @notice Redeems the staked token with vesting, updates rewards and transfers funds
+    /// @dev Only used for vesting token redemption, needs to wait cooldown
+    /// @param tokenId is the id of the vesting token to redeem
+    /// @param amount is the uint256 amount to redeem
+    function redeem(uint256 tokenId, uint256 amount)
+        public
+        whenNotPaused
+        redeemable(amount)
+    {
         require(amount != 0, "SM: Redeem amount cannot be zero");
 
         uint256 balanceOfMsgSender = balanceOf(_msgSender());
@@ -164,6 +179,10 @@ contract SafetyModuleERC20 is
         emit RedeemStaked(_msgSender(), _msgSender(), amount);
     }
 
+    /// @notice Internal function to handle the vesting token based stake redemption
+    /// @dev Interacts with the vesting controller
+    /// @param tokenId is the id of the vesting token to redeem
+    /// @param amount is the uint256 amount to redeem
     function _redeemOnTokenId(uint256 tokenId, uint256 amount) internal {
         // Fetching address from registry
         address _vc = REGISTRY.getAddress("VC");
@@ -191,6 +210,8 @@ contract SafetyModuleERC20 is
         IRandToken(REGISTRY.getAddress("RND")).transfer(address(_vc), amount);
     }
 
+    /// @notice Internal function to handle the non-vesting token based stake redemption
+    /// @param amount is the uint256 amount to redeem
     function _redeemOnRND(uint256 amount) internal {
         _burn(_msgSender(), amount);
         onBehalf[_msgSender()][_msgSender()] -= amount;
@@ -200,7 +221,15 @@ contract SafetyModuleERC20 is
         IRandToken(REGISTRY.getAddress("RND")).transfer(_msgSender(), amount);
     }
 
-    function stake(uint256 tokenId, uint256 amount) public {
+    ////////////////////////////////
+    // Stake asset
+    ////////////////////////////////
+
+    /// @notice Enables staking for vesting investors
+    /// @dev Interacts with the vesting controller
+    /// @param tokenId is the id of the vesting token to stake
+    /// @param amount is the uint256 amount to stake
+    function stake(uint256 tokenId, uint256 amount) public whenNotPaused {
         require(amount != 0, "SM: Stake amount cannot be zero");
         uint256 rewards = _updateUserAssetState(
             _msgSender(),
@@ -215,7 +244,9 @@ contract SafetyModuleERC20 is
         emit StakedOnTokenId(_msgSender(), tokenId, amount);
     }
 
-    function stake(uint256 amount) public {
+    /// @notice Enables staking for non-vesting investors
+    /// @param amount is the uint256 amount to stake
+    function stake(uint256 amount) public whenNotPaused {
         require(amount != 0, "SM: Stake amount cannot be zero");
         uint256 rewards = _updateUserAssetState(
             _msgSender(),
@@ -230,6 +261,8 @@ contract SafetyModuleERC20 is
         emit Staked(_msgSender(), amount);
     }
 
+    /// @notice Enables staking for AMM pool tokens
+    /// @param amount is the uint256 amount to stake
     function _stakeOnPoolTokens(uint256 amount) internal {
         // Requires approve from user
         IERC20Upgradeable(REGISTRY.getAddress("BPT")).transferFrom(
@@ -243,6 +276,8 @@ contract SafetyModuleERC20 is
         _mint(_msgSender(), amount);
     }
 
+    /// @notice Internal function that handles staking for non-vesting investors
+    /// @param amount is the uint256 amount to stake
     function _stakeOnRND(uint256 amount) internal {
         IRandToken(REGISTRY.getAddress("RND")).approveAndTransfer(
             _msgSender(),
@@ -255,6 +290,10 @@ contract SafetyModuleERC20 is
         _mint(_msgSender(), amount);
     }
 
+    /// @notice Internal function that handles staking for vesting investors
+    /// @dev Interacts with the vesting controller
+    /// @param tokenId is the id of the vesting token to stake
+    /// @param amount is the uint256 amount to stake
     function _stakeOnTokenId(uint256 tokenId, uint256 amount) internal {
         // Fetching address from registry
         address _vc = REGISTRY.getAddress("VC");
@@ -295,33 +334,45 @@ contract SafetyModuleERC20 is
         _mint(_msgSender(), amount);
     }
 
-    function calculateTotalRewards(address _user)
-        public
-        view
-        returns (uint256)
-    {
+    ////////////////////////////////
+    // Reward functions
+    ////////////////////////////////
+
+    /// @notice Calculates the total rewards for a user
+    /// @dev Uses RewardDistributionManager `_getUnclaimedRewards`
+    /// @param user address of the user
+    /// @return total claimable rewards for the user
+    function calculateTotalRewards(address user) public view returns (uint256) {
         uint256 totalRewards = _getUnclaimedRewards(
-            _user,
-            balanceOf(_user),
+            user,
+            balanceOf(user),
             totalSupply()
         );
 
-        return totalRewards + rewardsToclaim[_user];
+        return totalRewards + rewardsToclaim[user];
     }
 
-    function claimRewards(uint256 _amount) public {
+    /// @notice Claims the rewards for a user
+    /// @dev Uses `_updateUnclaimedRewards`, transfers rewards
+    /// @param amount amount of reward to claim
+    function claimRewards(uint256 amount) public whenNotPaused {
         uint256 totalRewards = _updateUnclaimedRewards(
             _msgSender(),
             balanceOf(_msgSender()),
             false
         );
-        rewardsToclaim[_msgSender()] = totalRewards - _amount;
+        rewardsToclaim[_msgSender()] = totalRewards - amount;
 
-        REWARD_TOKEN.approveAndTransfer(REWARDS_VAULT, _msgSender(), _amount);
+        REWARD_TOKEN.approveAndTransfer(REWARDS_VAULT, _msgSender(), amount);
 
-        emit RewardsClaimed(_msgSender(), _amount);
+        emit RewardsClaimed(_msgSender(), amount);
     }
 
+    /// @notice Updates unclaimed rewards of a suer based on his stake
+    /// @param _user is the address of the user
+    /// @param _userStake is the total staked balance of user
+    /// @param _update if to update the `rewardsToclaim` mapping
+    /// @return totalRewards of the user
     function _updateUnclaimedRewards(
         address _user,
         uint256 _userStake,
@@ -346,11 +397,16 @@ contract SafetyModuleERC20 is
         return totalRewards;
     }
 
+    ////////////////////////////////
+    // Util functions
+    ////////////////////////////////
+
     /// @notice Function to let Rand to update the address of the Safety Module
     /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;
@@ -359,6 +415,7 @@ contract SafetyModuleERC20 is
 
     function updateCooldownPeriod(uint256 newPeriod)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         COOLDOWN_SECONDS = newPeriod;
@@ -367,12 +424,16 @@ contract SafetyModuleERC20 is
 
     function updateUnstakePeriod(uint256 newPeriod)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UNSTAKE_WINDOW = newPeriod;
         emit PeriodUpdated("Unstake", newPeriod);
     }
 
+    ////////////////////////////////
+    // Import related functions
+    ////////////////////////////////
     function burn(address account, uint256 amount)
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -396,6 +457,9 @@ contract SafetyModuleERC20 is
         super._beforeTokenTransfer(from, to, amount);
     }
 
+    /// @notice Internal _transfer of the SM token
+    /// @dev It is blocked for all address other than this contract
+    /// @inheritdoc	ERC20Upgradeable
     function _transfer(
         address sender,
         address recipient,

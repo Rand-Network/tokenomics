@@ -84,7 +84,6 @@ contract VestingControllerERC721 is
     /// @param _erc721_symbol Short symbol like `vRND`
     /// @param _periodSeconds Amount of seconds to set 1 period to like 60*60*24 for 1 day
     /// @param _registry is the address of address registry
-
     function initialize(
         string calldata _erc721_name,
         string calldata _erc721_symbol,
@@ -204,6 +203,7 @@ contract VestingControllerERC721 is
     /// @param amount is the amount of vested tokens to claim in the process
     function claimTokens(uint256 tokenId, uint256 amount)
         public
+        whenNotPaused
         onlyInvestorOrRand(tokenId)
     {
         address recipient = ownerOf(tokenId);
@@ -272,7 +272,7 @@ contract VestingControllerERC721 is
         uint256 vestingPeriod,
         uint256 vestingStartTime,
         uint256 cliffPeriod
-    ) public onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    ) public whenNotPaused onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
         // Minting vesting investment inside VC
         tokenId = _mintNewInvestment(
             recipient,
@@ -300,7 +300,7 @@ contract VestingControllerERC721 is
         uint256 vestingStartTime,
         uint256 cliffPeriod,
         uint256 nftTokenId
-    ) public onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    ) public whenNotPaused onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
         // Minting vesting investment inside VC
         tokenId = _mintNewInvestment(
             recipient,
@@ -374,6 +374,7 @@ contract VestingControllerERC721 is
     /// @param rndTokenAmount is the amount of the total investment
     function distributeTokens(address recipient, uint256 rndTokenAmount)
         public
+        whenNotPaused
         onlyRole(MINTER_ROLE)
     {
         require(rndTokenAmount > 0, "VC: Amount must be more than zero");
@@ -391,6 +392,7 @@ contract VestingControllerERC721 is
     /// @param rndTokenAmount is the amount of the total investment
     function transferRNDFromVC(address recipient, uint256 rndTokenAmount)
         public
+        whenNotPaused
         onlySM
     {
         require(rndTokenAmount > 0, "VC: Amount must be more than zero");
@@ -408,6 +410,7 @@ contract VestingControllerERC721 is
     /// @param amount the amount of tokens to increase staked amount
     function modifyStakedAmount(uint256 tokenId, uint256 amount)
         external
+        whenNotPaused
         onlySM
     {
         require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
@@ -434,6 +437,7 @@ contract VestingControllerERC721 is
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;

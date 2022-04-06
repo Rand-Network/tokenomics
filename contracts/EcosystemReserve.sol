@@ -20,17 +20,16 @@ contract EcosystemReserve is
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IAddressRegistry public REGISTRY;
-
-    IERC20Upgradeable public REWARD_TOKEN;
-
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+
+    IAddressRegistry public REGISTRY;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
     /// @notice Initializer allow proxy scheme
     /// @dev For upgradability its necessary to use initialize instead of simple constructor
+    /// @param _registry the address of the Rand AddressRegistry
     function initialize(IAddressRegistry _registry) public initializer {
         __Pausable_init();
         __AccessControl_init();
