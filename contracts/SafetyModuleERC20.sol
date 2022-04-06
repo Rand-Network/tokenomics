@@ -53,7 +53,7 @@ contract SafetyModuleERC20 is
 
     IAddressRegistry public REGISTRY;
 
-    IERC20Upgradeable public REWARD_TOKEN;
+    IRandToken public REWARD_TOKEN;
     IERC20Upgradeable public POOL_TOKEN;
     address public REWARDS_VAULT;
 
@@ -83,6 +83,9 @@ contract SafetyModuleERC20 is
 
         REGISTRY = _registry;
         address _multisigVault = REGISTRY.getAddress("MS");
+        address _reserve = REGISTRY.getAddress("RES");
+        address _reward = REGISTRY.getAddress("RND");
+
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
 
@@ -90,6 +93,8 @@ contract SafetyModuleERC20 is
 
         COOLDOWN_SECONDS = _cooldown_seconds;
         UNSTAKE_WINDOW = _unstake_window;
+        REWARDS_VAULT = _reserve;
+        REWARD_TOKEN = IRandToken(_reward);
     }
 
     function updateAsset(
@@ -304,16 +309,15 @@ contract SafetyModuleERC20 is
         return totalRewards + rewardsToclaim[_user];
     }
 
-    function claimRewards(address _user, uint256 _amount) public {
+    function claimRewards(uint256 _amount) public {
         uint256 totalRewards = _updateUnclaimedRewards(
             _msgSender(),
             balanceOf(_msgSender()),
             false
         );
-
         rewardsToclaim[_msgSender()] = totalRewards - _amount;
 
-        REWARD_TOKEN.safeTransferFrom(REWARDS_VAULT, _user, _amount);
+        REWARD_TOKEN.approveAndTransfer(REWARDS_VAULT, _msgSender(), _amount);
 
         emit RewardsClaimed(_msgSender(), _amount);
     }

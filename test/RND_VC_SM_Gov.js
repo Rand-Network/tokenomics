@@ -71,7 +71,8 @@ describe("Rand Token with Vesting Controller", function () {
       RandSM = deployed.RandSM,
       RandNFT = deployed.RandNFT,
       RandGov = deployed.RandGov,
-      RandRegistry = deployed.RandRegistry;
+      RandRegistry = deployed.RandRegistry,
+      RandReserve = deployed.RandReserve;
 
     [owner, alice, backend] = await ethers.getSigners();
     // console.log(owner.address);
@@ -289,6 +290,13 @@ describe("Rand Token with Vesting Controller", function () {
       await RandToken.transfer(alice.address, ethers.utils.parseEther("100"));
       console.log("Alice RND balance:", await RandToken.balanceOf(alice.address));
 
+      // Init Reserve 
+      // Transfer RND to Reserve 
+      reserveAmount = rndTokenAmount.mul(10);
+      tx = await RandToken.transfer(RandReserve.address, reserveAmount);
+      await tx.wait(numConfirmation);
+      console.log("Reserve balance of RND:", await RandToken.balanceOf(RandReserve.address));
+
       // Init SM _updateAsset
       emissionPerSec = 1000;
       const update_tx = await RandSM.updateAsset(
@@ -341,11 +349,74 @@ describe("Rand Token with Vesting Controller", function () {
       //console.log("Alice VC RND info:", await RandVC.connect(alice).getInvestmentInfo(tokenId));
     });
     it("Checking reward balances", async function () {
-      expect(await RandSM.calculateTotalRewards(alice.address)).to.equal(mine_periods * 2 * emissionPerSec);
+      expectedReward = mine_periods * 2 * emissionPerSec;
+      expect(await RandSM.calculateTotalRewards(alice.address)).to.equal(expectedReward);
+    });
+    it("Claiming accrued rewards", async function () {
+      aliceBalanceBefore = await RandToken.balanceOf(alice.address);
+      //console.log("Alice Total SM rewards", await RandSM.calculateTotalRewards(alice.address));
+      // console.log("REWARD_TOKEN", await RandSM.REWARD_TOKEN());
+      // console.log("REWARDS_VAULT", await RandSM.REWARDS_VAULT());
+      // console.log("RandToken", RandToken.address);
+      await RandSM.connect(alice).claimRewards(expectedReward);
+      aliceAfterBefore = await RandToken.balanceOf(alice.address);
+      // console.log("Alice Total SM rewards", await RandSM.calculateTotalRewards(alice.address));
+      // console.log("Alice RND balance", await RandToken.balanceOf(alice.address));
+      expect(aliceAfterBefore).to.equal(aliceBalanceBefore.add(expectedReward));
     });
     it("Redeeming tokens of RND", async function () {
+      aliceBeforeBalance = await RandSM.balanceOf(alice.address);
+      //console.log("aliceBeforeBalance", aliceBeforeBalance);
+      aliceBeforeBalanceRND = await RandToken.balanceOf(alice.address);
+      cooldownSeconds = await RandSM.COOLDOWN_SECONDS();
+      unstakePeriod = await RandSM.UNSTAKE_WINDOW();
+      // Starting cooldown
+      await RandSM.connect(alice).cooldown();
+      for (i = 0; i < cooldownSeconds - 1; i++) {
+        await hre.network.provider.send("evm_mine");
+      }
+      // Should be able to redeem while in cooldown
+      await expectRevert.unspecified(RandSM.connect(alice)['redeem(uint256)'](stakeAmount.div(2)));
+      await hre.network.provider.send("evm_mine");
+      await RandSM.connect(alice)['redeem(uint256)'](stakeAmount.div(2));
+      aliceAfterBalance = await RandSM.balanceOf(alice.address);
+      expect(aliceAfterBalance).to.equal(aliceBeforeBalance.sub(stakeAmount.div(2)));
+      // Should not be able to redeem after unstake_window
+      for (i = 0; i < unstakePeriod - 2; i++) {
+        await hre.network.provider.send("evm_mine");
+      }
+      await expectRevert.unspecified(RandSM.connect(alice)['redeem(uint256)'](stakeAmount.div(2)));
+      // Checking RND balances
+      aliceAfterBalanceRND = await RandToken.balanceOf(alice.address);
+      expect(aliceAfterBalanceRND).to.equal(aliceBeforeBalanceRND.add(stakeAmount.div(2)));
     });
     it("Redeeming tokens of VC RND", async function () {
+      //claimableOnTokenId, tokenId are used from VC staking
+      // Starting cooldown
+      aliceBeforeVCInfo = await RandVC.connect(alice).getInvestmentInfo(tokenId);
+      aliceBeforeBalance = await RandSM.balanceOf(alice.address);
+      aliceBeforeBalanceRND = await RandToken.balanceOf(alice.address);
+      await RandSM.connect(alice).cooldown();
+      for (i = 0; i < cooldownSeconds - 1; i++) {
+        await hre.network.provider.send("evm_mine");
+      }
+      // Should be able to redeem while in cooldown
+      await expectRevert.unspecified(RandSM.connect(alice)['redeem(uint256,uint256)'](tokenId, claimableOnTokenId.div(2)));
+      await hre.network.provider.send("evm_mine");
+      await RandSM.connect(alice)['redeem(uint256,uint256)'](tokenId, claimableOnTokenId.div(2));
+      aliceAfterBalance = await RandSM.balanceOf(alice.address);
+      expect(aliceAfterBalance).to.equal(aliceBeforeBalance.sub(claimableOnTokenId.div(2)));
+      // Should not be able to redeem after unstake_window
+      for (i = 0; i < unstakePeriod - 2; i++) {
+        await hre.network.provider.send("evm_mine");
+      }
+      await expectRevert.unspecified(RandSM.connect(alice)['redeem(uint256,uint256)'](tokenId, claimableOnTokenId.div(2)));
+      // Checking VC info changes
+      aliceAfterVCInfo = await RandVC.connect(alice).getInvestmentInfo(tokenId);
+      expect(aliceAfterVCInfo.rndStakedAmount).to.equal(aliceBeforeVCInfo.rndStakedAmount.sub(claimableOnTokenId.div(2)));
+      // Checking RND Balance, should not change
+      aliceAfterBalanceRND = await RandToken.balanceOf(alice.address);
+      expect(aliceBeforeBalanceRND).to.equal(aliceAfterBalanceRND);
     });
   });
 

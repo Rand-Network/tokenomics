@@ -109,6 +109,16 @@ async function deploy_testnet(
   tx = await RandRegistry.setNewAddress("OZ", oz_defender);
   await tx.wait(numConfirmation);
 
+  RandReserve = await upgrades.deployProxy(
+    Reserve,
+    [RandRegistry.address],
+    { kind: "uups" });
+  console.log('Deployed Reserve proxy at:', RandReserve.address);
+  txRandReserve = RandReserve.deployTransaction;
+  await txRandReserve.wait(numConfirmation);
+  tx = await RandRegistry.setNewAddress("RES", RandReserve.address);
+  await tx.wait(numConfirmation);
+
   RNDdeployParams._registry = RandRegistry.address;
   VCdeployParams._registry = RandRegistry.address;
   SMdeployParams._registry = RandRegistry.address;
@@ -143,16 +153,6 @@ async function deploy_testnet(
   txRandSM = RandSM.deployTransaction;
   await txRandSM.wait(numConfirmation);
   tx = await RandRegistry.setNewAddress("SM", RandSM.address);
-  await tx.wait(numConfirmation);
-
-  RandReserve = await upgrades.deployProxy(
-    Reserve,
-    [RandRegistry.address],
-    { kind: "uups" });
-  console.log('Deployed Reserve proxy at:', RandReserve.address);
-  txRandReserve = RandReserve.deployTransaction;
-  await txRandReserve.wait(numConfirmation);
-  tx = await RandRegistry.setNewAddress("RES", RandReserve.address);
   await tx.wait(numConfirmation);
 
   RandNFT = await upgrades.deployProxy(
@@ -204,6 +204,12 @@ async function deploy_testnet(
     tokenId_101 = 2;
 
     console.log("\nStarting contract initialization - allowance, minting, etc...");
+
+    // Transfer RND to Reserve 
+    reserveAmount = rndTokenAmount.mul(10);
+    tx = await RandToken.transfer(RandReserve.address, reserveAmount);
+    await tx.wait(numConfirmation);
+    console.log("Reserve balance of RND:", await RandToken.balanceOf(RandReserve.address));
 
     // Add allowance for VC to fetch tokens in claim
     allowanceAmount = rndTokenAmount.mul(10);
