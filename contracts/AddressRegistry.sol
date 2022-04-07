@@ -13,7 +13,6 @@ contract AddressRegistry is
     AccessControlUpgradeable
 {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
 
     event NewAddressSet(string indexed name);
     event AddressChanged(string indexed name, address contractAddress);
@@ -29,7 +28,6 @@ contract AddressRegistry is
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
-        _grantRole(UPDATER_ROLE, _multisigVault);
     }
 
     function getRegistryList() public view returns (string[] memory) {
@@ -54,7 +52,7 @@ contract AddressRegistry is
 
     function updateAddress(string calldata name, address contractAddress)
         public
-        onlyRole(UPDATER_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         bytes memory tempStringByte = bytes(name);
         require(tempStringByte.length > 0, "Registry: No contract name set");
@@ -72,7 +70,7 @@ contract AddressRegistry is
 
     function setNewAddress(string calldata name, address contractAddress)
         public
-        onlyRole(UPDATER_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
         returns (bool)
     {
         bytes memory tempStringByte = bytes(name);

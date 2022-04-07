@@ -444,10 +444,12 @@ contract VestingControllerERC721 is
         emit RegistryAddressUpdated(newAddress);
     }
 
+    /// @notice Simple utility function to get investent tokenId based on an NFT tokenId
+    /// @param tokenIdNFT tokenId of the early investor NFT
+    /// @return tokenId of the investment
     function getTokenIdOfNFT(uint256 tokenIdNFT)
         public
         view
-        onlyRole(MINTER_ROLE)
         returns (uint256 tokenId)
     {
         tokenId = nftTokenToVCToken[tokenIdNFT];
