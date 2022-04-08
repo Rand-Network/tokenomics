@@ -57,14 +57,29 @@ hh upgradeProxyAndVerify --verify <eth_contract_address> VestingControllerERC721
 
 ## RandToken
 This contract is the Rand token, a standard OZ ERC20 implementation with upgradability via UUPS OZ Proxy. 
-Custom functionality include:
+Custom functionality include accessible only the Safety Module:
 ```
-setAllowanceForSM(address staker, uint256 amount)
 function approveAndTransfer(
         address owner,
         address recipient,
         uint256 amount
     )
+```
+
+## AddressRegistry
+
+Address registry is a simple contract to keep track of the ecosystem contract addresses. It can register a new entity with `setNewAddress(string calldata name, address contractAddress)` and also update an existing entity with the `updateAddress(string calldata name, address contractAddress)`. To fetch the current address for a contract use `getAddress(string calldata name)` and also the `getRegistryList()` function is useful to list the strings stored for the contracts.
+
+In the ecosystem contracts there is a function to update the address of the registry used which can be done on the contracts with `updateRegistryAddress(IAddressRegistry newAddress)`.
+
+### Registry must follow these names based on the current contract implementations:
+```
+SafetyModuleERC20 = SM
+VestingControllerERC721 = VC
+RandToken = RND
+Governance = GOV
+EcosystemReserve = RES
+InvestorsNFT = NFT
 ```
 
 ## VestingControllerERC721
@@ -120,6 +135,30 @@ https://cloudflare-ipfs.com/ipfs/QmU4JZXUmee8aakZYSqZQVkDjPQALNzXnNPeJMyctUjUoe
 
 ## SafetyModuleERC20
 
+The Safety Module (SM) acts as a staking contract to enable Rand token holders to stake their RND and therefore supply shortfall liquidity in case of a bug or hack in the ecosystem contracts. Staking is rewarded in RND tokens with an emission rate from the Ecosystem Reserve Contract.
+
+The staking contract allows users to stake and unstake tokens in exchange for staked RND (sRND). This sRND token represents the share of the user in the SM and is non-transferable in order to disallow dumping in case of a shortfall event. 
+
+When users would like to stake in their tokens, there is the `stake(uint256 amount)` function to do that with a simple and an overloaded version. One is allows with a simple `uint256 amount` to stake in RND tokens without a vesting scheme. The overloaded version requests a `uint256 tokenId` also which defines the vesting investment `tokenId` from the vesting controller. 
+
+In case of unstaking the user must go through a cooldown period first. In order to initiate this must call the `cooldown()` and after the period ends defined by `COOLDOWN_SECONDS` the user need to call the `redeem(uint256 amount)` function. This has also an overloaded version for vesting investors specifying the `tokenId`. After the cooldown period the user has a period for unstaking. After this period of `UNSTAKE_WINDOW` the user must call again the `cooldown()` if wants to unstake.
+
+To claim rewards the user can call the `claimRewards(uint256 amount)` and to simply check the balance of his accrued rewards he can call `calculateTotalRewards(address user)`.
+
+### Updating cooldown and unstake periods
+There are two functions to update periods for unstaking:
+`updateCooldownPeriod(uint256 newPeriod)` and `updateUnstakePeriod(uint256 newPeriod)`.
+
+### RewardDistributionManager
+
+Rewards are calculated using the scheme applied by Aave Safety Module. This basically calculates an asset level index, and a user level index for the staked asset. Based on an emission rate of the rewards it can be calculated the rewards claimable by the user. 
+
+RewardDistributionManager is inherited by the SafetyModule contract and uses its internal functionality. In order to configure an asset with the `emissionRate` the `updateAsset( address _asset, uint256 _emission, uint256 _totalStaked)` is called.
+
+### BPT Token staking
+
+As Aave does it allows also to stake Balancer Pool Tokens in the Safety Module. It allows for creating and freezing liquidity for the protocol. Another separate contract must be deployed for further assets. Also the applicable functions must be exposed in the contract inheriting.
+
 ## Governance
 
 Governance is simple contract to summarize balances from multiple contracts for an account address. It uses the standard `balanceOf` function of `RND` and `SM`, while iterating over all the account holders investment tokens inside `VC` and summarize each individual investment by the following formula:
@@ -128,7 +167,46 @@ VC balanceOf = rndTokenAmount - rndClaimedAmount - rndStakedAmount
 ```
 Governance contract does not use an ERC20 standard just simply implements the `balanceOf(account)` and `totalSupply()` functions so Automata Witness will be able to query these to calculating governance voting on a DAO proposal.
 
-## .env
+## Tests
+
+There are two unit test files developed to cover most of the functionality. One is the `test/AddressRegistry.js`, which simply tests the `AddressRegistry` functions separately. The other file is the most complex, which covers all ecosystem contract tests at `test/RND_VC_SM_Gov.js`. 
+
+To run the tests locally using the `hardhat network` simply run:
+```
+hh test
+```
+
+### Deployment utility
+To simplify tests there is a short utility script to help deployment, which can also be used as a `hh task`. It is located in `scripts/deploy_testnet_task.js`. It returns the deployed `ethers` contract objects alongside with the default deployment parameters:
+```
+module.exports = {
+  deploy_testnet,
+  get_factories,
+  get_wallets,
+  _RNDdeployParams,
+  _VCdeployParams,
+  _SMdeployParams,
+  _NFTdeployParams,
+  _GovDeployParams,
+};
+```
+
+### Github Actions
+These tests are run automatically on the following actions:
+```
+on:
+  push:
+    branches:
+      - development
+      - main
+
+  pull_request:
+    branches:
+      - development
+      - main
+```
+
+## .env
 
 Required enviroment variables for hardhat to work
 ```
