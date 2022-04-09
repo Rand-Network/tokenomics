@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface Icontracts/ecosystem/SafetyModuleERC20.sol{
+interface ISafetyModuleERC20{
   function COOLDOWN_SECONDS (  ) external view returns ( uint256 );
   function DEFAULT_ADMIN_ROLE (  ) external view returns ( bytes32 );
   function PAUSER_ROLE (  ) external view returns ( bytes32 );
