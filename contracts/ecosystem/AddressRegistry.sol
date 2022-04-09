@@ -6,6 +6,10 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+/// @title Rand.network Address Registry for Rand Ecosystem
+/// @author @adradr - Adrian Lenard
+/// @notice Stores addresses for ecosystem contracts
+/// @dev Functionality integrated into all ecosystem contracts
 contract AddressRegistry is
     Initializable,
     UUPSUpgradeable,
@@ -30,10 +34,15 @@ contract AddressRegistry is
         _grantRole(PAUSER_ROLE, _multisigVault);
     }
 
+    /// @notice Returns all the stored contract names in strings
+    /// @return an array of strings
     function getRegistryList() public view returns (string[] memory) {
         return addressId;
     }
 
+    /// @notice Returns the current address for a contract located in the ecosystem
+    /// @param name is the string name of the contract
+    /// @return contractAddress is the address of the input name contract
     function getAddress(string calldata name)
         public
         view
@@ -42,6 +51,9 @@ contract AddressRegistry is
         return addressStorage[name][addressStorage[name].length - 1];
     }
 
+    /// @notice Useful to query all the addresses used for a contract
+    /// @param name is the string name of the contract
+    /// @return an array of addresses of the contract
     function getAllAddress(string calldata name)
         public
         view
@@ -50,6 +62,9 @@ contract AddressRegistry is
         return addressStorage[name];
     }
 
+    /// @notice Used to update the latest address for a contract
+    /// @param name is the string name of the contract
+    /// @param contractAddress is the new address to set for a contract
     function updateAddress(string calldata name, address contractAddress)
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -68,6 +83,10 @@ contract AddressRegistry is
         emit AddressChanged(name, contractAddress);
     }
 
+    /// @notice Used to register a new address in the registry
+    /// @param name is the string name of the contract
+    /// @param contractAddress is the new address to set for a contract
+    /// @return true if successful, false if already exists
     function setNewAddress(string calldata name, address contractAddress)
         public
         onlyRole(DEFAULT_ADMIN_ROLE)

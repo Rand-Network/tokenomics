@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface IVestingControllerERC721{
+interface Iecosystem/VestingControllerERC721{
   function BURNER_ROLE (  ) external view returns ( bytes32 );
   function DEFAULT_ADMIN_ROLE (  ) external view returns ( bytes32 );
   function MINTER_ROLE (  ) external view returns ( bytes32 );

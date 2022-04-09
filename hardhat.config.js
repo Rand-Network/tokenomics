@@ -80,7 +80,7 @@ task("upgradeProxyAndVerify", "Upgrades proxy with OZ upgrades plugin and verifi
 
   });
 
-task("abi2interface", "Generates solidity interface contracts from ABIs")
+task("abi2interface", "Generates solidity interface contracts from ABIs, needs to matching contract name .sol name")
   .addPositionalParam("contract", "Solidity contract name")
   .setAction(async ({ contract }) => {
     await abi2sol(contract);

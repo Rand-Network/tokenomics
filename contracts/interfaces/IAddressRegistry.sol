@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 interface IAddressRegistry{
   function DEFAULT_ADMIN_ROLE (  ) external view returns ( bytes32 );
   function PAUSER_ROLE (  ) external view returns ( bytes32 );
-  function UPDATER_ROLE (  ) external view returns ( bytes32 );
   function getAddress ( string memory name ) external view returns ( address contractAddress );
   function getAllAddress ( string memory name ) external view returns ( address[] memory );
   function getRegistryList (  ) external view returns ( string[] memory );
@@ -16,7 +15,7 @@ interface IAddressRegistry{
   function paused (  ) external view returns ( bool );
   function renounceRole ( bytes32 role, address account ) external;
   function revokeRole ( bytes32 role, address account ) external;
-  function setNewAddress ( string memory name, address contractAddress ) external;
+  function setNewAddress ( string memory name, address contractAddress ) external returns ( bool );
   function supportsInterface ( bytes4 interfaceId ) external view returns ( bool );
   function unpause (  ) external;
   function updateAddress ( string memory name, address contractAddress ) external;

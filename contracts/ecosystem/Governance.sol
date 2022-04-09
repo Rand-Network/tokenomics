@@ -7,8 +7,8 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./IAddressRegistry.sol";
-import "./IVestingControllerERC721.sol";
+import "../interfaces/IAddressRegistry.sol";
+import "../interfaces/IVestingControllerERC721.sol";
 
 /// @title Rand.network ERC20 Governance Aggregator contract for Automata Witness
 /// @author @adradr - Adrian Lenard

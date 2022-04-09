@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./IAddressRegistry.sol";
+import "../interfaces/IAddressRegistry.sol";
 
 /// @title Rand.network ERC20 Token contract
 /// @author @adradr - Adrian Lenard

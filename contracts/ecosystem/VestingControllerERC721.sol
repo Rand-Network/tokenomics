@@ -12,8 +12,8 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./IAddressRegistry.sol";
-import "./IInvestorsNFT.sol";
+import "../interfaces/IAddressRegistry.sol";
+import "../interfaces/IInvestorsNFT.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
@@ -127,10 +127,6 @@ contract VestingControllerERC721 is
         );
         _;
     }
-
-    ////////////////////////////////////////////////////////////////////
-    ///////////////////  Investment Related ////////////////////////////
-    ////////////////////////////////////////////////////////////////////
 
     /// @notice View function to get amount of claimable tokens from vested investment token
     /// @dev only accessible by the investor's wallet, the backend address and safety module contract
@@ -364,10 +360,6 @@ contract VestingControllerERC721 is
         );
     }
 
-    ////////////////////////////////////////////////////////////////////
-    //////////////////////  Util related ///////////////////////////////
-    ////////////////////////////////////////////////////////////////////
-
     /// @notice Transfers RND Tokens to non-vesting investor, its used to distribute public sale tokens by backend
     /// @dev emits InvestmentTransferred() and only accessible with MINTER_ROLE
     /// @param recipient is the address to whom the token should be transferred to
@@ -454,10 +446,6 @@ contract VestingControllerERC721 is
     {
         tokenId = nftTokenToVCToken[tokenIdNFT];
     }
-
-    ////////////////////////////////////////////////////////////////////
-    /////////////////////  Import related //////////////////////////////
-    ////////////////////////////////////////////////////////////////////
 
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();

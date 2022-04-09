@@ -10,8 +10,8 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./IAddressRegistry.sol";
-import "./IVestingControllerERC721.sol";
+import "../interfaces/IAddressRegistry.sol";
+import "../interfaces/IVestingControllerERC721.sol";
 
 /// @title Rand.network ERC721 Investors NFT contract
 /// @author @adradr - Adrian Lenard
@@ -73,10 +73,6 @@ contract InvestorsNFT is
         _grantRole(MINTER_ROLE, _vcAddress);
     }
 
-    ////////////////////////////////////////////////////////////////////
-    //////////////////////  Util related ///////////////////////////////
-    ////////////////////////////////////////////////////////////////////
-
     /// @notice Function to let Rand to update the address of the Safety Module
     /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
     /// @param newAddress where the new Safety Module contract is located
@@ -88,10 +84,6 @@ contract InvestorsNFT is
         REGISTRY = newAddress;
         emit RegistryAddressUpdated(newAddress);
     }
-
-    ////////////////////////////////////////////////////////////////////
-    /////////////////////  Import related //////////////////////////////
-    ////////////////////////////////////////////////////////////////////
 
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();

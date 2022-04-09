@@ -9,9 +9,9 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./RewardDistributionManagerV2.sol";
-import "./IVestingControllerERC721.sol";
-import "./IRandToken.sol";
-import "./IAddressRegistry.sol";
+import "../interfaces/IVestingControllerERC721.sol";
+import "../interfaces/IRandToken.sol";
+import "../interfaces/IAddressRegistry.sol";
 
 /// @title Rand.network ERC20 Safety Module
 /// @author @adradr - Adrian Lenard
@@ -102,10 +102,6 @@ contract SafetyModuleERC20 is
     ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         _updateAsset(_asset, _emission, _totalStaked);
     }
-
-    ////////////////////////////////
-    // Reedeem staked asset
-    ////////////////////////////////
 
     /// @notice Triggers cooldown period for the caller
     /// @dev Check the actial COOLDOWN_PERIOD for lenght in seconds
@@ -221,10 +217,6 @@ contract SafetyModuleERC20 is
         IRandToken(REGISTRY.getAddress("RND")).transfer(_msgSender(), amount);
     }
 
-    ////////////////////////////////
-    // Stake asset
-    ////////////////////////////////
-
     /// @notice Enables staking for vesting investors
     /// @dev Interacts with the vesting controller
     /// @param tokenId is the id of the vesting token to stake
@@ -334,10 +326,6 @@ contract SafetyModuleERC20 is
         _mint(_msgSender(), amount);
     }
 
-    ////////////////////////////////
-    // Reward functions
-    ////////////////////////////////
-
     /// @notice Calculates the total rewards for a user
     /// @dev Uses RewardDistributionManager `_getUnclaimedRewards`
     /// @param user address of the user
@@ -397,10 +385,6 @@ contract SafetyModuleERC20 is
         return totalRewards;
     }
 
-    ////////////////////////////////
-    // Util functions
-    ////////////////////////////////
-
     /// @notice Function to let Rand to update the address of the Safety Module
     /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
     /// @param newAddress where the new Safety Module contract is located
@@ -431,9 +415,6 @@ contract SafetyModuleERC20 is
         emit PeriodUpdated("Unstake", newPeriod);
     }
 
-    ////////////////////////////////
-    // Import related functions
-    ////////////////////////////////
     function burn(address account, uint256 amount)
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
