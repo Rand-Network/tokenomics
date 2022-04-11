@@ -1,8 +1,10 @@
 require("@nomiclabs/hardhat-waffle");
 require('@openzeppelin/hardhat-upgrades');
+require("@openzeppelin/hardhat-defender");
 require('@nomiclabs/hardhat-etherscan');
 require("hardhat-gas-reporter");
 require("@atixlabs/hardhat-time-n-mine");
+require("@tenderly/hardhat-tenderly");
 require("solidity-coverage");
 require('dotenv').config();
 const { ContractFactory } = require("ethers");
@@ -20,6 +22,7 @@ function findNetworInArgs(item, index, arr) {
   //console.log(item, index, arr);
   if (item == '--network') {
     network_id = arr[index + 1];
+    if (network_id == 'hardhat') return;
     network_dict = chains[network_id];
     network_id = network_dict.urls.apiURL;
     chain_id = network_dict.chainId;
@@ -77,7 +80,7 @@ task("upgradeProxyAndVerify", "Upgrades proxy with OZ upgrades plugin and verifi
 
   });
 
-task("abi2interface", "Generates solidity interface contracts from ABIs")
+task("abi2interface", "Generates solidity interface contracts from ABIs, needs to matching contract name .sol name")
   .addPositionalParam("contract", "Solidity contract name")
   .setAction(async ({ contract }) => {
     await abi2sol(contract);
@@ -182,11 +185,13 @@ gasPriceApis = {
   ropsten: 'https://api-ropsten.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   rinkeby: 'https://api-rinkeby.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   mainnet: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
-  hardhat: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY
+  hardhat: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
+  moonbaseAlpha: 'https://api-moonbase.moonscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.MOONSCAN_API_KEY,
+  moonbeam: 'https://api-moonbase.moonscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.MOONSCAN_API_KEY
 };
 
 let gasPriceApi;
-let reportGasSwitch = true;
+let reportGasSwitch = false;
 if (process.argv.includes('--network')) {
   idx = process.argv.indexOf('--network');
   gasPriceApi = gasPriceApis[process.argv[idx + 1]];
@@ -202,6 +207,10 @@ const accountkeys = [
 ];
 
 module.exports = {
+  defender: {
+    apiKey: process.env.DEFENDER_API_KEY,
+    apiSecret: process.env.DEFENDER_API_SECRET_KEY,
+  },
   gasReporter: {
     enabled: reportGasSwitch,
     //outputFile: './output.txt',
@@ -301,5 +310,9 @@ module.exports = {
   },
   mocha: {
     timeout: 5 * 60 * 1e3
+  },
+  tenderly: {
+    username: process.env.TENDERLY_USERNAME,
+    project: process.env.TENDERLY_PROJECT
   }
 };

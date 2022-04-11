@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./IAddressRegistry.sol";
+import "../interfaces/IAddressRegistry.sol";
 
 /// @title Rand.network ERC20 Token contract
 /// @author @adradr - Adrian Lenard
@@ -56,11 +56,16 @@ contract RandToken is
         _mint(_multisigVault, _initialSupply * 10**decimals());
     }
 
+    /// @notice Function to allow Safety Module to move funds without multiple approve and transfer steps
+    /// @dev Aims to allow simple UX
+    /// @param owner is the address who's tokens are approved and transferred
+    /// @param recipient is the address where to transfer the funds
+    /// @param amount is the amount of transfer
     function approveAndTransfer(
         address owner,
         address recipient,
         uint256 amount
-    ) external {
+    ) external whenNotPaused {
         require(
             REGISTRY.getAddress("SM") == _msgSender(),
             "RND: Not accessible by msg.sender"
@@ -100,6 +105,7 @@ contract RandToken is
 
     function burn(address account, uint256 amount)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         _burn(account, amount);

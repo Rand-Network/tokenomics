@@ -95,26 +95,28 @@ async function abi2sol(filepath) {
     console.log('Converting ABI to an interface contract');
     project_path = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
 
-    input = project_path + '/artifacts/contracts/' + filepath + '.sol/' + filepath + '.json';
+    contract_name = filepath.split('/')[filepath.split('/').length - 1].split('.sol')[0];
+    input = project_path + '/artifacts/' + filepath + '/' + contract_name + '.json';
     jsonfile = await readfileasync(input);
     jsonfile = JSON.stringify(jsonfile['abi']);
 
     output = input.replace('.json', '_abi.json');
     await writefileasync(output, jsonfile);
 
-    outputFileSolidity = project_path + '/contracts/I' + filepath + '.sol';
+    outputFileSolidity = project_path + '/contracts/interfaces/I' + filepath.split('/')[filepath.split('/').length - 1];
     console.log('Project path:', project_path);
     console.log('Input path:  ', input);
     console.log('ABIo path:   ', output);
     console.log('Output path: ', outputFileSolidity);
-    abi = await ABI2Solidity(jsonfile, filepath);
+    abi = await ABI2Solidity(jsonfile, contract_name);
     await writefileasync(outputFileSolidity, abi);
     console.log('Abi2Sol converted.');
 }
 
 async function abi2json(filepath) {
     project_path = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
-    input = project_path + '/artifacts/contracts/' + filepath + '.sol/' + filepath + '.json';
+    //input = project_path + '/artifacts/contracts/' + filepath + '.sol/' + filepath + '.json';
+    input = project_path + '/artifacts/' + filepath + '/' + filepath.split('/')[filepath.split('/').length - 1].split('.sol')[0] + '.json';
     jsonfile = await readfileasync(input);
     jsonfile = JSON.stringify(jsonfile['abi']);
     //jsonfile = JSON.parse(jsonfile['abi']);

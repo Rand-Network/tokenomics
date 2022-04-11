@@ -8,7 +8,15 @@ interface ISafetyModuleERC20 {
 
     function PAUSER_ROLE() external view returns (bytes32);
 
+    function POOL_TOKEN() external view returns (address);
+
+    function PRECISION() external view returns (uint256);
+
     function REGISTRY() external view returns (address);
+
+    function REWARDS_VAULT() external view returns (address);
+
+    function REWARD_TOKEN() external view returns (address);
 
     function UNSTAKE_WINDOW() external view returns (uint256);
 
@@ -19,9 +27,25 @@ interface ISafetyModuleERC20 {
 
     function approve(address spender, uint256 amount) external returns (bool);
 
+    function assets(address)
+        external
+        view
+        returns (
+            uint256 emissionRate,
+            uint256 lastUpdateTimestamp,
+            uint256 assetIndex
+        );
+
     function balanceOf(address account) external view returns (uint256);
 
     function burn(address account, uint256 amount) external;
+
+    function calculateTotalRewards(address user)
+        external
+        view
+        returns (uint256);
+
+    function claimRewards(uint256 amount) external;
 
     function cooldown() external;
 
@@ -60,19 +84,17 @@ interface ISafetyModuleERC20 {
 
     function paused() external view returns (bool);
 
-    function redeem(
-        uint256 tokenId,
-        uint256 amount,
-        address recipient
-    ) external;
-
     function redeem(uint256 tokenId, uint256 amount) external;
+
+    function redeem(uint256 amount) external;
 
     function renounceRole(bytes32 role, address account) external;
 
     function revokeRole(bytes32 role, address account) external;
 
     function stake(uint256 tokenId, uint256 amount) external;
+
+    function stake(uint256 amount) external;
 
     function stakerCooldown(address) external view returns (uint256);
 
@@ -81,6 +103,8 @@ interface ISafetyModuleERC20 {
     function symbol() external view returns (string memory);
 
     function totalSupply() external view returns (uint256);
+
+    function trackedAssets(uint256) external view returns (address);
 
     function transfer(address recipient, uint256 amount)
         external
@@ -93,6 +117,12 @@ interface ISafetyModuleERC20 {
     ) external returns (bool);
 
     function unpause() external;
+
+    function updateAsset(
+        address _asset,
+        uint256 _emission,
+        uint256 _totalStaked
+    ) external;
 
     function updateCooldownPeriod(uint256 newPeriod) external;
 

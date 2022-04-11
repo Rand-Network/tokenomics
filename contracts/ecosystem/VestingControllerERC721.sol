@@ -13,9 +13,8 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-
-import "./IAddressRegistry.sol";
-import "./IInvestorsNFT.sol";
+import "../interfaces/IAddressRegistry.sol";
+import "../interfaces/IInvestorsNFT.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
@@ -87,7 +86,6 @@ contract VestingControllerERC721 is
     /// @param _erc721_symbol Short symbol like `vRND`
     /// @param _periodSeconds Amount of seconds to set 1 period to like 60*60*24 for 1 day
     /// @param _registry is the address of address registry
-
     function initialize(
         string calldata _erc721_name,
         string calldata _erc721_symbol,
@@ -131,10 +129,6 @@ contract VestingControllerERC721 is
         );
         _;
     }
-
-    ////////////////////////////////////////////////////////////////////
-    ///////////////////  Investment Related ////////////////////////////
-    ////////////////////////////////////////////////////////////////////
 
     /// @notice View function to get amount of claimable tokens from vested investment token
     /// @dev only accessible by the investor's wallet, the backend address and safety module contract
@@ -207,6 +201,7 @@ contract VestingControllerERC721 is
     /// @param amount is the amount of vested tokens to claim in the process
     function claimTokens(uint256 tokenId, uint256 amount)
         public
+        whenNotPaused
         onlyInvestorOrRand(tokenId)
         whenNotPaused
         nonReentrant
@@ -381,10 +376,6 @@ contract VestingControllerERC721 is
         );
     }
 
-    ////////////////////////////////////////////////////////////////////
-    //////////////////////  Util related ///////////////////////////////
-    ////////////////////////////////////////////////////////////////////
-
     /// @notice Transfers RND Tokens to non-vesting investor, its used to distribute public sale tokens by backend
     /// @dev emits InvestmentTransferred() and only accessible with MINTER_ROLE
     /// @param recipient is the address to whom the token should be transferred to
@@ -463,18 +454,16 @@ contract VestingControllerERC721 is
         emit RegistryAddressUpdated(newAddress);
     }
 
+    /// @notice Simple utility function to get investent tokenId based on an NFT tokenId
+    /// @param tokenIdNFT tokenId of the early investor NFT
+    /// @return tokenId of the investment
     function getTokenIdOfNFT(uint256 tokenIdNFT)
         public
         view
-        onlyRole(MINTER_ROLE)
         returns (uint256 tokenId)
     {
         tokenId = nftTokenToVCToken[tokenIdNFT];
     }
-
-    ////////////////////////////////////////////////////////////////////
-    /////////////////////  Import related //////////////////////////////
-    ////////////////////////////////////////////////////////////////////
 
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();

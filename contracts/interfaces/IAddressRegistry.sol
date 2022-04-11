@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.2;
 
-interface IGovernance {
+interface IAddressRegistry {
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
 
     function PAUSER_ROLE() external view returns (bytes32);
 
-    function REGISTRY() external view returns (address);
+    function getAddress(string memory name)
+        external
+        view
+        returns (address contractAddress);
 
-    function balanceOf(address account) external view returns (uint256);
+    function getAllAddress(string memory name)
+        external
+        view
+        returns (address[] memory);
 
-    function decimals() external pure returns (uint8);
+    function getRegistryList() external view returns (string[] memory);
 
     function getRoleAdmin(bytes32 role) external view returns (bytes32);
 
@@ -21,13 +27,7 @@ interface IGovernance {
         view
         returns (bool);
 
-    function initialize(
-        string memory _name,
-        string memory _symbol,
-        address _registry
-    ) external;
-
-    function name() external view returns (string memory);
+    function initialize(address _multisigVault) external;
 
     function pause() external;
 
@@ -37,15 +37,16 @@ interface IGovernance {
 
     function revokeRole(bytes32 role, address account) external;
 
+    function setNewAddress(string memory name, address contractAddress)
+        external
+        returns (bool);
+
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
-
-    function symbol() external view returns (string memory);
-
-    function totalSupply() external view returns (uint256);
 
     function unpause() external;
 
-    function updateRegistryAddress(address newAddress) external;
+    function updateAddress(string memory name, address contractAddress)
+        external;
 
     function upgradeTo(address newImplementation) external;
 
