@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
@@ -144,9 +144,7 @@ contract InvestorsNFT is
         ) = IVestingControllerERC721(REGISTRY.getAddress("VC"))
                 .getInvestmentInfoForNFT(tokenId);
 
-        bool isClaimedAll = rndTokenAmount - rndClaimedAmount == 0
-            ? true
-            : false;
+        bool isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
         require(
             isClaimedAll,
             "NFT: Transfer of token is prohibited until investment is totally claimed"
@@ -185,9 +183,7 @@ contract InvestorsNFT is
         ) = IVestingControllerERC721(REGISTRY.getAddress("VC"))
                 .getInvestmentInfoForNFT(tokenId);
 
-        bool isClaimedAll = rndTokenAmount - rndClaimedAmount == 0
-            ? true
-            : false;
+        bool isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
 
         return
             bytes(baseURIString).length > 0

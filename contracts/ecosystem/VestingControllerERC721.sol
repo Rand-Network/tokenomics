@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -27,7 +27,8 @@ contract VestingControllerERC721 is
     ERC721EnumerableUpgradeable,
     PausableUpgradeable,
     AccessControlUpgradeable,
-    ERC721BurnableUpgradeable
+    ERC721BurnableUpgradeable,
+    ReentrancyGuardUpgradeable
 {
     // Events
     event BaseURIChanged(string baseURI);
@@ -201,6 +202,8 @@ contract VestingControllerERC721 is
         public
         whenNotPaused
         onlyInvestorOrRand(tokenId)
+        whenNotPaused
+        nonReentrant
     {
         address recipient = ownerOf(tokenId);
         uint256 claimable = _calculateClaimableTokens(tokenId);
@@ -268,7 +271,13 @@ contract VestingControllerERC721 is
         uint256 vestingPeriod,
         uint256 vestingStartTime,
         uint256 cliffPeriod
-    ) public whenNotPaused onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    )
+        public
+        whenNotPaused
+        nonReentrant
+        onlyRole(MINTER_ROLE)
+        returns (uint256 tokenId)
+    {
         // Minting vesting investment inside VC
         tokenId = _mintNewInvestment(
             recipient,
@@ -296,7 +305,13 @@ contract VestingControllerERC721 is
         uint256 vestingStartTime,
         uint256 cliffPeriod,
         uint256 nftTokenId
-    ) public whenNotPaused onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    )
+        public
+        whenNotPaused
+        nonReentrant
+        onlyRole(MINTER_ROLE)
+        returns (uint256 tokenId)
+    {
         // Minting vesting investment inside VC
         tokenId = _mintNewInvestment(
             recipient,
@@ -367,6 +382,7 @@ contract VestingControllerERC721 is
     function distributeTokens(address recipient, uint256 rndTokenAmount)
         public
         whenNotPaused
+        nonReentrant
         onlyRole(MINTER_ROLE)
     {
         require(rndTokenAmount > 0, "VC: Amount must be more than zero");
@@ -383,9 +399,10 @@ contract VestingControllerERC721 is
     /// @param recipient is the address to whom the token should be transferred to
     /// @param rndTokenAmount is the amount of the total investment
     function transferRNDFromVC(address recipient, uint256 rndTokenAmount)
-        public
+        external
         whenNotPaused
         onlySM
+        nonReentrant
     {
         require(rndTokenAmount > 0, "VC: Amount must be more than zero");
         IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransferFrom(
@@ -504,9 +521,7 @@ contract VestingControllerERC721 is
         if (vestingToken[tokenId].exists) {
             uint256 rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
             uint256 rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
-            isClaimedAll = rndTokenAmount - rndClaimedAmount == 0
-                ? true
-                : false;
+            isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
         }
         require(
             isClaimedAll,

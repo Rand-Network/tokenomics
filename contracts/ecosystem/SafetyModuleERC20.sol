@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -22,6 +21,7 @@ contract SafetyModuleERC20 is
     ERC20Upgradeable,
     PausableUpgradeable,
     AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable,
     RewardDistributionManagerV2
 {
     event Staked(address indexed user, uint256 amount);
@@ -131,13 +131,7 @@ contract SafetyModuleERC20 is
             stakerCooldown[_msgSender()] + COOLDOWN_SECONDS + UNSTAKE_WINDOW
         ) {
             stakerCooldown[_msgSender()] = 0;
-            require(
-                block.timestamp -
-                    stakerCooldown[_msgSender()] +
-                    COOLDOWN_SECONDS <=
-                    UNSTAKE_WINDOW,
-                "SM: Unstake period finished, cooldown reset"
-            );
+            revert("SM: Unstake period finished, cooldown reset");
         }
         _;
     }
@@ -158,8 +152,8 @@ contract SafetyModuleERC20 is
 
     /// @notice Redeems the staked token with vesting, updates rewards and transfers funds
     /// @dev Only used for vesting token redemption, needs to wait cooldown
-    /// @param tokenId is the id of the vesting token to redeem
     /// @param amount is the uint256 amount to redeem
+    /// @param tokenId is the id of the vesting token to redeem
     function redeem(uint256 tokenId, uint256 amount)
         public
         whenNotPaused
@@ -203,7 +197,13 @@ contract SafetyModuleERC20 is
         );
 
         // Transfer tokens
-        IRandToken(REGISTRY.getAddress("RND")).transfer(address(_vc), amount);
+        require(
+            IRandToken(REGISTRY.getAddress("RND")).transfer(
+                address(_vc),
+                amount
+            ),
+            "SM: Unable to transfer redeemed tokens"
+        );
     }
 
     /// @notice Internal function to handle the non-vesting token based stake redemption
@@ -303,7 +303,8 @@ contract SafetyModuleERC20 is
             uint256 rndStakedAmount
         ) = IVestingControllerERC721(_vc).getInvestmentInfo(tokenId);
         require(
-            rndTokenAmount - rndClaimedAmount - rndStakedAmount >= amount,
+            //rndTokenAmount - rndClaimedAmount - rndStakedAmount >= amount,
+            rndTokenAmount >= rndClaimedAmount + rndStakedAmount + amount,
             "SM: Not enough stakable amount on VC tokenId"
         );
 
@@ -417,6 +418,7 @@ contract SafetyModuleERC20 is
 
     function burn(address account, uint256 amount)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         _burn(account, amount);
