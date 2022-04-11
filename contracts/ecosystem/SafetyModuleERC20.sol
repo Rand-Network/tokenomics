@@ -7,6 +7,8 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+
 import "./RewardDistributionManagerV2.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 import "../interfaces/IRandToken.sol";
@@ -139,7 +141,12 @@ contract SafetyModuleERC20 is
     /// @notice Redeems the staked token without vesting, updates rewards and transfers funds
     /// @dev Only used for non-vesting token redemption, needs to wait cooldown
     /// @param amount is the uint256 amount to redeem
-    function redeem(uint256 amount) public whenNotPaused redeemable(amount) {
+    function redeem(uint256 amount)
+        public
+        whenNotPaused
+        nonReentrant
+        redeemable(amount)
+    {
         require(amount != 0, "SM: Redeem amount cannot be zero");
 
         uint256 balanceOfMsgSender = balanceOf(_msgSender());
@@ -157,6 +164,7 @@ contract SafetyModuleERC20 is
     function redeem(uint256 tokenId, uint256 amount)
         public
         whenNotPaused
+        nonReentrant
         redeemable(amount)
     {
         require(amount != 0, "SM: Redeem amount cannot be zero");
@@ -221,7 +229,11 @@ contract SafetyModuleERC20 is
     /// @dev Interacts with the vesting controller
     /// @param tokenId is the id of the vesting token to stake
     /// @param amount is the uint256 amount to stake
-    function stake(uint256 tokenId, uint256 amount) public whenNotPaused {
+    function stake(uint256 tokenId, uint256 amount)
+        public
+        whenNotPaused
+        nonReentrant
+    {
         require(amount != 0, "SM: Stake amount cannot be zero");
         uint256 rewards = _updateUserAssetState(
             _msgSender(),
@@ -238,7 +250,7 @@ contract SafetyModuleERC20 is
 
     /// @notice Enables staking for non-vesting investors
     /// @param amount is the uint256 amount to stake
-    function stake(uint256 amount) public whenNotPaused {
+    function stake(uint256 amount) public whenNotPaused nonReentrant {
         require(amount != 0, "SM: Stake amount cannot be zero");
         uint256 rewards = _updateUserAssetState(
             _msgSender(),
@@ -344,7 +356,7 @@ contract SafetyModuleERC20 is
     /// @notice Claims the rewards for a user
     /// @dev Uses `_updateUnclaimedRewards`, transfers rewards
     /// @param amount amount of reward to claim
-    function claimRewards(uint256 amount) public whenNotPaused {
+    function claimRewards(uint256 amount) public whenNotPaused nonReentrant {
         uint256 totalRewards = _updateUnclaimedRewards(
             _msgSender(),
             balanceOf(_msgSender()),
