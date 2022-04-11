@@ -8,9 +8,10 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./IVestingControllerERC721.sol";
-import "./IRandToken.sol";
-import "./IAddressRegistry.sol";
+import "./RewardDistributionManagerV2.sol";
+import "../interfaces/IVestingControllerERC721.sol";
+import "../interfaces/IRandToken.sol";
+import "../interfaces/IAddressRegistry.sol";
 
 /// @title Rand.network ERC20 Safety Module
 /// @author @adradr - Adrian Lenard
@@ -20,28 +21,40 @@ contract SafetyModuleERC20 is
     UUPSUpgradeable,
     ERC20Upgradeable,
     PausableUpgradeable,
-    AccessControlUpgradeable
+    AccessControlUpgradeable,
+    RewardDistributionManagerV2
 {
-    event Staked(uint256 amount);
-    event StakedOnTokenId(uint256 tokenId, uint256 amount);
-    event CooldownStaked(address staker);
-    event RedeemStaked(address staker, address recipient, uint256 amount);
+    event Staked(address indexed user, uint256 amount);
+    event StakedOnTokenId(
+        address indexed user,
+        uint256 indexed tokenId,
+        uint256 amount
+    );
+    event Cooldown(address indexed user);
+    event RedeemStaked(
+        address indexed user,
+        address indexed recipient,
+        uint256 amount
+    );
+    event RewardsAccrued(address indexed user, uint256 rewardAmount);
+    event RewardsClaimed(address indexed user, uint256 rewardAmount);
     event RegistryAddressUpdated(IAddressRegistry newAddress);
     event PeriodUpdated(string periodType, uint256 newAmount);
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    // IVestingControllerERC721 public VC_TOKEN;
-    // IRandToken public RND_TOKEN;
 
     uint256 public COOLDOWN_SECONDS;
     uint256 public UNSTAKE_WINDOW;
 
     IAddressRegistry public REGISTRY;
 
+    IRandToken public REWARD_TOKEN;
+    IERC20Upgradeable public POOL_TOKEN;
+    address public REWARDS_VAULT;
+
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    mapping(address => uint256) rewards;
+    mapping(address => uint256) rewardsToclaim;
     mapping(address => mapping(address => uint256)) public onBehalf;
     mapping(address => uint256) public stakerCooldown;
 
@@ -65,20 +78,40 @@ contract SafetyModuleERC20 is
 
         REGISTRY = _registry;
         address _multisigVault = REGISTRY.getAddress("MS");
+        address _reserve = REGISTRY.getAddress("RES");
+        address _reward = REGISTRY.getAddress("RND");
+
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
 
         COOLDOWN_SECONDS = _cooldown_seconds;
         UNSTAKE_WINDOW = _unstake_window;
+        REWARDS_VAULT = _reserve;
+        REWARD_TOKEN = IRandToken(_reward);
     }
 
-    function cooldown() public {
+    /// @notice Exposed function to update an asset with new emission rate
+    /// @dev Calls the _updateAsset of RewardDistributionManager
+    /// @param _asset is the address of the asset to update
+    /// @param _emission is the rate of emission in seconds to update to
+    /// @param _totalStaked is total amount of stake for the asset
+    function updateAsset(
+        address _asset,
+        uint256 _emission,
+        uint256 _totalStaked
+    ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
+        _updateAsset(_asset, _emission, _totalStaked);
+    }
+
+    /// @notice Triggers cooldown period for the caller
+    /// @dev Check the actial COOLDOWN_PERIOD for lenght in seconds
+    function cooldown() public whenNotPaused {
         require(
             balanceOf(_msgSender()) > 0,
             "SM: No staked balance to cooldown"
         );
         stakerCooldown[_msgSender()] = block.timestamp;
-        emit CooldownStaked(_msgSender());
+        emit Cooldown(_msgSender());
     }
 
     modifier redeemable(uint256 amount) {
@@ -109,51 +142,56 @@ contract SafetyModuleERC20 is
         _;
     }
 
-    modifier amountChecking() {
-        /////// CAN BE DELETED IN FINAL /////////
-        uint256 balanceOfStaker = balanceOf(_msgSender());
-        uint256 vcBalanceOfStaker = onBehalf[_msgSender()][
-            REGISTRY.getAddress("VC")
-        ];
-        uint256 ownBalanceOfStaker = onBehalf[_msgSender()][_msgSender()];
+    /// @notice Redeems the staked token without vesting, updates rewards and transfers funds
+    /// @dev Only used for non-vesting token redemption, needs to wait cooldown
+    /// @param amount is the uint256 amount to redeem
+    function redeem(uint256 amount) public whenNotPaused redeemable(amount) {
+        require(amount != 0, "SM: Redeem amount cannot be zero");
 
-        require(
-            balanceOfStaker == vcBalanceOfStaker + ownBalanceOfStaker,
-            "SM: Unequal tokens minted and onBehalf amounts"
-        );
-        _;
-        /////// CAN BE DELETED IN FINAL /////////
-    }
+        uint256 balanceOfMsgSender = balanceOf(_msgSender());
+        amount = (amount > balanceOfMsgSender) ? balanceOfMsgSender : amount;
+        _updateUnclaimedRewards(_msgSender(), balanceOfMsgSender, true);
 
-    function redeem(uint256 amount) public redeemable(amount) amountChecking {
-        // Redeem without vesting investment
         _redeemOnRND(amount);
         emit RedeemStaked(_msgSender(), _msgSender(), amount);
     }
 
+    /// @notice Redeems the staked token with vesting, updates rewards and transfers funds
+    /// @dev Only used for vesting token redemption, needs to wait cooldown
+    /// @param tokenId is the id of the vesting token to redeem
+    /// @param amount is the uint256 amount to redeem
     function redeem(uint256 tokenId, uint256 amount)
         public
+        whenNotPaused
         redeemable(amount)
-        amountChecking
     {
+        require(amount != 0, "SM: Redeem amount cannot be zero");
+
+        uint256 balanceOfMsgSender = balanceOf(_msgSender());
+        amount = (amount > balanceOfMsgSender) ? balanceOfMsgSender : amount;
+        _updateUnclaimedRewards(_msgSender(), balanceOfMsgSender, true);
+
         _redeemOnTokenId(tokenId, amount);
         emit RedeemStaked(_msgSender(), _msgSender(), amount);
     }
 
+    /// @notice Internal function to handle the vesting token based stake redemption
+    /// @dev Interacts with the vesting controller
+    /// @param tokenId is the id of the vesting token to redeem
+    /// @param amount is the uint256 amount to redeem
     function _redeemOnTokenId(uint256 tokenId, uint256 amount) internal {
-        uint256 vcBalanceOfStaker = onBehalf[_msgSender()][
-            REGISTRY.getAddress("VC")
-        ];
+        // Fetching address from registry
+        address _vc = REGISTRY.getAddress("VC");
+        uint256 vcBalanceOfStaker = onBehalf[_msgSender()][_vc];
         require(
             vcBalanceOfStaker >= amount,
             "SM: Redeem amount is higher than avaiable on staked VC token"
         );
-
-        // Fetching address from registry
-        address _vc = REGISTRY.getAddress("VC");
-
-        // Update amounts and burn tokens
+        // Update amount and cooldown and burn tokens
         onBehalf[_msgSender()][address(_vc)] -= amount;
+        if (balanceOf(_msgSender()) - amount == 0) {
+            stakerCooldown[_msgSender()] = 0;
+        }
         _burn(_msgSender(), amount);
 
         // Get investment info and modify staked amount
@@ -168,36 +206,86 @@ contract SafetyModuleERC20 is
         IRandToken(REGISTRY.getAddress("RND")).transfer(address(_vc), amount);
     }
 
+    /// @notice Internal function to handle the non-vesting token based stake redemption
+    /// @param amount is the uint256 amount to redeem
     function _redeemOnRND(uint256 amount) internal {
         _burn(_msgSender(), amount);
         onBehalf[_msgSender()][_msgSender()] -= amount;
+        if (balanceOf(_msgSender()) - amount == 0) {
+            stakerCooldown[_msgSender()] = 0;
+        }
         IRandToken(REGISTRY.getAddress("RND")).transfer(_msgSender(), amount);
     }
 
-    function stake(uint256 tokenId, uint256 amount) public {
+    /// @notice Enables staking for vesting investors
+    /// @dev Interacts with the vesting controller
+    /// @param tokenId is the id of the vesting token to stake
+    /// @param amount is the uint256 amount to stake
+    function stake(uint256 tokenId, uint256 amount) public whenNotPaused {
         require(amount != 0, "SM: Stake amount cannot be zero");
+        uint256 rewards = _updateUserAssetState(
+            _msgSender(),
+            address(this),
+            balanceOf(_msgSender()),
+            totalSupply()
+        );
+        if (rewards != 0) {
+            rewardsToclaim[_msgSender()] += rewards;
+        }
         _stakeOnTokenId(tokenId, amount);
-        emit StakedOnTokenId(tokenId, amount);
+        emit StakedOnTokenId(_msgSender(), tokenId, amount);
     }
 
-    function stake(uint256 amount) public {
+    /// @notice Enables staking for non-vesting investors
+    /// @param amount is the uint256 amount to stake
+    function stake(uint256 amount) public whenNotPaused {
         require(amount != 0, "SM: Stake amount cannot be zero");
+        uint256 rewards = _updateUserAssetState(
+            _msgSender(),
+            address(this),
+            balanceOf(_msgSender()),
+            totalSupply()
+        );
+        if (rewards != 0) {
+            rewardsToclaim[_msgSender()] += rewards;
+        }
         _stakeOnRND(amount);
-        emit Staked(amount);
+        emit Staked(_msgSender(), amount);
     }
 
+    /// @notice Enables staking for AMM pool tokens
+    /// @param amount is the uint256 amount to stake
+    function _stakeOnPoolTokens(uint256 amount) internal {
+        // Requires approve from user
+        IERC20Upgradeable(REGISTRY.getAddress("BPT")).transferFrom(
+            _msgSender(),
+            address(this),
+            amount
+        );
+        // SM registers staked amount in SM storage
+        onBehalf[_msgSender()][_msgSender()] += amount;
+        // SM mints sRND tokens for the user
+        _mint(_msgSender(), amount);
+    }
+
+    /// @notice Internal function that handles staking for non-vesting investors
+    /// @param amount is the uint256 amount to stake
     function _stakeOnRND(uint256 amount) internal {
         IRandToken(REGISTRY.getAddress("RND")).approveAndTransfer(
             _msgSender(),
             address(this),
             amount
         );
-        // SM registers staked amount in SM storage and VC storage
+        // SM registers staked amount in SM storage
         onBehalf[_msgSender()][_msgSender()] += amount;
         // SM mints sRND tokens for the user
         _mint(_msgSender(), amount);
     }
 
+    /// @notice Internal function that handles staking for vesting investors
+    /// @dev Interacts with the vesting controller
+    /// @param tokenId is the id of the vesting token to stake
+    /// @param amount is the uint256 amount to stake
     function _stakeOnTokenId(uint256 tokenId, uint256 amount) internal {
         // Fetching address from registry
         address _vc = REGISTRY.getAddress("VC");
@@ -238,11 +326,71 @@ contract SafetyModuleERC20 is
         _mint(_msgSender(), amount);
     }
 
+    /// @notice Calculates the total rewards for a user
+    /// @dev Uses RewardDistributionManager `_getUnclaimedRewards`
+    /// @param user address of the user
+    /// @return total claimable rewards for the user
+    function calculateTotalRewards(address user) public view returns (uint256) {
+        uint256 totalRewards = _getUnclaimedRewards(
+            user,
+            balanceOf(user),
+            totalSupply()
+        );
+
+        return totalRewards + rewardsToclaim[user];
+    }
+
+    /// @notice Claims the rewards for a user
+    /// @dev Uses `_updateUnclaimedRewards`, transfers rewards
+    /// @param amount amount of reward to claim
+    function claimRewards(uint256 amount) public whenNotPaused {
+        uint256 totalRewards = _updateUnclaimedRewards(
+            _msgSender(),
+            balanceOf(_msgSender()),
+            false
+        );
+        rewardsToclaim[_msgSender()] = totalRewards - amount;
+
+        REWARD_TOKEN.approveAndTransfer(REWARDS_VAULT, _msgSender(), amount);
+
+        emit RewardsClaimed(_msgSender(), amount);
+    }
+
+    /// @notice Updates unclaimed rewards of a suer based on his stake
+    /// @param _user is the address of the user
+    /// @param _userStake is the total staked balance of user
+    /// @param _update if to update the `rewardsToclaim` mapping
+    /// @return totalRewards of the user
+    function _updateUnclaimedRewards(
+        address _user,
+        uint256 _userStake,
+        bool _update
+    ) internal returns (uint256) {
+        uint256 rewards = _updateUserAssetState(
+            _user,
+            address(this),
+            _userStake,
+            totalSupply()
+        );
+
+        uint256 totalRewards = rewardsToclaim[_user] + rewards;
+
+        if (rewards != 0) {
+            if (_update) {
+                rewardsToclaim[_user] = totalRewards;
+            }
+            emit RewardsAccrued(_user, rewards);
+        }
+
+        return totalRewards;
+    }
+
     /// @notice Function to let Rand to update the address of the Safety Module
     /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;
@@ -251,6 +399,7 @@ contract SafetyModuleERC20 is
 
     function updateCooldownPeriod(uint256 newPeriod)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         COOLDOWN_SECONDS = newPeriod;
@@ -259,6 +408,7 @@ contract SafetyModuleERC20 is
 
     function updateUnstakePeriod(uint256 newPeriod)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UNSTAKE_WINDOW = newPeriod;
@@ -280,23 +430,6 @@ contract SafetyModuleERC20 is
         _unpause();
     }
 
-    // function transfer(address to, uint256 amount)
-    //     public
-    //     pure
-    //     override
-    //     returns (bool)
-    // {
-    //     revert("SM: Cannot transfer staked tokens");
-    // }
-    //
-    // function transferFrom(
-    //     address from,
-    //     address to,
-    //     uint256 amount
-    // ) public pure override returns (bool) {
-    //     revert("SM: Cannot transfer staked tokens");
-    // }
-
     function _beforeTokenTransfer(
         address from,
         address to,
@@ -305,6 +438,9 @@ contract SafetyModuleERC20 is
         super._beforeTokenTransfer(from, to, amount);
     }
 
+    /// @notice Internal _transfer of the SM token
+    /// @dev It is blocked for all address other than this contract
+    /// @inheritdoc	ERC20Upgradeable
     function _transfer(
         address sender,
         address recipient,

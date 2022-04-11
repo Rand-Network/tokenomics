@@ -12,8 +12,8 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./IAddressRegistry.sol";
-import "./IInvestorsNFT.sol";
+import "../interfaces/IAddressRegistry.sol";
+import "../interfaces/IInvestorsNFT.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
@@ -84,7 +84,6 @@ contract VestingControllerERC721 is
     /// @param _erc721_symbol Short symbol like `vRND`
     /// @param _periodSeconds Amount of seconds to set 1 period to like 60*60*24 for 1 day
     /// @param _registry is the address of address registry
-
     function initialize(
         string calldata _erc721_name,
         string calldata _erc721_symbol,
@@ -128,10 +127,6 @@ contract VestingControllerERC721 is
         );
         _;
     }
-
-    ////////////////////////////////////////////////////////////////////
-    ///////////////////  Investment Related ////////////////////////////
-    ////////////////////////////////////////////////////////////////////
 
     /// @notice View function to get amount of claimable tokens from vested investment token
     /// @dev only accessible by the investor's wallet, the backend address and safety module contract
@@ -204,6 +199,7 @@ contract VestingControllerERC721 is
     /// @param amount is the amount of vested tokens to claim in the process
     function claimTokens(uint256 tokenId, uint256 amount)
         public
+        whenNotPaused
         onlyInvestorOrRand(tokenId)
     {
         address recipient = ownerOf(tokenId);
@@ -272,7 +268,7 @@ contract VestingControllerERC721 is
         uint256 vestingPeriod,
         uint256 vestingStartTime,
         uint256 cliffPeriod
-    ) public onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    ) public whenNotPaused onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
         // Minting vesting investment inside VC
         tokenId = _mintNewInvestment(
             recipient,
@@ -300,7 +296,7 @@ contract VestingControllerERC721 is
         uint256 vestingStartTime,
         uint256 cliffPeriod,
         uint256 nftTokenId
-    ) public onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    ) public whenNotPaused onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
         // Minting vesting investment inside VC
         tokenId = _mintNewInvestment(
             recipient,
@@ -364,16 +360,13 @@ contract VestingControllerERC721 is
         );
     }
 
-    ////////////////////////////////////////////////////////////////////
-    //////////////////////  Util related ///////////////////////////////
-    ////////////////////////////////////////////////////////////////////
-
     /// @notice Transfers RND Tokens to non-vesting investor, its used to distribute public sale tokens by backend
     /// @dev emits InvestmentTransferred() and only accessible with MINTER_ROLE
     /// @param recipient is the address to whom the token should be transferred to
     /// @param rndTokenAmount is the amount of the total investment
     function distributeTokens(address recipient, uint256 rndTokenAmount)
         public
+        whenNotPaused
         onlyRole(MINTER_ROLE)
     {
         require(rndTokenAmount > 0, "VC: Amount must be more than zero");
@@ -391,6 +384,7 @@ contract VestingControllerERC721 is
     /// @param rndTokenAmount is the amount of the total investment
     function transferRNDFromVC(address recipient, uint256 rndTokenAmount)
         public
+        whenNotPaused
         onlySM
     {
         require(rndTokenAmount > 0, "VC: Amount must be more than zero");
@@ -408,6 +402,7 @@ contract VestingControllerERC721 is
     /// @param amount the amount of tokens to increase staked amount
     function modifyStakedAmount(uint256 tokenId, uint256 amount)
         external
+        whenNotPaused
         onlySM
     {
         require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
@@ -434,24 +429,23 @@ contract VestingControllerERC721 is
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;
         emit RegistryAddressUpdated(newAddress);
     }
 
+    /// @notice Simple utility function to get investent tokenId based on an NFT tokenId
+    /// @param tokenIdNFT tokenId of the early investor NFT
+    /// @return tokenId of the investment
     function getTokenIdOfNFT(uint256 tokenIdNFT)
         public
         view
-        onlyRole(MINTER_ROLE)
         returns (uint256 tokenId)
     {
         tokenId = nftTokenToVCToken[tokenIdNFT];
     }
-
-    ////////////////////////////////////////////////////////////////////
-    /////////////////////  Import related //////////////////////////////
-    ////////////////////////////////////////////////////////////////////
 
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();

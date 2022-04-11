@@ -17,3 +17,5 @@ artifacts
 bin
 
 .DS_Store
+deployments/
+tenderly.yaml

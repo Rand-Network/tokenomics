@@ -16,14 +16,14 @@ exports.handler = async function (data) {
     let NFT_ABI;
 
     // Get ABI from IPFS
-    await axios.get(`https://cloudflare-ipfs.com/ipfs/${VC_IPFS_ABI_HASH}`)
+    await axios.get(`https://gateway.pinata.cloud/ipfs/${VC_IPFS_ABI_HASH}`)
         .then(function (response) {
             VC_ABI = response.data;
         })
         .catch(function (error) {
             console.log(error);
         });
-    await axios.get(`https://cloudflare-ipfs.com/ipfs/${NFT_IPFS_ABI_HASH}`)
+    await axios.get(`https://gateway.pinata.cloud/ipfs/${NFT_IPFS_ABI_HASH}`)
         .then(function (response) {
             NFT_ABI = response.data;
         })

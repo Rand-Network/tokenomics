@@ -3,24 +3,22 @@ require("@nomiclabs/hardhat-etherscan");
 const { BigNumber } = require("ethers");
 require("ethers");
 
-
-
-// Deployment params for initializer
-const _RNDdeployParams = {
+//Deployment params for initializer
+var _RNDdeployParams = {
   _name: "Token ERC20",
   _symbol: "tRND",
   _initialSupply: BigNumber.from(200e6),
   _registry: ""
 };
 
-const _VCdeployParams = {
+var _VCdeployParams = {
   _name: "Vesting Controller ERC721",
   _symbol: "tvRND",
   _periodSeconds: 1,
   _registry: ""
 };
 
-const _SMdeployParams = {
+var _SMdeployParams = {
   _name: "Safety Module ERC20",
   _symbol: "tsRND",
   _cooldown_seconds: 120, // 604800 7 days
@@ -28,13 +26,13 @@ const _SMdeployParams = {
   _registry: ""
 };
 
-const _NFTdeployParams = {
+var _NFTdeployParams = {
   _name: "Rand Early Investors NFT",
   _symbol: "RandNFT",
   _registry: ""
 };
 
-const _GovDeployParams = {
+var _GovDeployParams = {
   _name: "Rand Governance Aggregator",
   _symbol: "gRND",
   _registry: ""
@@ -92,6 +90,7 @@ async function deploy_testnet(
   SafetyModule = await ethers.getContractFactory("SafetyModuleERC20");
   InvestorsNFT = await ethers.getContractFactory("InvestorsNFT");
   Governance = await ethers.getContractFactory("Governance");
+  Reserve = await ethers.getContractFactory("EcosystemReserve");
 
   multisig_address = owner.address;
   oz_defender = backend.address;
@@ -108,6 +107,16 @@ async function deploy_testnet(
   tx = await RandRegistry.setNewAddress("MS", multisig_address);
   await tx.wait(numConfirmation);
   tx = await RandRegistry.setNewAddress("OZ", oz_defender);
+  await tx.wait(numConfirmation);
+
+  RandReserve = await upgrades.deployProxy(
+    Reserve,
+    [RandRegistry.address],
+    { kind: "uups" });
+  console.log('Deployed Reserve proxy at:', RandReserve.address);
+  txRandReserve = RandReserve.deployTransaction;
+  await txRandReserve.wait(numConfirmation);
+  tx = await RandRegistry.setNewAddress("RES", RandReserve.address);
   await tx.wait(numConfirmation);
 
   RNDdeployParams._registry = RandRegistry.address;
@@ -195,6 +204,12 @@ async function deploy_testnet(
     tokenId_101 = 2;
 
     console.log("\nStarting contract initialization - allowance, minting, etc...");
+
+    // Transfer RND to Reserve 
+    reserveAmount = rndTokenAmount.mul(10);
+    tx = await RandToken.transfer(RandReserve.address, reserveAmount);
+    await tx.wait(numConfirmation);
+    console.log("Reserve balance of RND:", await RandToken.balanceOf(RandReserve.address));
 
     // Add allowance for VC to fetch tokens in claim
     allowanceAmount = rndTokenAmount.mul(10);
@@ -297,7 +312,7 @@ async function deploy_testnet(
       }
     });
   }
-  return RandToken, RandVC, RandSM, RandNFT, RandGov, RandRegistry;
+  return { RandToken, RandVC, RandSM, RandNFT, RandGov, RandRegistry, RandReserve };
 }
 
 module.exports = {

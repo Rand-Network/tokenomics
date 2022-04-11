@@ -7,8 +7,8 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./IAddressRegistry.sol";
-import "./IVestingControllerERC721.sol";
+import "../interfaces/IAddressRegistry.sol";
+import "../interfaces/IVestingControllerERC721.sol";
 
 /// @title Rand.network ERC20 Governance Aggregator contract for Automata Witness
 /// @author @adradr - Adrian Lenard
@@ -22,6 +22,7 @@ contract Governance is
     event RegistryAddressUpdated(IAddressRegistry newAddress);
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant READER_ROLE = keccak256("READER_ROLE");
 
     string private name_;
     string private symbol_;
@@ -51,6 +52,7 @@ contract Governance is
         address _multisigVault = REGISTRY.getAddress("MS");
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
+        _grantRole(READER_ROLE, _multisigVault);
     }
 
     /// @notice Function to let Rand to update the address of the Safety Module
@@ -58,6 +60,7 @@ contract Governance is
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
+        whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;
@@ -71,7 +74,12 @@ contract Governance is
 
     /// @notice Function to summarize balances of an account over multiple Rand Ecosystem tokens
     /// @param account to summarize balance for in VC, SM and RND
-    function balanceOf(address account) public view returns (uint256) {
+    function balanceOf(address account)
+        public
+        view
+        onlyRole(READER_ROLE)
+        returns (uint256)
+    {
         // VC balanceOf = rndTokenAmount - rndClaimedAmount - rndStakedAmount
         // tokenOfOwnerByIndex(address owner, uint256 index) → uint256
         // Returns a token ID owned by owner at a given index of its token list.
