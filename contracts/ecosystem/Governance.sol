@@ -44,6 +44,7 @@ contract Governance is
     ) public initializer {
         __Pausable_init();
         __AccessControl_init();
+        __UUPSUpgradeable_init();
 
         name_ = _name;
         symbol_ = _symbol;
