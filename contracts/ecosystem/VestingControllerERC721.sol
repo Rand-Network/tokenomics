@@ -245,7 +245,7 @@ contract VestingControllerERC721 is
         uint256 vestedPeriods = block.timestamp - investment.vestingStartTime;
 
         // If there is still not yet vested periods
-        if (vestedPeriods <= investment.vestingPeriod) {
+        if (vestedPeriods < investment.vestingPeriod) {
             claimableAmount =
                 (vestedPeriods * investment.rndTokenAmount) /
                 investment.vestingPeriod -
