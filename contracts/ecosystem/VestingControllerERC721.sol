@@ -352,7 +352,7 @@ contract VestingControllerERC721 is
             vestingStartTime = block.timestamp;
         }
         vestingStartTime += cliffPeriod;
-        vestingPeriod = vestingPeriod * PERIOD_SECONDS * 1 seconds;
+        vestingPeriod = vestingPeriod * PERIOD_SECONDS;
         uint256 mintTimestamp = block.timestamp;
         uint256 rndClaimedAmount = 0;
         uint256 rndStakedAmount = 0;
