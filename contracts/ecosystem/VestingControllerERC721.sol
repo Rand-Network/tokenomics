@@ -224,7 +224,7 @@ contract VestingControllerERC721 is
     /// @param amount is the amount of vested tokens to claim in the process
     /// @param tokenId is the id of investment to submit the claim on
     function _addClaimedTokens(uint256 amount, uint256 tokenId) internal {
-        VestingInvestment memory investment = vestingToken[tokenId];
+        VestingInvestment storage investment = vestingToken[tokenId];
         require(
             investment.rndTokenAmount - investment.rndClaimedAmount >= amount,
             "VC: Amount to be claimed is more than remaining"
