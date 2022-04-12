@@ -132,9 +132,9 @@ contract SafetyModuleERC20 is
             stakerCooldown[_msgSender()] + COOLDOWN_SECONDS + UNSTAKE_WINDOW
         ) {
             stakerCooldown[_msgSender()] = 0;
-            revert("SM: Unstake period finished, cooldown reset");
+        } else {
+            _;
         }
-        _;
     }
 
     /// @notice Redeems the staked token without vesting, updates rewards and transfers funds
