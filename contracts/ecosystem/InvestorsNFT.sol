@@ -58,9 +58,10 @@ contract InvestorsNFT is
     ) public initializer {
         __ERC721_init(_erc721_name, _erc721_symbol);
         __ERC721Enumerable_init();
+        __ERC721Burnable_init();
         __Pausable_init();
         __AccessControl_init();
-        __ERC721Burnable_init();
+        __UUPSUpgradeable_init();
 
         REGISTRY = _registry;
 
