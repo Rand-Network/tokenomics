@@ -109,22 +109,23 @@ contract SafetyModuleERC20 is
     }
 
     modifier redeemable(uint256 amount) {
+        uint256 sendersCooldown = stakerCooldown[_msgSender()];
         require(amount > 0, "SM: Redeem amount cannot be zero");
         require(
             balanceOf(_msgSender()) >= amount,
             "SM: Not enough staked balance"
         );
-        require(stakerCooldown[_msgSender()] > 0, "SM: No cooldown initiated");
+        require(sendersCooldown > 0, "SM: No cooldown initiated");
         require(
-            block.timestamp > stakerCooldown[_msgSender()] + COOLDOWN_SECONDS,
+            block.timestamp > sendersCooldown + COOLDOWN_SECONDS,
             "SM: Still under cooldown period"
         );
         // If unstake period is passed, reset cooldown for user
         if (
             block.timestamp >
-            stakerCooldown[_msgSender()] + COOLDOWN_SECONDS + UNSTAKE_WINDOW
+            sendersCooldown + COOLDOWN_SECONDS + UNSTAKE_WINDOW
         ) {
-            stakerCooldown[_msgSender()] = 0;
+            sendersCooldown = 0;
         } else {
             _;
         }
