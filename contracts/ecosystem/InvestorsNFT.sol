@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "../interfaces/IAddressRegistry.sol";
+import "./AddressConstants.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 
 /// @title Rand.network ERC721 Investors NFT contract
@@ -25,7 +25,8 @@ contract InvestorsNFT is
     ERC721EnumerableUpgradeable,
     PausableUpgradeable,
     AccessControlUpgradeable,
-    ERC721BurnableUpgradeable
+    ERC721BurnableUpgradeable,
+    AddressConstants
 {
     // Events
     event BaseURIChanged(string baseURI);
@@ -40,7 +41,6 @@ contract InvestorsNFT is
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     string public baseURI;
-    IAddressRegistry REGISTRY;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -58,14 +58,15 @@ contract InvestorsNFT is
     ) public initializer {
         __ERC721_init(_erc721_name, _erc721_symbol);
         __ERC721Enumerable_init();
+        __ERC721Burnable_init();
         __Pausable_init();
         __AccessControl_init();
-        __ERC721Burnable_init();
+        __UUPSUpgradeable_init();
 
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress("MS");
-        address _vcAddress = REGISTRY.getAddress("VC");
+        address _multisigVault = REGISTRY.getAddress(MULTISIG);
+        address _vcAddress = REGISTRY.getAddress(VESTING_CONTROLLER);
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
@@ -78,7 +79,7 @@ contract InvestorsNFT is
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
-        whenNotPaused
+        whenPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;
@@ -141,10 +142,10 @@ contract InvestorsNFT is
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount
-        ) = IVestingControllerERC721(REGISTRY.getAddress("VC"))
+        ) = IVestingControllerERC721(REGISTRY.getAddress(VESTING_CONTROLLER))
                 .getInvestmentInfoForNFT(tokenId);
 
-        bool isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
+        bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
         require(
             isClaimedAll,
             "NFT: Transfer of token is prohibited until investment is totally claimed"
@@ -180,10 +181,10 @@ contract InvestorsNFT is
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount
-        ) = IVestingControllerERC721(REGISTRY.getAddress("VC"))
+        ) = IVestingControllerERC721(REGISTRY.getAddress(VESTING_CONTROLLER))
                 .getInvestmentInfoForNFT(tokenId);
 
-        bool isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
+        bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
 
         return
             bytes(baseURIString).length > 0
