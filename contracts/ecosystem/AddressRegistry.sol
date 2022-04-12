@@ -28,6 +28,7 @@ contract AddressRegistry is
     constructor() initializer {}
 
     function initialize(address _multisigVault) public initializer {
+        require(_multisigVault != address(0));
         __Pausable_init();
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
