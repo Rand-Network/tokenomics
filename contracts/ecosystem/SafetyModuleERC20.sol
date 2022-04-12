@@ -403,7 +403,7 @@ contract SafetyModuleERC20 is
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
-        whenNotPaused
+        whenPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;
