@@ -344,10 +344,7 @@ contract VestingControllerERC721 is
         uint256 cliffPeriod
     ) internal returns (uint256 tokenId) {
         // Fetching RND from Multisig
-        require(
-            _getRND(rndTokenAmount),
-            "VC: Cannot request required RND from Multisig"
-        );
+        _getRND(rndTokenAmount);
         // Incrementing token counter and minting new token to recipient
         tokenId = _safeMint(recipient);
 
@@ -418,15 +415,13 @@ contract VestingControllerERC721 is
     /// @notice Function which allows VC to pull RND funds when minting an investment
     /// @dev emit FetchedRND(), needs allowance from MultiSig on initial RND supply
     /// @param amount of tokens to fetch from the Rand Multisig when minting a new investment
-    /// @return bool
-    function _getRND(uint256 amount) internal returns (bool) {
+    function _getRND(uint256 amount) internal {
         IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransferFrom(
             REGISTRY.getAddress(MULTISIG),
             address(this),
             amount
         );
         emit FetchedRND(amount);
-        return true;
     }
 
     /// @notice Function to let Rand to update the address of the Safety Module
