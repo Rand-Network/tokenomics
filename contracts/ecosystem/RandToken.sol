@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "../interfaces/IAddressRegistry.sol";
+import "./AddressConstants.sol";
 
 /// @title Rand.network ERC20 Token contract
 /// @author @adradr - Adrian Lenard
@@ -18,14 +18,13 @@ contract RandToken is
     ERC20Upgradeable,
     ERC20BurnableUpgradeable,
     PausableUpgradeable,
-    AccessControlUpgradeable
+    AccessControlUpgradeable,
+    AddressConstants
 {
     event RegistryAddressUpdated(IAddressRegistry newAddress);
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-
-    IAddressRegistry public REGISTRY;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -49,7 +48,7 @@ contract RandToken is
 
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress("MS");
+        address _multisigVault = REGISTRY.getAddress(MULTISIG);
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
@@ -67,7 +66,7 @@ contract RandToken is
         uint256 amount
     ) external whenNotPaused {
         require(
-            REGISTRY.getAddress("SM") == _msgSender(),
+            REGISTRY.getAddress(SAFETY_MODULE) == _msgSender(),
             "RND: Not accessible by msg.sender"
         );
         uint256 currentAllowance = allowance(owner, recipient);
