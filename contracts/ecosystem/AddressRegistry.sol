@@ -31,6 +31,7 @@ contract AddressRegistry is
     function initialize(address _multisigVault) public initializer {
         __Pausable_init();
         __AccessControl_init();
+        __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
     }
