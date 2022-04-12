@@ -132,7 +132,7 @@ contract AddressRegistry is
         _unpause();
     }
 
-    function _authorizeUpgrade(address newImplementation)
+    function _authorizeUpgrade(address)
         internal
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
