@@ -23,6 +23,7 @@ contract AddressRegistry is
 
     mapping(string => address[]) internal addressStorage;
     string[] internal addressId;
+    uint256 internal addressIdLenght;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -102,6 +103,7 @@ contract AddressRegistry is
             return false;
         }
 
+        addressIdLenght += 1;
         addressId.push(name);
         addressStorage[name].push(contractAddress);
         emit NewAddressSet(name);
@@ -110,7 +112,7 @@ contract AddressRegistry is
     }
 
     function _existInArray(string calldata name) internal view returns (bool) {
-        for (uint256 i = 0; i < addressId.length; i++) {
+        for (uint256 i = 0; i < addressIdLenght; i++) {
             if (
                 keccak256(abi.encodePacked(addressId[i])) ==
                 keccak256(abi.encodePacked(name))
