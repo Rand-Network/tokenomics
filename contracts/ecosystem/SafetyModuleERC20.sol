@@ -50,8 +50,8 @@ contract SafetyModuleERC20 is
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    mapping(address => uint256) rewardsToclaim;
-    mapping(address => mapping(address => uint256)) public onBehalf;
+    mapping(address => uint256) internal rewardsToclaim;
+    mapping(address => mapping(address => uint256)) internal onBehalf;
     mapping(address => uint256) public stakerCooldown;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
