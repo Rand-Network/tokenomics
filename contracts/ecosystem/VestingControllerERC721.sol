@@ -59,11 +59,11 @@ contract VestingControllerERC721 is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
-    CountersUpgradeable.Counter private _tokenIdCounter;
+    CountersUpgradeable.Counter internal _tokenIdCounter;
 
     uint256 public PERIOD_SECONDS;
     // Mapping to store VC tokenIds to NFT tokenIds
-    mapping(uint256 => uint256) private nftTokenToVCToken;
+    mapping(uint256 => uint256) internal nftTokenToVCToken;
     string public baseURI;
 
     struct VestingInvestment {
@@ -75,7 +75,7 @@ contract VestingControllerERC721 is
         uint256 mintTimestamp;
         bool exists;
     }
-    mapping(uint256 => VestingInvestment) vestingToken;
+    mapping(uint256 => VestingInvestment) internal vestingToken;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
