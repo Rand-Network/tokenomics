@@ -197,12 +197,9 @@ contract SafetyModuleERC20 is
         );
 
         // Transfer tokens
-        require(
-            IRandToken(REGISTRY.getAddress(RAND_TOKEN)).transfer(
-                address(_vc),
-                amount
-            ),
-            "SM: Unable to transfer redeemed tokens"
+        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransfer(
+            address(_vc),
+            amount
         );
     }
 
@@ -214,7 +211,7 @@ contract SafetyModuleERC20 is
         if (balanceOf(_msgSender()) - amount == 0) {
             stakerCooldown[_msgSender()] = 0;
         }
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).transfer(
+        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransfer(
             _msgSender(),
             amount
         );
@@ -264,7 +261,7 @@ contract SafetyModuleERC20 is
     /// @param amount is the uint256 amount to stake
     function _stakeOnPoolTokens(uint256 amount) internal {
         // Requires approve from user
-        IERC20Upgradeable(REGISTRY.getAddress(BPT_TOKEN)).transferFrom(
+        IERC20Upgradeable(REGISTRY.getAddress(BPT_TOKEN)).safeTransferFrom(
             _msgSender(),
             address(this),
             amount
