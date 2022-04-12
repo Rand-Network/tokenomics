@@ -11,7 +11,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "./RewardDistributionManagerV2.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 import "../interfaces/IRandToken.sol";
-import "../interfaces/IAddressRegistry.sol";
+import "./AddressConstants.sol";
 
 /// @title Rand.network ERC20 Safety Module
 /// @author @adradr - Adrian Lenard
@@ -23,6 +23,7 @@ contract SafetyModuleERC20 is
     PausableUpgradeable,
     AccessControlUpgradeable,
     ReentrancyGuardUpgradeable,
+    AddressConstants,
     RewardDistributionManagerV2
 {
     event Staked(address indexed user, uint256 amount);
@@ -75,7 +76,6 @@ contract SafetyModuleERC20 is
 
         REGISTRY = _registry;
         address _multisigVault = REGISTRY.getAddress(MULTISIG);
-
 
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
@@ -218,7 +218,6 @@ contract SafetyModuleERC20 is
             _msgSender(),
             amount
         );
-
     }
 
     /// @notice Enables staking for vesting investors
@@ -279,7 +278,7 @@ contract SafetyModuleERC20 is
     /// @notice Internal function that handles staking for non-vesting investors
     /// @param amount is the uint256 amount to stake
     function _stakeOnRND(uint256 amount) internal {
-        IRandToken(REGISTRY.getAddress("RND")).approveAndTransfer(
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).approveAndTransfer(
             _msgSender(),
             address(this),
             amount
@@ -316,7 +315,7 @@ contract SafetyModuleERC20 is
             "SM: Not enough stakable amount on VC tokenId"
         );
 
-        IRandToken(REGISTRY.getAddress("RND")).approveAndTransfer(
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).approveAndTransfer(
             _vc,
             address(this),
             amount
@@ -360,7 +359,12 @@ contract SafetyModuleERC20 is
         );
         rewardsToclaim[_msgSender()] = totalRewards - amount;
 
-        REWARD_TOKEN.approveAndTransfer(REWARDS_VAULT, _msgSender(), amount);
+        //REWARD_TOKEN.approveAndTransfer(REWARDS_VAULT, _msgSender(), amount);
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).approveAndTransfer(
+            REGISTRY.getAddress(ECOSYSTEM_RESERVE),
+            _msgSender(),
+            amount
+        );
 
         emit RewardsClaimed(_msgSender(), amount);
     }
