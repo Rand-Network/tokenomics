@@ -183,7 +183,9 @@ contract SafetyModuleERC20 is
             "SM: Redeem amount is higher than avaiable on staked VC token"
         );
         // Update amount and cooldown and burn tokens
-        onBehalf[_msgSender()][address(_vc)] -= amount;
+        unchecked {
+            onBehalf[_msgSender()][address(_vc)] -= amount;
+        }
         if (balanceOf(_msgSender()) - amount == 0) {
             stakerCooldown[_msgSender()] = 0;
         }
