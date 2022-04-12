@@ -18,11 +18,12 @@ contract AddressRegistry is
 {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    event NewAddressSet(string indexed name);
+    event NewAddressSet(string name);
     event AddressChanged(string indexed name, address contractAddress);
 
     mapping(string => address[]) internal addressStorage;
     string[] internal addressId;
+    uint256 internal addressIdLenght;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -30,6 +31,7 @@ contract AddressRegistry is
     function initialize(address _multisigVault) public initializer {
         __Pausable_init();
         __AccessControl_init();
+        __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
     }
@@ -48,7 +50,8 @@ contract AddressRegistry is
         view
         returns (address contractAddress)
     {
-        return addressStorage[name][addressStorage[name].length - 1];
+        address[] storage tempAddresses = addressStorage[name];
+        return tempAddresses[tempAddresses.length - 1];
     }
 
     /// @notice Useful to query all the addresses used for a contract
@@ -70,16 +73,16 @@ contract AddressRegistry is
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         bytes memory tempStringByte = bytes(name);
+        address[] storage tempAddresses = addressStorage[name];
         require(tempStringByte.length > 0, "Registry: No contract name set");
         require(contractAddress != address(0), "Registry: No address set");
         require(_existInArray(name), "Registry: Contract name does not exists");
         require(
-            addressStorage[name][addressStorage[name].length - 1] !=
-                contractAddress,
+            tempAddresses[tempAddresses.length - 1] != contractAddress,
             "Registry: New address is the same as the current"
         );
 
-        addressStorage[name].push(contractAddress);
+        tempAddresses.push(contractAddress);
         emit AddressChanged(name, contractAddress);
     }
 
@@ -100,6 +103,7 @@ contract AddressRegistry is
             return false;
         }
 
+        addressIdLenght += 1;
         addressId.push(name);
         addressStorage[name].push(contractAddress);
         emit NewAddressSet(name);
@@ -108,7 +112,7 @@ contract AddressRegistry is
     }
 
     function _existInArray(string calldata name) internal view returns (bool) {
-        for (uint256 i = 0; i < addressId.length; i++) {
+        for (uint256 i = 0; i < addressIdLenght; i++) {
             if (
                 keccak256(abi.encodePacked(addressId[i])) ==
                 keccak256(abi.encodePacked(name))
@@ -127,7 +131,7 @@ contract AddressRegistry is
         _unpause();
     }
 
-    function _authorizeUpgrade(address newImplementation)
+    function _authorizeUpgrade(address)
         internal
         override
         onlyRole(DEFAULT_ADMIN_ROLE)

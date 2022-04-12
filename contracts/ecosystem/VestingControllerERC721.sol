@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "../interfaces/IAddressRegistry.sol";
+import "./AddressConstants.sol";
 import "../interfaces/IInvestorsNFT.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
@@ -29,7 +29,8 @@ contract VestingControllerERC721 is
     PausableUpgradeable,
     AccessControlUpgradeable,
     ERC721BurnableUpgradeable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    AddressConstants
 {
     // Events
     event BaseURIChanged(string baseURI);
@@ -58,13 +59,12 @@ contract VestingControllerERC721 is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
-    CountersUpgradeable.Counter private _tokenIdCounter;
+    CountersUpgradeable.Counter internal _tokenIdCounter;
 
     uint256 public PERIOD_SECONDS;
     // Mapping to store VC tokenIds to NFT tokenIds
-    mapping(uint256 => uint256) private nftTokenToVCToken;
+    mapping(uint256 => uint256) internal nftTokenToVCToken;
     string public baseURI;
-    IAddressRegistry REGISTRY;
 
     struct VestingInvestment {
         uint256 rndTokenAmount;
@@ -75,7 +75,7 @@ contract VestingControllerERC721 is
         uint256 mintTimestamp;
         bool exists;
     }
-    mapping(uint256 => VestingInvestment) vestingToken;
+    mapping(uint256 => VestingInvestment) internal vestingToken;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -97,12 +97,13 @@ contract VestingControllerERC721 is
         __Pausable_init();
         __AccessControl_init();
         __ERC721Burnable_init();
+        __UUPSUpgradeable_init();
 
         PERIOD_SECONDS = _periodSeconds;
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress("MS");
-        address _backendAddress = REGISTRY.getAddress("OZ");
+        address _multisigVault = REGISTRY.getAddress(MULTISIG);
+        address _backendAddress = REGISTRY.getAddress(OPENZEPPELIN_DEFENDER);
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
@@ -112,9 +113,10 @@ contract VestingControllerERC721 is
 
     modifier onlyInvestorOrRand(uint256 tokenId) {
         bool isTokenOwner = ownerOf(tokenId) == _msgSender();
-        bool isBackend = REGISTRY.getAddress("OZ") == _msgSender();
-        bool isSM = REGISTRY.getAddress("SM") == _msgSender();
-        bool isGov = REGISTRY.getAddress("GOV") == _msgSender();
+        bool isBackend = REGISTRY.getAddress(OPENZEPPELIN_DEFENDER) ==
+            _msgSender();
+        bool isSM = REGISTRY.getAddress(SAFETY_MODULE) == _msgSender();
+        bool isGov = REGISTRY.getAddress(GOVERNANCE) == _msgSender();
         require(
             isTokenOwner || isBackend || isSM || isGov,
             "VC: No access role for this address"
@@ -124,7 +126,7 @@ contract VestingControllerERC721 is
 
     modifier onlySM() {
         require(
-            REGISTRY.getAddress("SM") == _msgSender(),
+            REGISTRY.getAddress(SAFETY_MODULE) == _msgSender(),
             "VC: Not accessible by msg.sender"
         );
         _;
@@ -210,7 +212,7 @@ contract VestingControllerERC721 is
         uint256 claimable = _calculateClaimableTokens(tokenId);
         require(claimable >= amount, "VC: amount is more than claimable");
         _addClaimedTokens(amount, tokenId);
-        IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransfer(
+        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransfer(
             recipient,
             amount
         );
@@ -222,7 +224,7 @@ contract VestingControllerERC721 is
     /// @param amount is the amount of vested tokens to claim in the process
     /// @param tokenId is the id of investment to submit the claim on
     function _addClaimedTokens(uint256 amount, uint256 tokenId) internal {
-        VestingInvestment memory investment = vestingToken[tokenId];
+        VestingInvestment storage investment = vestingToken[tokenId];
         require(
             investment.rndTokenAmount - investment.rndClaimedAmount >= amount,
             "VC: Amount to be claimed is more than remaining"
@@ -240,10 +242,14 @@ contract VestingControllerERC721 is
     {
         require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
         VestingInvestment memory investment = vestingToken[tokenId];
-        uint256 vestedPeriods = block.timestamp - investment.vestingStartTime;
+        require(block.timestamp > investment.vestingStartTime);
+        uint256 vestedPeriods;
+        unchecked {
+            vestedPeriods = block.timestamp - investment.vestingStartTime;
+        }
 
         // If there is still not yet vested periods
-        if (vestedPeriods <= investment.vestingPeriod) {
+        if (vestedPeriods < investment.vestingPeriod) {
             claimableAmount =
                 (vestedPeriods * investment.rndTokenAmount) /
                 investment.vestingPeriod -
@@ -322,7 +328,7 @@ contract VestingControllerERC721 is
             cliffPeriod
         );
         // Minting NFT investment for early investors
-        IInvestorsNFT(REGISTRY.getAddress("NFT")).mintInvestmentNFT(
+        IInvestorsNFT(REGISTRY.getAddress(INVESTOR_NFT)).mintInvestmentNFT(
             recipient,
             nftTokenId
         );
@@ -338,10 +344,7 @@ contract VestingControllerERC721 is
         uint256 cliffPeriod
     ) internal returns (uint256 tokenId) {
         // Fetching RND from Multisig
-        require(
-            _getRND(rndTokenAmount),
-            "VC: Cannot request required RND from Multisig"
-        );
+        _getRND(rndTokenAmount);
         // Incrementing token counter and minting new token to recipient
         tokenId = _safeMint(recipient);
 
@@ -350,7 +353,7 @@ contract VestingControllerERC721 is
             vestingStartTime = block.timestamp;
         }
         vestingStartTime += cliffPeriod;
-        vestingPeriod = vestingPeriod * PERIOD_SECONDS * 1 seconds;
+        vestingPeriod = vestingPeriod * PERIOD_SECONDS;
         uint256 mintTimestamp = block.timestamp;
         uint256 rndClaimedAmount = 0;
         uint256 rndStakedAmount = 0;
@@ -387,31 +390,12 @@ contract VestingControllerERC721 is
         onlyRole(MINTER_ROLE)
     {
         require(rndTokenAmount > 0, "VC: Amount must be more than zero");
-        IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransferFrom(
-            REGISTRY.getAddress("MS"),
+        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransferFrom(
+            REGISTRY.getAddress(MULTISIG),
             recipient,
             rndTokenAmount
         );
         emit InvestmentTransferred(recipient, rndTokenAmount);
-    }
-
-    /// @notice Transfers RND Tokens to an address in order to get funds for SM or release tokens stuck on VC
-    /// @dev emits RNDTransferred() and only accessible with SM_ROLE
-    /// @param recipient is the address to whom the token should be transferred to
-    /// @param rndTokenAmount is the amount of the total investment
-    function transferRNDFromVC(address recipient, uint256 rndTokenAmount)
-        external
-        whenNotPaused
-        onlySM
-        nonReentrant
-    {
-        require(rndTokenAmount > 0, "VC: Amount must be more than zero");
-        IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransferFrom(
-            address(this),
-            recipient,
-            rndTokenAmount
-        );
-        emit RNDTransferred(recipient, rndTokenAmount);
     }
 
     /// @notice Function for Safety Module to increase the staked RND amount
@@ -431,15 +415,13 @@ contract VestingControllerERC721 is
     /// @notice Function which allows VC to pull RND funds when minting an investment
     /// @dev emit FetchedRND(), needs allowance from MultiSig on initial RND supply
     /// @param amount of tokens to fetch from the Rand Multisig when minting a new investment
-    /// @return bool
-    function _getRND(uint256 amount) internal returns (bool) {
-        IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransferFrom(
-            REGISTRY.getAddress("MS"),
+    function _getRND(uint256 amount) internal {
+        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransferFrom(
+            REGISTRY.getAddress(MULTISIG),
             address(this),
             amount
         );
         emit FetchedRND(amount);
-        return true;
     }
 
     /// @notice Function to let Rand to update the address of the Safety Module
@@ -447,7 +429,7 @@ contract VestingControllerERC721 is
     /// @param newAddress where the new Safety Module contract is located
     function updateRegistryAddress(IAddressRegistry newAddress)
         public
-        whenNotPaused
+        whenPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         REGISTRY = newAddress;
@@ -522,7 +504,7 @@ contract VestingControllerERC721 is
         if (vestingToken[tokenId].exists) {
             uint256 rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
             uint256 rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
-            isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
+            isClaimedAll = rndTokenAmount == rndClaimedAmount;
         }
         require(
             isClaimedAll,
