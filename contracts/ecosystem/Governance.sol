@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./AddressConstants.sol";
+import "../interfaces/IAddressRegistry.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 
 /// @title Rand.network ERC20 Governance Aggregator contract for Automata Witness
@@ -17,8 +17,7 @@ contract Governance is
     Initializable,
     UUPSUpgradeable,
     PausableUpgradeable,
-    AccessControlUpgradeable,
-    AddressConstants
+    AccessControlUpgradeable
 {
     event RegistryAddressUpdated(IAddressRegistry newAddress);
 
@@ -27,6 +26,8 @@ contract Governance is
 
     string private name_;
     string private symbol_;
+
+    IAddressRegistry public REGISTRY;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -43,13 +44,12 @@ contract Governance is
     ) public initializer {
         __Pausable_init();
         __AccessControl_init();
-        __UUPSUpgradeable_init();
 
         name_ = _name;
         symbol_ = _symbol;
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
+        address _multisigVault = REGISTRY.getAddress("MS");
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(READER_ROLE, _multisigVault);
@@ -69,7 +69,7 @@ contract Governance is
 
     /// @notice Function to override default totalSupply and point it to the totalSupply of RND token contract
     function totalSupply() public view returns (uint256) {
-        return IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).totalSupply();
+        return IERC20Upgradeable(REGISTRY.getAddress("RND")).totalSupply();
     }
 
     /// @notice Function to summarize balances of an account over multiple Rand Ecosystem tokens
@@ -85,7 +85,7 @@ contract Governance is
         // Returns a token ID owned by owner at a given index of its token list.
         // Use along with balanceOf to enumerate all of owner's tokens.
         uint256 _accountBalance;
-        address _vcAddress = REGISTRY.getAddress(VESTING_CONTROLLER);
+        address _vcAddress = REGISTRY.getAddress("VC");
         uint256 _vcBalance = IVestingControllerERC721(_vcAddress).balanceOf(
             account
         );
@@ -109,10 +109,10 @@ contract Governance is
                 rndStakedAmount;
         }
         // SM balanceOf = SM.balanceOf()
-        _accountBalance += IERC20Upgradeable(REGISTRY.getAddress(SAFETY_MODULE))
+        _accountBalance += IERC20Upgradeable(REGISTRY.getAddress("SM"))
             .balanceOf(account);
         // RND balanceOf = RND.balanceOf()
-        _accountBalance += IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN))
+        _accountBalance += IERC20Upgradeable(REGISTRY.getAddress("RND"))
             .balanceOf(account);
 
         return _accountBalance;
