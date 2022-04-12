@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./AddressConstants.sol";
+import "../interfaces/IAddressRegistry.sol";
 
 /// @title Rand.network Ecosystem Reserve
 /// @author @adradr - Adrian Lenard
@@ -16,12 +16,13 @@ contract EcosystemReserve is
     Initializable,
     UUPSUpgradeable,
     PausableUpgradeable,
-    AccessControlUpgradeable,
-    AddressConstants
+    AccessControlUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+
+    IAddressRegistry public REGISTRY;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -34,7 +35,7 @@ contract EcosystemReserve is
         __AccessControl_init();
 
         REGISTRY = _registry;
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
+        address _multisigVault = REGISTRY.getAddress("MS");
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
     }
