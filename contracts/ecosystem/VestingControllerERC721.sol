@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "./AddressConstants.sol";
+import "../interfaces/IAddressRegistry.sol";
 import "../interfaces/IInvestorsNFT.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
@@ -29,8 +29,7 @@ contract VestingControllerERC721 is
     PausableUpgradeable,
     AccessControlUpgradeable,
     ERC721BurnableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    AddressConstants
+    ReentrancyGuardUpgradeable
 {
     // Events
     event BaseURIChanged(string baseURI);
@@ -65,6 +64,7 @@ contract VestingControllerERC721 is
     // Mapping to store VC tokenIds to NFT tokenIds
     mapping(uint256 => uint256) internal nftTokenToVCToken;
     string public baseURI;
+    IAddressRegistry REGISTRY;
 
     struct VestingInvestment {
         uint256 rndTokenAmount;
@@ -102,8 +102,8 @@ contract VestingControllerERC721 is
         PERIOD_SECONDS = _periodSeconds;
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
-        address _backendAddress = REGISTRY.getAddress(OPENZEPPELIN_DEFENDER);
+        address _multisigVault = REGISTRY.getAddress("MS");
+        address _backendAddress = REGISTRY.getAddress("OZ");
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
@@ -113,10 +113,9 @@ contract VestingControllerERC721 is
 
     modifier onlyInvestorOrRand(uint256 tokenId) {
         bool isTokenOwner = ownerOf(tokenId) == _msgSender();
-        bool isBackend = REGISTRY.getAddress(OPENZEPPELIN_DEFENDER) ==
-            _msgSender();
-        bool isSM = REGISTRY.getAddress(SAFETY_MODULE) == _msgSender();
-        bool isGov = REGISTRY.getAddress(GOVERNANCE) == _msgSender();
+        bool isBackend = REGISTRY.getAddress("OZ") == _msgSender();
+        bool isSM = REGISTRY.getAddress("SM") == _msgSender();
+        bool isGov = REGISTRY.getAddress("GOV") == _msgSender();
         require(
             isTokenOwner || isBackend || isSM || isGov,
             "VC: No access role for this address"
@@ -126,7 +125,7 @@ contract VestingControllerERC721 is
 
     modifier onlySM() {
         require(
-            REGISTRY.getAddress(SAFETY_MODULE) == _msgSender(),
+            REGISTRY.getAddress("SM") == _msgSender(),
             "VC: Not accessible by msg.sender"
         );
         _;
@@ -212,7 +211,7 @@ contract VestingControllerERC721 is
         uint256 claimable = _calculateClaimableTokens(tokenId);
         require(claimable >= amount, "VC: amount is more than claimable");
         _addClaimedTokens(amount, tokenId);
-        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransfer(
+        IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransfer(
             recipient,
             amount
         );
@@ -328,7 +327,7 @@ contract VestingControllerERC721 is
             cliffPeriod
         );
         // Minting NFT investment for early investors
-        IInvestorsNFT(REGISTRY.getAddress(INVESTOR_NFT)).mintInvestmentNFT(
+        IInvestorsNFT(REGISTRY.getAddress("NFT")).mintInvestmentNFT(
             recipient,
             nftTokenId
         );
@@ -390,8 +389,8 @@ contract VestingControllerERC721 is
         onlyRole(MINTER_ROLE)
     {
         require(rndTokenAmount > 0, "VC: Amount must be more than zero");
-        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransferFrom(
-            REGISTRY.getAddress(MULTISIG),
+        IERC20Upgradeable(REGISTRY.getAddress("RND")).safeTransferFrom(
+            REGISTRY.getAddress("MS"),
             recipient,
             rndTokenAmount
         );

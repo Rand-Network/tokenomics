@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./AddressConstants.sol";
+import "../interfaces/IAddressRegistry.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 
 /// @title Rand.network ERC721 Investors NFT contract
@@ -25,8 +25,7 @@ contract InvestorsNFT is
     ERC721EnumerableUpgradeable,
     PausableUpgradeable,
     AccessControlUpgradeable,
-    ERC721BurnableUpgradeable,
-    AddressConstants
+    ERC721BurnableUpgradeable
 {
     // Events
     event BaseURIChanged(string baseURI);
@@ -41,6 +40,7 @@ contract InvestorsNFT is
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     string public baseURI;
+    IAddressRegistry REGISTRY;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -65,8 +65,8 @@ contract InvestorsNFT is
 
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
-        address _vcAddress = REGISTRY.getAddress(VESTING_CONTROLLER);
+        address _multisigVault = REGISTRY.getAddress("MS");
+        address _vcAddress = REGISTRY.getAddress("VC");
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
@@ -142,7 +142,7 @@ contract InvestorsNFT is
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount
-        ) = IVestingControllerERC721(REGISTRY.getAddress(VESTING_CONTROLLER))
+        ) = IVestingControllerERC721(REGISTRY.getAddress("VC"))
                 .getInvestmentInfoForNFT(tokenId);
 
         bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
@@ -181,7 +181,7 @@ contract InvestorsNFT is
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount
-        ) = IVestingControllerERC721(REGISTRY.getAddress(VESTING_CONTROLLER))
+        ) = IVestingControllerERC721(REGISTRY.getAddress("VC"))
                 .getInvestmentInfoForNFT(tokenId);
 
         bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
