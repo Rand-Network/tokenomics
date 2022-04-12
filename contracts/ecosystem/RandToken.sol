@@ -45,6 +45,7 @@ contract RandToken is
         __ERC20Burnable_init();
         __Pausable_init();
         __AccessControl_init();
+        __UUPSUpgradeable_init();
 
         REGISTRY = _registry;
 
