@@ -396,25 +396,6 @@ contract VestingControllerERC721 is
         emit InvestmentTransferred(recipient, rndTokenAmount);
     }
 
-    /// @notice Transfers RND Tokens to an address in order to get funds for SM or release tokens stuck on VC
-    /// @dev emits RNDTransferred() and only accessible with SM_ROLE
-    /// @param recipient is the address to whom the token should be transferred to
-    /// @param rndTokenAmount is the amount of the total investment
-    function transferRNDFromVC(address recipient, uint256 rndTokenAmount)
-        external
-        whenNotPaused
-        onlySM
-        nonReentrant
-    {
-        require(rndTokenAmount > 0, "VC: Amount must be more than zero");
-        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransferFrom(
-            address(this),
-            recipient,
-            rndTokenAmount
-        );
-        emit RNDTransferred(recipient, rndTokenAmount);
-    }
-
     /// @notice Function for Safety Module to increase the staked RND amount
     /// @dev emits StakedAmountModifier() and only accessible by the Safety Module contract via SM_ROLE
     /// @param tokenId the tokenId for which to increase staked amount
