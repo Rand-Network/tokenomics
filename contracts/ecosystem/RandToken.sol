@@ -31,17 +31,17 @@ contract RandToken is
 
     /// @notice Initializer allow proxy scheme
     /// @dev For upgradability its necessary to use initialize instead of simple constructor
-    /// @param _name Name of the token like `Rand Token ERC20`
-    /// @param _symbol Short symbol like `RND`
+    /// @param name_ Name of the token like `Rand Token ERC20`
+    /// @param symbol_ Short symbol like `RND`
     /// @param _initialSupply Total supply to mint initially like `200e6`
     /// @param _registry is the address of address registry
     function initialize(
-        string memory _name,
-        string memory _symbol,
+        string memory name_,
+        string memory symbol_,
         uint256 _initialSupply,
         IAddressRegistry _registry
     ) public initializer {
-        __ERC20_init(_name, _symbol);
+        __ERC20_init(name_, symbol_);
         __ERC20Burnable_init();
         __Pausable_init();
         __AccessControl_init();
