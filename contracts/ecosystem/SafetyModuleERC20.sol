@@ -59,16 +59,16 @@ contract SafetyModuleERC20 is
 
     /// @notice Initializer allow proxy scheme
     /// @dev For upgradability its necessary to use initialize instead of simple constructor
-    /// @param _name Name of the token like `Staked Rand Token ERC20`
-    /// @param _symbol Short symbol like `sRND`
+    /// @param name_ Name of the token like `Staked Rand Token ERC20`
+    /// @param symbol_ Short symbol like `sRND`
     function initialize(
-        string memory _name,
-        string memory _symbol,
+        string memory name_,
+        string memory symbol_,
         uint256 _cooldown_seconds,
         uint256 _unstake_window,
         IAddressRegistry _registry
     ) public initializer {
-        __ERC20_init(_name, _symbol);
+        __ERC20_init(name_, symbol_);
         __Pausable_init();
         __AccessControl_init();
         __UUPSUpgradeable_init();
