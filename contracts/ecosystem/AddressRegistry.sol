@@ -51,7 +51,8 @@ contract AddressRegistry is
         view
         returns (address contractAddress)
     {
-        return addressStorage[name][addressStorage[name].length - 1];
+        address[] storage tempAddresses = addressStorage[name];
+        return tempAddresses[tempAddresses.length - 1];
     }
 
     /// @notice Useful to query all the addresses used for a contract
@@ -73,16 +74,16 @@ contract AddressRegistry is
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         bytes memory tempStringByte = bytes(name);
+        address[] storage tempAddresses = addressStorage[name];
         require(tempStringByte.length > 0, "Registry: No contract name set");
         require(contractAddress != address(0), "Registry: No address set");
         require(_existInArray(name), "Registry: Contract name does not exists");
         require(
-            addressStorage[name][addressStorage[name].length - 1] !=
-                contractAddress,
+            tempAddresses[tempAddresses.length - 1] != contractAddress,
             "Registry: New address is the same as the current"
         );
 
-        addressStorage[name].push(contractAddress);
+        tempAddresses.push(contractAddress);
         emit AddressChanged(name, contractAddress);
     }
 
