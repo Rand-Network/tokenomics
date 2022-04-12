@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-
 import "./RewardDistributionManagerV2.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 import "../interfaces/IRandToken.sol";
@@ -49,10 +48,6 @@ contract SafetyModuleERC20 is
     uint256 public COOLDOWN_SECONDS;
     uint256 public UNSTAKE_WINDOW;
 
-    // IRandToken public REWARD_TOKEN;
-    // IERC20Upgradeable public POOL_TOKEN;
-    // address public REWARDS_VAULT;
-
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     mapping(address => uint256) rewardsToclaim;
@@ -76,19 +71,17 @@ contract SafetyModuleERC20 is
         __ERC20_init(name_, symbol_);
         __Pausable_init();
         __AccessControl_init();
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
 
         REGISTRY = _registry;
         address _multisigVault = REGISTRY.getAddress(MULTISIG);
-        // address _reserve = REGISTRY.getAddress(ECOSYSTEM_RESERVE);
-        // address _reward = REGISTRY.getAddress(RAND_TOKEN);
 
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
 
         COOLDOWN_SECONDS = _cooldown_seconds;
         UNSTAKE_WINDOW = _unstake_window;
-        // REWARDS_VAULT = _reserve;
-        // REWARD_TOKEN = IRandToken(_reward);
     }
 
     /// @notice Exposed function to update an asset with new emission rate
