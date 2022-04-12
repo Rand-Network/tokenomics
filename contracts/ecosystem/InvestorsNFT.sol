@@ -145,7 +145,7 @@ contract InvestorsNFT is
         ) = IVestingControllerERC721(REGISTRY.getAddress(VESTING_CONTROLLER))
                 .getInvestmentInfoForNFT(tokenId);
 
-        bool isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
+        bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
         require(
             isClaimedAll,
             "NFT: Transfer of token is prohibited until investment is totally claimed"
@@ -184,7 +184,7 @@ contract InvestorsNFT is
         ) = IVestingControllerERC721(REGISTRY.getAddress(VESTING_CONTROLLER))
                 .getInvestmentInfoForNFT(tokenId);
 
-        bool isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
+        bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
 
         return
             bytes(baseURIString).length > 0
