@@ -97,6 +97,7 @@ contract VestingControllerERC721 is
         __Pausable_init();
         __AccessControl_init();
         __ERC721Burnable_init();
+        __UUPSUpgradeable_init();
 
         PERIOD_SECONDS = _periodSeconds;
         REGISTRY = _registry;
