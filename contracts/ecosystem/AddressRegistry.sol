@@ -18,7 +18,7 @@ contract AddressRegistry is
 {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    event NewAddressSet(string indexed name);
+    event NewAddressSet(string name);
     event AddressChanged(string indexed name, address contractAddress);
 
     mapping(string => address[]) internal addressStorage;
