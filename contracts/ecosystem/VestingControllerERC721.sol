@@ -505,7 +505,7 @@ contract VestingControllerERC721 is
         if (vestingToken[tokenId].exists) {
             uint256 rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
             uint256 rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
-            isClaimedAll = rndTokenAmount == rndClaimedAmount ? true : false;
+            isClaimedAll = rndTokenAmount == rndClaimedAmount;
         }
         require(
             isClaimedAll,
