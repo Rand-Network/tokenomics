@@ -33,7 +33,7 @@ describe("Rand Token with Vesting Controller", function () {
   };
 
   const _SMdeployParams = {
-    _name: "Safety Module ERC20",
+    _name: "Staked Rand Token",
     _symbol: "tsRND",
     _cooldown_seconds: 120, // 604800 7 days
     _unstake_window: 240,
@@ -329,6 +329,7 @@ describe("Rand Token with Vesting Controller", function () {
     });
     it("Staking funds of RND", async function () {
       //console.log(await RandSM.assets(RandSM.address));
+      await RandToken.connect(alice).approve(RandSM.address, stakeAmount);
       stake_tx_1 = await RandSM.connect(alice)["stake(uint256)"](stakeAmount);
       //console.log(await RandSM.assets(RandSM.address));
       //console.log("Alice sRND balance:", await RandSM.balanceOf(alice.address));

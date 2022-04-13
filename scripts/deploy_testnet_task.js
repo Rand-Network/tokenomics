@@ -43,7 +43,7 @@ async function get_factories() {
   Registry = await ethers.getContractFactory("AddressRegistry");
   Token = await ethers.getContractFactory("RandToken");
   VestingController = await ethers.getContractFactory("VestingControllerERC721");
-  SafetyModule = await ethers.getContractFactory("SafetyModuleERC20");
+  SafetyModule = await ethers.getContractFactory("StakedRand");
   InvestorsNFT = await ethers.getContractFactory("InvestorsNFT");
   Governance = await ethers.getContractFactory("Governance");
 
@@ -87,7 +87,7 @@ async function deploy_testnet(
   Registry = await ethers.getContractFactory("AddressRegistry");
   Token = await ethers.getContractFactory("RandToken");
   VestingController = await ethers.getContractFactory("VestingControllerERC721");
-  SafetyModule = await ethers.getContractFactory("SafetyModuleERC20");
+  SafetyModule = await ethers.getContractFactory("StakedRand");
   InvestorsNFT = await ethers.getContractFactory("InvestorsNFT");
   Governance = await ethers.getContractFactory("Governance");
   Reserve = await ethers.getContractFactory("EcosystemReserve");
