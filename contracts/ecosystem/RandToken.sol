@@ -70,8 +70,6 @@ contract RandToken is
             REGISTRY.getAddress("SM") == _msgSender(),
             "RND: Not accessible by msg.sender"
         );
-        uint256 currentAllowance = allowance(owner, recipient);
-        _approve(owner, recipient, currentAllowance + amount);
         _transfer(owner, recipient, amount);
     }
 
