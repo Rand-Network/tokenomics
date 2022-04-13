@@ -6,9 +6,9 @@ import "./SafetyModuleERC20.sol";
 
 /// @title Rand.network ERC20 Safety Module
 /// @author @adradr - Adrian Lenard
-/// @notice Safety Module instance for the staked Rand Balance Pool Tokens
+/// @notice Safety Module instance for the staked Rand Token
 
-contract StakedToken is SafetyModuleERC20, UUPSUpgradeable {
+contract StakedRand is SafetyModuleERC20, UUPSUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
@@ -30,11 +30,27 @@ contract StakedToken is SafetyModuleERC20, UUPSUpgradeable {
         __SM_init(
             __name,
             __symbol,
-            BPT_TOKEN,
+            RAND_TOKEN,
             __cooldown_seconds,
             __unstake_window,
             __registry
         );
+    }
+
+    /// @notice Exposing staking for vesting investors
+    /// @dev Interacts with the vesting controller
+    /// @param tokenId is the id of the vesting token to stake
+    /// @param amount is the uint256 amount to stake
+    function stake(uint256 tokenId, uint256 amount) public {
+        _stake(tokenId, amount);
+    }
+
+    /// @notice Exposing redeem function of the staked token with vesting, updates rewards and transfers funds
+    /// @dev Only used for vesting token redemption, needs to wait cooldown
+    /// @param amount is the uint256 amount to redeem
+    /// @param tokenId is the id of the vesting token to redeem
+    function redeem(uint256 tokenId, uint256 amount) public {
+        _redeem(tokenId, amount);
     }
 
     function _authorizeUpgrade(address newImplementation)

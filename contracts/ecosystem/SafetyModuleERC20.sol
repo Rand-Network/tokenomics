@@ -158,8 +158,8 @@ contract SafetyModuleERC20 is
     /// @dev Only used for vesting token redemption, needs to wait cooldown
     /// @param amount is the uint256 amount to redeem
     /// @param tokenId is the id of the vesting token to redeem
-    function redeem(uint256 tokenId, uint256 amount)
-        public
+    function _redeem(uint256 tokenId, uint256 amount)
+        internal
         whenNotPaused
         nonReentrant
         redeemable(amount)
@@ -228,8 +228,8 @@ contract SafetyModuleERC20 is
     /// @dev Interacts with the vesting controller
     /// @param tokenId is the id of the vesting token to stake
     /// @param amount is the uint256 amount to stake
-    function stake(uint256 tokenId, uint256 amount)
-        public
+    function _stake(uint256 tokenId, uint256 amount)
+        internal
         whenNotPaused
         nonReentrant
     {
