@@ -54,7 +54,7 @@ contract SafetyModuleERC20 is
     mapping(address => uint256) public stakerCooldown;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() initializer {}
+    //constructor() initializer {}
 
     /// @notice Initializer allow proxy scheme
     /// @dev For upgradability its necessary to use initialize instead of simple constructor
