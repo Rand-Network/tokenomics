@@ -213,10 +213,12 @@ contract SafetyModuleERC20 is
     /// @notice Internal function to handle the non-vesting token based stake redemption
     /// @param amount is the uint256 amount to redeem
     function _redeemOnToken(uint256 amount) internal {
-        _burn(_msgSender(), amount);
-        onBehalf[_msgSender()][_msgSender()] -= amount;
         if (balanceOf(_msgSender()) - amount == 0) {
             stakerCooldown[_msgSender()] = 0;
+        }
+        _burn(_msgSender(), amount);
+        unchecked {
+            onBehalf[_msgSender()][_msgSender()] -= amount;
         }
         IERC20Upgradeable(REGISTRY.getAddress(STAKED_TOKEN)).safeTransfer(
             _msgSender(),
