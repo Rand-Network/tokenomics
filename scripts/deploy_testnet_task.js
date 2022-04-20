@@ -204,6 +204,15 @@ async function deploy_testnet(
     tokenId_101 = 2;
 
     console.log("\nStarting contract initialization - allowance, minting, etc...");
+    // Initializing Safety Module
+    // Init SM _updateAsset
+    emissionPerSec = ethers.utils.parseEther("1"); // 1 RND per seconds
+    const update_tx = await RandSM.updateAsset(
+      await RandRegistry.getAddress("SM"),  // staked asset address
+      emissionPerSec,                       // emissionRate
+      ethers.utils.parseEther("0")          // totalStaked
+    );
+    console.log("SM updateAsset done with emissionRate set at:", emissionPerSec);
 
     // Transfer RND to Reserve 
     reserveAmount = rndTokenAmount.mul(10);
