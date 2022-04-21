@@ -124,12 +124,12 @@ contract SafetyModuleERC20 is
             block.timestamp > sendersCooldown + COOLDOWN_SECONDS,
             "SM: Still under cooldown period"
         );
-        // If unstake period is passed, reset cooldown for user
+        // If unstake period is passed, revert tx for user
         if (
             block.timestamp >
             sendersCooldown + COOLDOWN_SECONDS + UNSTAKE_WINDOW
         ) {
-            sendersCooldown = 0;
+            revert("SM: Unstake windows has ended");
         } else {
             _;
         }
