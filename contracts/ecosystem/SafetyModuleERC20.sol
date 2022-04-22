@@ -6,7 +6,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./RewardDistributionManagerV2.sol";
 import "../interfaces/IVestingControllerERC721.sol";
@@ -18,7 +17,6 @@ import "./AddressConstants.sol";
 /// @notice Customized implementation of the OpenZeppelin ERC20 standard to be used for the Safety Module
 contract SafetyModuleERC20 is
     Initializable,
-    UUPSUpgradeable,
     ERC20Upgradeable,
     PausableUpgradeable,
     AccessControlUpgradeable,
@@ -45,6 +43,7 @@ contract SafetyModuleERC20 is
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    string public STAKED_TOKEN;
     uint256 public COOLDOWN_SECONDS;
     uint256 public UNSTAKE_WINDOW;
 
@@ -55,23 +54,27 @@ contract SafetyModuleERC20 is
     mapping(address => uint256) public stakerCooldown;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() initializer {}
+    //constructor() initializer {}
 
     /// @notice Initializer allow proxy scheme
     /// @dev For upgradability its necessary to use initialize instead of simple constructor
     /// @param name_ Name of the token like `Staked Rand Token ERC20`
     /// @param symbol_ Short symbol like `sRND`
-    function initialize(
+    /// @param _stakedToken Token to use for staking (RND or BPT)
+    /// @param _cooldown_seconds is the period of cooldown before redeeming in seconds
+    /// @param _unstake_window is the period after cooldown in which redeem can happen in seconds
+    /// @param _registry is the address of the AddressRegistry
+    function __SM_init(
         string memory name_,
         string memory symbol_,
+        string memory _stakedToken,
         uint256 _cooldown_seconds,
         uint256 _unstake_window,
         IAddressRegistry _registry
-    ) public initializer {
+    ) internal onlyInitializing {
         __ERC20_init(name_, symbol_);
         __Pausable_init();
         __AccessControl_init();
-        __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
         REGISTRY = _registry;
@@ -80,6 +83,7 @@ contract SafetyModuleERC20 is
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
 
+        STAKED_TOKEN = _stakedToken;
         COOLDOWN_SECONDS = _cooldown_seconds;
         UNSTAKE_WINDOW = _unstake_window;
     }
@@ -120,12 +124,12 @@ contract SafetyModuleERC20 is
             block.timestamp > sendersCooldown + COOLDOWN_SECONDS,
             "SM: Still under cooldown period"
         );
-        // If unstake period is passed, reset cooldown for user
+        // If unstake period is passed, revert tx for user
         if (
             block.timestamp >
             sendersCooldown + COOLDOWN_SECONDS + UNSTAKE_WINDOW
         ) {
-            sendersCooldown = 0;
+            revert("SM: Unstake windows has ended");
         } else {
             _;
         }
@@ -146,7 +150,7 @@ contract SafetyModuleERC20 is
         amount = (amount > balanceOfMsgSender) ? balanceOfMsgSender : amount;
         _updateUnclaimedRewards(_msgSender(), balanceOfMsgSender, true);
 
-        _redeemOnRND(amount);
+        _redeemOnToken(amount);
         emit RedeemStaked(_msgSender(), _msgSender(), amount);
     }
 
@@ -154,8 +158,8 @@ contract SafetyModuleERC20 is
     /// @dev Only used for vesting token redemption, needs to wait cooldown
     /// @param amount is the uint256 amount to redeem
     /// @param tokenId is the id of the vesting token to redeem
-    function redeem(uint256 tokenId, uint256 amount)
-        public
+    function _redeem(uint256 tokenId, uint256 amount)
+        internal
         whenNotPaused
         nonReentrant
         redeemable(amount)
@@ -208,13 +212,15 @@ contract SafetyModuleERC20 is
 
     /// @notice Internal function to handle the non-vesting token based stake redemption
     /// @param amount is the uint256 amount to redeem
-    function _redeemOnRND(uint256 amount) internal {
-        _burn(_msgSender(), amount);
-        onBehalf[_msgSender()][_msgSender()] -= amount;
+    function _redeemOnToken(uint256 amount) internal {
         if (balanceOf(_msgSender()) - amount == 0) {
             stakerCooldown[_msgSender()] = 0;
         }
-        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransfer(
+        _burn(_msgSender(), amount);
+        unchecked {
+            onBehalf[_msgSender()][_msgSender()] -= amount;
+        }
+        IERC20Upgradeable(REGISTRY.getAddress(STAKED_TOKEN)).safeTransfer(
             _msgSender(),
             amount
         );
@@ -224,8 +230,8 @@ contract SafetyModuleERC20 is
     /// @dev Interacts with the vesting controller
     /// @param tokenId is the id of the vesting token to stake
     /// @param amount is the uint256 amount to stake
-    function stake(uint256 tokenId, uint256 amount)
-        public
+    function _stake(uint256 tokenId, uint256 amount)
+        internal
         whenNotPaused
         nonReentrant
     {
@@ -256,29 +262,15 @@ contract SafetyModuleERC20 is
         if (rewards != 0) {
             rewardsToclaim[_msgSender()] += rewards;
         }
-        _stakeOnRND(amount);
+        _stakeOnTokens(amount);
         emit Staked(_msgSender(), amount);
     }
 
-    /// @notice Enables staking for AMM pool tokens
+    /// @notice Enables staking for ERC20 tokens
     /// @param amount is the uint256 amount to stake
-    function _stakeOnPoolTokens(uint256 amount) internal {
+    function _stakeOnTokens(uint256 amount) internal {
         // Requires approve from user
-        IERC20Upgradeable(REGISTRY.getAddress(BPT_TOKEN)).safeTransferFrom(
-            _msgSender(),
-            address(this),
-            amount
-        );
-        // SM registers staked amount in SM storage
-        onBehalf[_msgSender()][_msgSender()] += amount;
-        // SM mints sRND tokens for the user
-        _mint(_msgSender(), amount);
-    }
-
-    /// @notice Internal function that handles staking for non-vesting investors
-    /// @param amount is the uint256 amount to stake
-    function _stakeOnRND(uint256 amount) internal {
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).approveAndTransfer(
+        IERC20Upgradeable(REGISTRY.getAddress(STAKED_TOKEN)).safeTransferFrom(
             _msgSender(),
             address(this),
             amount
@@ -359,7 +351,6 @@ contract SafetyModuleERC20 is
         );
         rewardsToclaim[_msgSender()] = totalRewards - amount;
 
-        //REWARD_TOKEN.approveAndTransfer(REWARDS_VAULT, _msgSender(), amount);
         IRandToken(REGISTRY.getAddress(RAND_TOKEN)).approveAndTransfer(
             REGISTRY.getAddress(ECOSYSTEM_RESERVE),
             _msgSender(),
@@ -466,10 +457,4 @@ contract SafetyModuleERC20 is
         );
         super._transfer(sender, recipient, amount);
     }
-
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
 }

@@ -178,17 +178,18 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         uint256 accruedRewards = 0;
 
         for (uint256 i; i < trackedAssets.length; i++) {
+            AssetData storage trackedAssetData = assets[trackedAssets[i]];
             uint256 assetIndex = _newAssetIndex(
-                assets[trackedAssets[i]].assetIndex,
-                assets[trackedAssets[i]].emissionRate,
-                assets[trackedAssets[i]].lastUpdateTimestamp,
+                trackedAssetData.assetIndex,
+                trackedAssetData.emissionRate,
+                trackedAssetData.lastUpdateTimestamp,
                 _totalSupply
             );
 
             accruedRewards += _calculateRewards(
                 _userStake,
                 assetIndex,
-                assets[trackedAssets[i]].userIndex[_user]
+                trackedAssetData.userIndex[_user]
             );
         }
         return accruedRewards;

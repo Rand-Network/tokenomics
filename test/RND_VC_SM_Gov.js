@@ -33,7 +33,7 @@ describe("Rand Token with Vesting Controller", function () {
   };
 
   const _SMdeployParams = {
-    _name: "Safety Module ERC20",
+    _name: "Staked Rand Token",
     _symbol: "tsRND",
     _cooldown_seconds: 120, // 604800 7 days
     _unstake_window: 240,
@@ -269,6 +269,74 @@ describe("Rand Token with Vesting Controller", function () {
     });
   });
 
+  describe("Investors NFT functionality", function () {
+
+    before(async function () {
+      // solidity timestamp
+      last_block = await ethers.provider.getBlock();
+      created_ts = last_block.timestamp;
+      recipient = alice.address;
+      vestingStartTime = BigNumber.from(created_ts);
+      rndTokenAmount = ethers.utils.parseEther('100');
+      vestingPeriod = BigNumber.from("10");
+      cliffPeriod = BigNumber.from("1");
+      tokenId_100 = 100;
+      tokenId_101 = 101;
+      // Add allowance for VC to fetch tokens in claim
+      tx = await RandToken.increaseAllowance(RandVC.address, rndTokenAmount.mul(2));
+      await tx.wait(numConfirmation);
+      // Minting a sample investment token
+      mint_tx_2 = await RandVC['mintNewInvestment(address,uint256,uint256,uint256,uint256,uint256)'](
+        recipient,
+        rndTokenAmount,
+        vestingPeriod,
+        vestingStartTime,
+        cliffPeriod,
+        tokenId_100
+      );
+      const rc1 = await mint_tx_2.wait(numConfirmation);
+      const event1 = rc1.events.find(event => event.event === 'NewInvestmentTokenMinted');
+      e_tokenId1 = event1.args.tokenId;
+
+      mint_tx_2 = await RandVC['mintNewInvestment(address,uint256,uint256,uint256,uint256,uint256)'](
+        recipient,
+        rndTokenAmount,
+        vestingPeriod,
+        vestingStartTime,
+        cliffPeriod,
+        tokenId_101
+      );
+      const rc2 = await mint_tx_2.wait(numConfirmation);
+      const event2 = rc2.events.find(event => event.event === 'NewInvestmentTokenMinted');
+      e_tokenId2 = event2.args.tokenId;
+      //console.log('Minted token:', e_tokenId);
+    });
+    it("Setting base URI", async function () {
+      await RandNFT.setBaseURI("ipfs://someHash/");
+    });
+    it("Checking contractURI", async function () {
+      expect(await RandNFT.contractURI()).to.equal("ipfs://someHash/contract_uri");
+    });
+    it("Checking tokenURI", async function () {
+      expect(await RandNFT.connect(alice).tokenURI(tokenId_100)).to.equal(`ipfs://someHash/${tokenId_100}`);
+      expect(await RandNFT.connect(alice).tokenURI(tokenId_101)).to.equal(`ipfs://someHash/${tokenId_101}`);
+      for (let i = 0; i < 10; i++) {
+        await ethers.provider.send('evm_mine');
+      }
+      claimableAmount = await RandVC.connect(alice).getClaimableTokens(e_tokenId1);
+      await RandVC.connect(alice).claimTokens(e_tokenId1, rndTokenAmount);
+      claimableAmount2 = await RandVC.connect(alice).getClaimableTokens(e_tokenId1);
+      expect(claimableAmount2).to.equal(0);
+      expect(await RandNFT.tokenURI(tokenId_100)).to.equal(`ipfs://someHash/${tokenId_100}_`);
+      // Assert stored tokenIds
+      expect(await RandVC.connect(backend).getTokenIdOfNFT(tokenId_100)).to.equal(e_tokenId1);
+      expect(await RandVC.connect(backend).getTokenIdOfNFT(tokenId_101)).to.equal(e_tokenId2);
+    });
+    it("Should not be able to burn", async function () {
+      await expectRevert.unspecified(RandNFT.connect(alice).burn(tokenId_100));
+    });
+  });
+
   describe("SM functionality", function () {
     before(async function () {
       //
@@ -286,12 +354,12 @@ describe("Rand Token with Vesting Controller", function () {
       // Transfer [alice] some tokens
       await BPT.transfer(alice.address, ethers.utils.parseEther("100"));
       console.log("Alice BPT balance:", await BPT.balanceOf(alice.address));
-
       await RandToken.transfer(alice.address, ethers.utils.parseEther("100"));
       console.log("Alice RND balance:", await RandToken.balanceOf(alice.address));
 
       // Init Reserve 
       // Transfer RND to Reserve 
+      rndTokenAmount = ethers.utils.parseEther("100");
       reserveAmount = rndTokenAmount.mul(10);
       tx = await RandToken.transfer(RandReserve.address, reserveAmount);
       await tx.wait(numConfirmation);
@@ -327,8 +395,15 @@ describe("Rand Token with Vesting Controller", function () {
       stakeAmount = ethers.utils.parseEther("1");
       mine_periods = 100;
     });
+    it("Checking name, symbol and supply", async function () {
+      expect(await RandSM.name()).to.equal(_SMdeployParams._name);
+      expect(await RandSM.symbol()).to.equal(_SMdeployParams._symbol);
+      const ownerBalance = await RandSM.balanceOf(owner.address);
+      expect(await RandSM.totalSupply()).to.equal(ownerBalance);
+    });
     it("Staking funds of RND", async function () {
       //console.log(await RandSM.assets(RandSM.address));
+      await RandToken.connect(alice).approve(RandSM.address, stakeAmount);
       stake_tx_1 = await RandSM.connect(alice)["stake(uint256)"](stakeAmount);
       //console.log(await RandSM.assets(RandSM.address));
       //console.log("Alice sRND balance:", await RandSM.balanceOf(alice.address));
@@ -422,73 +497,176 @@ describe("Rand Token with Vesting Controller", function () {
       aliceAfterBalanceRND = await RandToken.balanceOf(alice.address);
       expect(aliceBeforeBalanceRND).to.equal(aliceAfterBalanceRND);
     });
-  });
 
-  describe("Investors NFT functionality", function () {
+    it("SM staking multiple users full flow, redeployed state", async function () {
+      deployed = await deploy_testnet(
+        initialize = false, verify = false,
+        RNDdeployParams = _RNDdeployParams,
+        VCdeployParams = _VCdeployParams,
+        SMdeployParams = _SMdeployParams,
+        NFTdeployParams = _NFTdeployParams,
+        GovDeployParams = _GovDeployParams);
 
-    before(async function () {
-      // solidity timestamp
-      last_block = await ethers.provider.getBlock();
-      created_ts = last_block.timestamp;
-      recipient = alice.address;
-      vestingStartTime = BigNumber.from(created_ts);
-      rndTokenAmount = ethers.utils.parseEther('100');
-      vestingPeriod = BigNumber.from("10");
-      cliffPeriod = BigNumber.from("1");
-      tokenId_100 = 100;
-      tokenId_101 = 101;
-      // Add allowance for VC to fetch tokens in claim
-      tx = await RandToken.increaseAllowance(RandVC.address, rndTokenAmount.mul(2));
-      await tx.wait(numConfirmation);
-      // Minting a sample investment token
-      mint_tx_2 = await RandVC['mintNewInvestment(address,uint256,uint256,uint256,uint256,uint256)'](
-        recipient,
-        rndTokenAmount,
-        vestingPeriod,
-        vestingStartTime,
-        cliffPeriod,
-        tokenId_100
+      let RandToken = deployed.RandToken,
+        RandVC = deployed.RandVC,
+        RandSM = deployed.RandSM,
+        RandNFT = deployed.RandNFT,
+        RandGov = deployed.RandGov,
+        RandRegistry = deployed.RandRegistry,
+        RandReserve = deployed.RandReserve;
+
+      // Initializing Safety Module
+      // Init SM _updateAsset
+      emissionPerSec = ethers.utils.parseEther("1"); // 1 RND per seconds
+      const update_tx = await RandSM.updateAsset(
+        await RandRegistry.getAddress("SM"),  // staked asset address
+        emissionPerSec,                       // emissionRate
+        ethers.utils.parseEther("0")          // totalStaked
       );
-      const rc1 = await mint_tx_2.wait(numConfirmation);
-      const event1 = rc1.events.find(event => event.event === 'NewInvestmentTokenMinted');
-      e_tokenId1 = event1.args.tokenId;
 
-      mint_tx_2 = await RandVC['mintNewInvestment(address,uint256,uint256,uint256,uint256,uint256)'](
-        recipient,
-        rndTokenAmount,
-        vestingPeriod,
-        vestingStartTime,
-        cliffPeriod,
-        tokenId_101
-      );
-      const rc2 = await mint_tx_2.wait(numConfirmation);
-      const event2 = rc2.events.find(event => event.event === 'NewInvestmentTokenMinted');
-      e_tokenId2 = event2.args.tokenId;
-      //console.log('Minted token:', e_tokenId);
-    });
-    it("Setting base URI", async function () {
-      await RandNFT.setBaseURI("ipfs://someHash/");
-    });
-    it("Checking contractURI", async function () {
-      expect(await RandNFT.contractURI()).to.equal("ipfs://someHash/contract_uri");
-    });
-    it("Checking tokenURI", async function () {
-      expect(await RandNFT.connect(alice).tokenURI(tokenId_100)).to.equal(`ipfs://someHash/${tokenId_100}`);
-      expect(await RandNFT.connect(alice).tokenURI(tokenId_101)).to.equal(`ipfs://someHash/${tokenId_101}`);
-      for (let i = 0; i < 10; i++) {
-        await ethers.provider.send('evm_mine');
-      }
-      claimableAmount = await RandVC.connect(alice).getClaimableTokens(e_tokenId1);
-      await RandVC.connect(alice).claimTokens(e_tokenId1, rndTokenAmount);
-      claimableAmount2 = await RandVC.connect(alice).getClaimableTokens(e_tokenId1);
-      expect(claimableAmount2).to.equal(0);
-      expect(await RandNFT.tokenURI(tokenId_100)).to.equal(`ipfs://someHash/${tokenId_100}_`);
-      // Assert stored tokenIds
-      expect(await RandVC.connect(backend).getTokenIdOfNFT(tokenId_100)).to.equal(e_tokenId1);
-      expect(await RandVC.connect(backend).getTokenIdOfNFT(tokenId_101)).to.equal(e_tokenId2);
-    });
-    it("Should not be able to burn", async function () {
-      await expectRevert.unspecified(RandNFT.connect(alice).burn(tokenId_100));
+      // After redeploying every contract for a clean state,
+      // Sharing some RND to Alice and Bob 
+      bob = backend;
+      transferAmount = ethers.utils.parseEther("100");
+      await RandToken.transfer(alice.address, transferAmount);
+      await RandToken.transfer(bob.address, transferAmount);
+      // Fetching initial balances
+      bob_beforeBalanceRND = await RandToken.balanceOf(bob.address);
+      alice_beforeBalanceRND = await RandToken.balanceOf(alice.address);
+      bob_beforeBalanceSM = await RandSM.balanceOf(bob.address);
+      alice_beforeBalanceSM = await RandSM.balanceOf(alice.address);
+
+      // console.log(bob_beforeBalanceRND);
+      // console.log(alice_beforeBalanceRND);
+      // console.log(bob_beforeBalanceSM);
+      // console.log(alice_beforeBalanceSM);
+
+      // Storing timestamp of start
+      const blockNumBefore = await ethers.provider.getBlockNumber();
+      const blockBefore = await ethers.provider.getBlock(blockNumBefore);
+      const timestampBefore = blockBefore.timestamp;
+
+      // Staking for Alice
+      stakeAmount = ethers.utils.parseEther("10");
+      await RandToken.connect(alice).approve(RandSM.address, stakeAmount);
+      stake_tx_1_alice = await RandSM.connect(alice)["stake(uint256)"](stakeAmount);
+      stake_tx_1_alice_ts = await ethers.provider.getBlock(stake_tx_1_alice.blockNumber).timestamp;
+
+      rewardsAmount_alice = await RandSM.calculateTotalRewards(alice.address);
+      rewardsAmount_bob = await RandSM.calculateTotalRewards(bob.address);
+      // console.log("calculateTotalRewards: alice, bob:");
+      // console.log(ethers.utils.formatUnits(rewardsAmount_alice));
+      // console.log(ethers.utils.formatUnits(rewardsAmount_bob));
+
+      // Increasing timestamp by 100
+      await network.provider.send("evm_increaseTime", [100 - 2]); // -2 because next two transactions are going to increase alice rewards
+      await network.provider.send("evm_mine");
+
+      rewardsAmount_alice = await RandSM.calculateTotalRewards(alice.address);
+      rewardsAmount_bob = await RandSM.calculateTotalRewards(bob.address);
+      // console.log("calculateTotalRewards: alice, bob:");
+      // console.log(ethers.utils.formatUnits(rewardsAmount_alice));
+      // console.log(ethers.utils.formatUnits(rewardsAmount_bob));
+
+      // Staking for Bob
+      await RandToken.connect(bob).approve(RandSM.address, stakeAmount);
+      stake_tx_1_bob = await RandSM.connect(bob)["stake(uint256)"](stakeAmount);
+      stake_tx_1_bob_ts = await ethers.provider.getBlock(stake_tx_1_bob.blockNumber).timestamp;
+
+      rewardsAmount_alice = await RandSM.calculateTotalRewards(alice.address);
+      rewardsAmount_bob = await RandSM.calculateTotalRewards(bob.address);
+      // console.log("calculateTotalRewards: alice, bob:");
+      // console.log(ethers.utils.formatUnits(rewardsAmount_alice));
+      // console.log(ethers.utils.formatUnits(rewardsAmount_bob));
+
+      // Increasing timestamp by 100
+      await network.provider.send("evm_increaseTime", [100]);
+      await network.provider.send("evm_mine");
+
+      rewardsAmount_alice = await RandSM.calculateTotalRewards(alice.address);
+      rewardsAmount_bob = await RandSM.calculateTotalRewards(bob.address);
+      // console.log("calculateTotalRewards: alice, bob:");
+      // console.log(ethers.utils.formatUnits(rewardsAmount_alice));
+      // console.log(ethers.utils.formatUnits(rewardsAmount_bob));
+
+      // Fetching initial balances
+      bob_afterBalanceRND = await RandToken.balanceOf(bob.address);
+      alice_afterBalanceRND = await RandToken.balanceOf(alice.address);
+      bob_afterBalanceSM = await RandSM.balanceOf(bob.address);
+      alice_afterBalanceSM = await RandSM.balanceOf(alice.address);
+      // console.log(bob_afterBalanceRND);
+      // console.log(alice_afterBalanceRND);
+      // console.log(bob_afterBalanceSM);
+      // console.log(alice_afterBalanceSM);
+
+      // Asserting end results
+      // Balances RND and SM
+      expect(bob_beforeBalanceRND).to.equal(bob_afterBalanceRND.add(stakeAmount));
+      expect(bob_beforeBalanceSM).to.equal(bob_afterBalanceSM.sub(stakeAmount));
+      expect(alice_beforeBalanceRND).to.equal(alice_afterBalanceRND.add(stakeAmount));
+      expect(alice_beforeBalanceSM).to.equal(alice_afterBalanceSM.sub(stakeAmount));
+      // Stake rewards
+      // 100 seconds alice was the only staker -> 100 RND to alice
+      // 100 seconds alice and bob was equal stakers  -> 50 RND to alice, 50 RND to bob
+      // total rewards should be 
+      // alice 150, bob 50
+      alice_expect_rewards = 150;
+      bob_expect_rewards = 50;
+      expect(rewardsAmount_alice).to.equal(ethers.utils.parseEther(alice_expect_rewards.toString()));
+      expect(rewardsAmount_bob).to.equal(ethers.utils.parseEther(bob_expect_rewards.toString()));
+
+      rewardsAmount_alice = await RandSM.calculateTotalRewards(alice.address);
+      rewardsAmount_bob = await RandSM.calculateTotalRewards(bob.address);
+      console.log("Rewards:");
+      console.log("alice:\n", rewardsAmount_alice);
+      console.log("bob:\n", rewardsAmount_bob);
+
+      // So far 200 RND rewards - 150 Alice, 50 Bob
+      // Unstake for Alice all and increase Time by 100
+      // Initiate cooldown
+      cooldownSeconds = await RandSM.COOLDOWN_SECONDS();
+      await RandSM.connect(alice).cooldown();
+      // Increasing timestamp by cooldown
+      await network.provider.send("evm_increaseTime", [cooldownSeconds.toNumber()]);
+      await network.provider.send("evm_mine");
+      // Redeem
+      await RandSM.connect(alice)['redeem(uint256)'](stakeAmount);
+
+      // Increasing timestamp by 100
+      await network.provider.send("evm_increaseTime", [100]); // for the redeem call
+      await network.provider.send("evm_mine");
+
+      // Checking new rewards
+      // Based on _SMdeployParams._cooldown_seconds the cooldown taken 120 seconds
+      // So totally another 120 + 100 seconds are spent
+      // 120 seconds are equal for alice and bob (60 + 60 RND)
+      // Another 100 seconds only bob was staking so 100 RND
+      // At this point their rewards should be equal
+      // +1 for both of them, due to the end of block shift
+      alice_expect_rewards = alice_expect_rewards + 60 + 1;
+      bob_expect_rewards = bob_expect_rewards + 60 + 1 + 100;
+      rewardsAmount_alice = await RandSM.calculateTotalRewards(alice.address);
+      rewardsAmount_bob = await RandSM.calculateTotalRewards(bob.address);
+      console.log("alice:\n", rewardsAmount_alice);
+      console.log("bob:\n", rewardsAmount_bob);
+      expect(rewardsAmount_alice).to.equal(rewardsAmount_bob);
+
+      // Increasing timestamp by 100
+      await network.provider.send("evm_increaseTime", [100]); // for the redeem call
+      await network.provider.send("evm_mine");
+
+      // Checking new rewards
+      // Alice unstaked so no more for her, same as before
+      // Bob stayed as sole staker for 100 seconds so 100 RND for bob increased
+      bob_expect_rewards = bob_expect_rewards + 100;
+      rewardsAmount_alice_last = await RandSM.calculateTotalRewards(alice.address);
+      rewardsAmount_bob_last = await RandSM.calculateTotalRewards(bob.address);
+      console.log("alice:\n", rewardsAmount_alice_last);
+      console.log("bob:\n", rewardsAmount_bob_last);
+
+      expect(rewardsAmount_alice_last).to.equal(rewardsAmount_alice);
+      expect(rewardsAmount_bob_last).to.equal(ethers.utils.parseEther(bob_expect_rewards.toString()));
+
     });
   });
 
