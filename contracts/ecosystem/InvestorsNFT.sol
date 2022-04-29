@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./AddressConstants.sol";
+import "./ImportsManager.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 
 /// @title Rand.network ERC721 Investors NFT contract
@@ -19,26 +19,17 @@ import "../interfaces/IVestingControllerERC721.sol";
 /// @dev Interacts with Rand VestingController
 
 contract InvestorsNFT is
-    Initializable,
-    UUPSUpgradeable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
-    PausableUpgradeable,
-    AccessControlUpgradeable,
     ERC721BurnableUpgradeable,
-    AddressConstants
+    ImportsManager
 {
     // Events
     event BaseURIChanged(string baseURI);
     event ContractURIChanged(string contractURI);
-    event RegistryAddressUpdated(IAddressRegistry newAddress);
 
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using StringsUpgradeable for uint256;
-
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     string public baseURI;
 
@@ -59,9 +50,7 @@ contract InvestorsNFT is
         __ERC721_init(_erc721_name, _erc721_symbol);
         __ERC721Enumerable_init();
         __ERC721Burnable_init();
-        __Pausable_init();
-        __AccessControl_init();
-        __UUPSUpgradeable_init();
+        __ImportsManager_init();
 
         REGISTRY = _registry;
 
@@ -72,18 +61,6 @@ contract InvestorsNFT is
         _grantRole(MINTER_ROLE, _multisigVault);
         _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _vcAddress);
-    }
-
-    /// @notice Function to let Rand to update the address of the Safety Module
-    /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
-    /// @param newAddress where the new Safety Module contract is located
-    function updateRegistryAddress(IAddressRegistry newAddress)
-        public
-        whenPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        REGISTRY = newAddress;
-        emit RegistryAddressUpdated(newAddress);
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
@@ -213,10 +190,4 @@ contract InvestorsNFT is
     {
         return super.supportsInterface(interfaceId);
     }
-
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
 }
