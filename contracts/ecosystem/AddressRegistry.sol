@@ -29,6 +29,10 @@ contract AddressRegistry is
     constructor() initializer {}
 
     function initialize(address _multisigVault) public initializer {
+        require(
+            _multisigVault != address(0),
+            "AR: Multisig vault address cannot be null"
+        );
         __Pausable_init();
         __AccessControl_init();
         __UUPSUpgradeable_init();
