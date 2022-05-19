@@ -26,7 +26,7 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
     // RND and RND/TOKEN BPT will be the two asset we manage
     mapping(address => AssetData) public assets;
     address[] public trackedAssets;
-    IERC20Upgradeable rewardToken;
+    IERC20Upgradeable public rewardToken;
 
     uint256 public constant PRECISION = 18;
 
