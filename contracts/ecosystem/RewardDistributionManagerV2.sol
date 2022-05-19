@@ -43,7 +43,10 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         // Check if _asset already exists, add to trackedAssets[] if not
         bool isExistsIntrackedAssets = false;
         for (uint256 i; i < trackedAssets.length; i++) {
-            if (trackedAssets[i] == _asset) isExistsIntrackedAssets = true;
+            if (trackedAssets[i] == _asset) {
+                isExistsIntrackedAssets = true;
+                break;
+            }
         }
         if (!isExistsIntrackedAssets) trackedAssets.push(_asset);
         // Update asset configuration
