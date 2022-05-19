@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "./AddressConstants.sol";
+import "./ImportsManager.sol";
 import "../interfaces/IInvestorsNFT.sol";
 
 /// @title Rand.network ERC721 Vesting Controller contract
@@ -22,15 +22,10 @@ import "../interfaces/IInvestorsNFT.sol";
 /// @dev Interacts with Rand token and Safety Module (SM)
 
 contract VestingControllerERC721 is
-    Initializable,
-    UUPSUpgradeable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
-    PausableUpgradeable,
-    AccessControlUpgradeable,
     ERC721BurnableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    AddressConstants
+    ImportsManager
 {
     // Events
     event BaseURIChanged(string baseURI);
@@ -49,15 +44,10 @@ contract VestingControllerERC721 is
     event InvestmentTransferred(address recipient, uint256 amount);
     event RNDTransferred(address recipient, uint256 amount);
     event FetchedRND(uint256 amount);
-    event RegistryAddressUpdated(IAddressRegistry newAddress);
 
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using StringsUpgradeable for uint256;
-
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     CountersUpgradeable.Counter internal _tokenIdCounter;
 
@@ -94,10 +84,8 @@ contract VestingControllerERC721 is
     ) public initializer {
         __ERC721_init(_erc721_name, _erc721_symbol);
         __ERC721Enumerable_init();
-        __Pausable_init();
-        __AccessControl_init();
         __ERC721Burnable_init();
-        __UUPSUpgradeable_init();
+        __ImportsManager_init();
 
         PERIOD_SECONDS = _periodSeconds;
         REGISTRY = _registry;
@@ -424,18 +412,6 @@ contract VestingControllerERC721 is
         emit FetchedRND(amount);
     }
 
-    /// @notice Function to let Rand to update the address of the Safety Module
-    /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
-    /// @param newAddress where the new Safety Module contract is located
-    function updateRegistryAddress(IAddressRegistry newAddress)
-        public
-        whenPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        REGISTRY = newAddress;
-        emit RegistryAddressUpdated(newAddress);
-    }
-
     /// @notice Simple utility function to get investent tokenId based on an NFT tokenId
     /// @param tokenIdNFT tokenId of the early investor NFT
     /// @return tokenId of the investment
@@ -525,10 +501,4 @@ contract VestingControllerERC721 is
     {
         return super.supportsInterface(interfaceId);
     }
-
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
 }
