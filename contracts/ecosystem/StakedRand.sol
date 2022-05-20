@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.2;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./SafetyModuleERC20.sol";
 
 /// @title Rand.network ERC20 Safety Module
 /// @author @adradr - Adrian Lenard
 /// @notice Safety Module instance for the staked Rand Token
 
-contract StakedRand is SafetyModuleERC20, UUPSUpgradeable {
+contract StakedRand is SafetyModuleERC20 {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
@@ -26,7 +25,6 @@ contract StakedRand is SafetyModuleERC20, UUPSUpgradeable {
         uint256 __unstake_window,
         IAddressRegistry __registry
     ) public initializer {
-        __UUPSUpgradeable_init();
         __SM_init(
             __name,
             __symbol,
@@ -52,10 +50,4 @@ contract StakedRand is SafetyModuleERC20, UUPSUpgradeable {
     function redeem(uint256 tokenId, uint256 amount) public {
         _redeem(tokenId, amount);
     }
-
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
 }

@@ -74,12 +74,17 @@ In the ecosystem contracts there is a function to update the address of the regi
 
 ### Registry must follow these names based on the current contract implementations:
 ```
-SafetyModuleERC20 = SM
-VestingControllerERC721 = VC
-RandToken = RND
-Governance = GOV
-EcosystemReserve = RES
-InvestorsNFT = NFT
+as per the ./contracts/ecosystem/ImportsManager.sol:
+
+MULTISIG = "MS";
+RAND_TOKEN = "RND";
+VESTING_CONTROLLER = "VC";
+SAFETY_MODULE = "SM";
+ECOSYSTEM_RESERVE = "RES";
+GOVERNANCE = "GOV";
+INVESTOR_NFT = "NFT";
+BPT_TOKEN = "BPT";
+OPENZEPPELIN_DEFENDER = "OZ";
 ```
 
 ## VestingControllerERC721

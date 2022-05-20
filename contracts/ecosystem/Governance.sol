@@ -7,24 +7,13 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./AddressConstants.sol";
+import "./ImportsManager.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 
 /// @title Rand.network ERC20 Governance Aggregator contract for Automata Witness
 /// @author @adradr - Adrian Lenard
 /// @notice Default implementation of the OpenZeppelin ERC20 standard by overriding balanceOf() and totalSupply() and disallow token transfers
-contract Governance is
-    Initializable,
-    UUPSUpgradeable,
-    PausableUpgradeable,
-    AccessControlUpgradeable,
-    AddressConstants
-{
-    event RegistryAddressUpdated(IAddressRegistry newAddress);
-
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant READER_ROLE = keccak256("READER_ROLE");
-
+contract Governance is ImportsManager {
     string private name_;
     string private symbol_;
 
@@ -41,9 +30,7 @@ contract Governance is
         string memory _symbol,
         IAddressRegistry _registry
     ) public initializer {
-        __Pausable_init();
-        __AccessControl_init();
-        __UUPSUpgradeable_init();
+        __ImportsManager_init();
 
         name_ = _name;
         symbol_ = _symbol;
@@ -53,18 +40,6 @@ contract Governance is
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(READER_ROLE, _multisigVault);
-    }
-
-    /// @notice Function to let Rand to update the address of the Safety Module
-    /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
-    /// @param newAddress where the new Safety Module contract is located
-    function updateRegistryAddress(IAddressRegistry newAddress)
-        public
-        whenNotPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        REGISTRY = newAddress;
-        emit RegistryAddressUpdated(newAddress);
     }
 
     /// @notice Function to override default totalSupply and point it to the totalSupply of RND token contract
@@ -137,10 +112,4 @@ contract Governance is
     function unpause() public onlyRole(PAUSER_ROLE) {
         _unpause();
     }
-
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
 }
