@@ -312,7 +312,7 @@ module.exports = {
     timeout: 5 * 60 * 1e3
   },
   tenderly: {
-    username: process.env.TENDERLY_USERNAME,
-    project: process.env.TENDERLY_PROJECT
+    username: process.env.TENDERLY_USERNAME || '',
+    project: process.env.TENDERLY_PROJECT || ''
   }
 };

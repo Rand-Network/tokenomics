@@ -10,18 +10,14 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "./RewardDistributionManagerV2.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 import "../interfaces/IRandToken.sol";
-import "./AddressConstants.sol";
+import "./ImportsManager.sol";
 
 /// @title Rand.network ERC20 Safety Module
 /// @author @adradr - Adrian Lenard
 /// @notice Customized implementation of the OpenZeppelin ERC20 standard to be used for the Safety Module
 contract SafetyModuleERC20 is
-    Initializable,
     ERC20Upgradeable,
-    PausableUpgradeable,
-    AccessControlUpgradeable,
-    ReentrancyGuardUpgradeable,
-    AddressConstants,
+    ImportsManager,
     RewardDistributionManagerV2
 {
     event Staked(address indexed user, uint256 amount);
@@ -38,7 +34,6 @@ contract SafetyModuleERC20 is
     );
     event RewardsAccrued(address indexed user, uint256 rewardAmount);
     event RewardsClaimed(address indexed user, uint256 rewardAmount);
-    event RegistryAddressUpdated(IAddressRegistry newAddress);
     event PeriodUpdated(string periodType, uint256 newAmount);
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -46,8 +41,6 @@ contract SafetyModuleERC20 is
     string public STAKED_TOKEN;
     uint256 public COOLDOWN_SECONDS;
     uint256 public UNSTAKE_WINDOW;
-
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     mapping(address => uint256) internal rewardsToclaim;
     mapping(address => mapping(address => uint256)) internal onBehalf;
@@ -73,9 +66,7 @@ contract SafetyModuleERC20 is
         IAddressRegistry _registry
     ) internal onlyInitializing {
         __ERC20_init(name_, symbol_);
-        __Pausable_init();
-        __AccessControl_init();
-        __ReentrancyGuard_init();
+        __ImportsManager_init();
 
         REGISTRY = _registry;
         address _multisigVault = REGISTRY.getAddress(MULTISIG);
@@ -388,18 +379,6 @@ contract SafetyModuleERC20 is
         }
 
         return totalRewards;
-    }
-
-    /// @notice Function to let Rand to update the address of the Safety Module
-    /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
-    /// @param newAddress where the new Safety Module contract is located
-    function updateRegistryAddress(IAddressRegistry newAddress)
-        public
-        whenPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        REGISTRY = newAddress;
-        emit RegistryAddressUpdated(newAddress);
     }
 
     function updateCooldownPeriod(uint256 newPeriod)

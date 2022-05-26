@@ -7,21 +7,13 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./AddressConstants.sol";
+import "./ImportsManager.sol";
 
 /// @title Rand.network Ecosystem Reserve
 /// @author @adradr - Adrian Lenard
 /// @notice Rand Ecosystem Reserve where Safety Module rewards are stored and distributed from
-contract EcosystemReserve is
-    Initializable,
-    UUPSUpgradeable,
-    PausableUpgradeable,
-    AccessControlUpgradeable,
-    AddressConstants
-{
+contract EcosystemReserve is ImportsManager {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -30,8 +22,7 @@ contract EcosystemReserve is
     /// @dev For upgradability its necessary to use initialize instead of simple constructor
     /// @param _registry the address of the Rand AddressRegistry
     function initialize(IAddressRegistry _registry) public initializer {
-        __Pausable_init();
-        __AccessControl_init();
+        __ImportsManager_init();
 
         REGISTRY = _registry;
         address _multisigVault = REGISTRY.getAddress(MULTISIG);
@@ -54,10 +45,4 @@ contract EcosystemReserve is
     ) external onlyRole(DEFAULT_ADMIN_ROLE) whenNotPaused {
         token.safeTransfer(recipient, amount);
     }
-
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
 }
