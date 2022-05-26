@@ -56,12 +56,12 @@ contract RandToken is
         _mint(_multisigVault, _initialSupply * 10**decimals());
     }
 
-    /// @notice Function to allow Safety Module to move funds without multiple approve and transfer steps
+    /// @notice Function to allow admins to move funds without multiple approve and transfer steps
     /// @dev Aims to allow simple UX
     /// @param owner is the address who's tokens are approved and transferred
     /// @param recipient is the address where to transfer the funds
     /// @param amount is the amount of transfer
-    function approveAndTransfer(
+    function adminTransfer(
         address owner,
         address recipient,
         uint256 amount

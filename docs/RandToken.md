@@ -14,7 +14,7 @@ Initializer allow proxy scheme
 |input|uint256|_initialSupply|Total supply to mint initially like `200e6`|
 |input|undefined|_registry|is the address of address registry|
 
-## approveAndTransfer
+## adminTransfer
 
 *Aims to allow simple UX*
 
