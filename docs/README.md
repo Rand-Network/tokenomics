@@ -59,7 +59,7 @@ hh upgradeProxyAndVerify --verify <eth_contract_address> VestingControllerERC721
 This contract is the Rand token, a standard OZ ERC20 implementation with upgradability via UUPS OZ Proxy. 
 Custom functionality include accessible only the Safety Module:
 ```
-function approveAndTransfer(
+function adminTransfer(
         address owner,
         address recipient,
         uint256 amount

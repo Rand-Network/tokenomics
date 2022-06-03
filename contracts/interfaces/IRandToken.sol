@@ -17,7 +17,7 @@ interface IRandToken {
 
     function approve(address spender, uint256 amount) external returns (bool);
 
-    function approveAndTransfer(
+    function adminTransfer(
         address owner,
         address recipient,
         uint256 amount

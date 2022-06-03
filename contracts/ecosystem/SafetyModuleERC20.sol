@@ -207,10 +207,11 @@ contract SafetyModuleERC20 is
         if (balanceOf(_msgSender()) - amount == 0) {
             stakerCooldown[_msgSender()] = 0;
         }
+        // Burn users stake
         _burn(_msgSender(), amount);
-        unchecked {
-            onBehalf[_msgSender()][_msgSender()] -= amount;
-        }
+        // Update onBehalf amounts
+        onBehalf[_msgSender()][_msgSender()] -= amount;
+        // Transfer tokens back to user
         IERC20Upgradeable(REGISTRY.getAddress(STAKED_TOKEN)).safeTransfer(
             _msgSender(),
             amount
@@ -298,7 +299,7 @@ contract SafetyModuleERC20 is
             "SM: Not enough stakable amount on VC tokenId"
         );
 
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).approveAndTransfer(
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).adminTransfer(
             _vc,
             address(this),
             amount
@@ -342,7 +343,7 @@ contract SafetyModuleERC20 is
         );
         rewardsToclaim[_msgSender()] = totalRewards - amount;
 
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).approveAndTransfer(
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).adminTransfer(
             REGISTRY.getAddress(ECOSYSTEM_RESERVE),
             _msgSender(),
             amount

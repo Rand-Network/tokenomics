@@ -26,7 +26,7 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
     // RND and RND/TOKEN BPT will be the two asset we manage
     mapping(address => AssetData) public assets;
     address[] public trackedAssets;
-    IERC20Upgradeable rewardToken;
+    IERC20Upgradeable public rewardToken;
 
     uint256 public constant PRECISION = 18;
 
@@ -42,8 +42,12 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
     ) internal {
         // Check if _asset already exists, add to trackedAssets[] if not
         bool isExistsIntrackedAssets = false;
-        for (uint256 i; i < trackedAssets.length; i++) {
-            if (trackedAssets[i] == _asset) isExistsIntrackedAssets = true;
+        uint256 trackedAssetsLength = trackedAssets.length;
+        for (uint256 i; i < trackedAssetsLength; i++) {
+            if (trackedAssets[i] == _asset) {
+                isExistsIntrackedAssets = true;
+                break;
+            }
         }
         if (!isExistsIntrackedAssets) trackedAssets.push(_asset);
         // Update asset configuration

@@ -43,6 +43,6 @@ contract EcosystemReserve is ImportsManager {
         address recipient,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) whenNotPaused {
-        token.transfer(recipient, amount);
+        token.safeTransfer(recipient, amount);
     }
 }
