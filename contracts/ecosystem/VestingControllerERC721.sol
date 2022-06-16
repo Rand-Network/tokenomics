@@ -230,7 +230,14 @@ contract VestingControllerERC721 is
     {
         require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
         VestingInvestment memory investment = vestingToken[tokenId];
-        require(block.timestamp > investment.vestingStartTime);
+        if (block.timestamp < investment.vestingStartTime) {
+            claimableAmount = 0;
+            return claimableAmount;
+        }
+        // require(
+        //     block.timestamp > investment.vestingStartTime,
+        //     "VC: investment is not active yet due to cliff period"
+        // );
         uint256 vestedPeriods;
         unchecked {
             vestedPeriods = block.timestamp - investment.vestingStartTime;
