@@ -14,3 +14,8 @@ artifacts
 .prettierignore
 .eslintrc.js
 .eslintignore
+bin
+
+.DS_Store
+deployments/
+tenderly.yaml
