@@ -43,7 +43,7 @@ async function get_factories() {
   Registry = await ethers.getContractFactory("AddressRegistry");
   Token = await ethers.getContractFactory("RandToken");
   VestingController = await ethers.getContractFactory("VestingControllerERC721");
-  SafetyModule = await ethers.getContractFactory("SafetyModuleERC20");
+  SafetyModule = await ethers.getContractFactory("StakedRand");
   InvestorsNFT = await ethers.getContractFactory("InvestorsNFT");
   Governance = await ethers.getContractFactory("Governance");
 
@@ -87,7 +87,7 @@ async function deploy_testnet(
   Registry = await ethers.getContractFactory("AddressRegistry");
   Token = await ethers.getContractFactory("RandToken");
   VestingController = await ethers.getContractFactory("VestingControllerERC721");
-  SafetyModule = await ethers.getContractFactory("SafetyModuleERC20");
+  SafetyModule = await ethers.getContractFactory("StakedRand");
   InvestorsNFT = await ethers.getContractFactory("InvestorsNFT");
   Governance = await ethers.getContractFactory("Governance");
   Reserve = await ethers.getContractFactory("EcosystemReserve");
@@ -204,6 +204,15 @@ async function deploy_testnet(
     tokenId_101 = 2;
 
     console.log("\nStarting contract initialization - allowance, minting, etc...");
+    // Initializing Safety Module
+    // Init SM _updateAsset
+    emissionPerSec = ethers.utils.parseEther("1"); // 1 RND per seconds
+    const update_tx = await RandSM.updateAsset(
+      await RandRegistry.getAddress("SM"),  // staked asset address
+      emissionPerSec,                       // emissionRate
+      ethers.utils.parseEther("0")          // totalStaked
+    );
+    console.log("SM updateAsset done with emissionRate set at:", emissionPerSec);
 
     // Transfer RND to Reserve 
     reserveAmount = rndTokenAmount.mul(10);

@@ -59,7 +59,7 @@ hh upgradeProxyAndVerify --verify <eth_contract_address> VestingControllerERC721
 This contract is the Rand token, a standard OZ ERC20 implementation with upgradability via UUPS OZ Proxy. 
 Custom functionality include accessible only the Safety Module:
 ```
-function approveAndTransfer(
+function adminTransfer(
         address owner,
         address recipient,
         uint256 amount
@@ -74,12 +74,17 @@ In the ecosystem contracts there is a function to update the address of the regi
 
 ### Registry must follow these names based on the current contract implementations:
 ```
-SafetyModuleERC20 = SM
-VestingControllerERC721 = VC
-RandToken = RND
-Governance = GOV
-EcosystemReserve = RES
-InvestorsNFT = NFT
+as per the ./contracts/ecosystem/ImportsManager.sol:
+
+MULTISIG = "MS";
+RAND_TOKEN = "RND";
+VESTING_CONTROLLER = "VC";
+SAFETY_MODULE = "SM";
+ECOSYSTEM_RESERVE = "RES";
+GOVERNANCE = "GOV";
+INVESTOR_NFT = "NFT";
+BPT_TOKEN = "BPT";
+OPENZEPPELIN_DEFENDER = "OZ";
 ```
 
 ## VestingControllerERC721

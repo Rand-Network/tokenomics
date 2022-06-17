@@ -7,25 +7,16 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./AddressConstants.sol";
+import "./ImportsManager.sol";
 
 /// @title Rand.network ERC20 Token contract
 /// @author @adradr - Adrian Lenard
 /// @notice Default implementation of the OpenZeppelin ERC20 standard to be used for the RND token
 contract RandToken is
-    Initializable,
-    UUPSUpgradeable,
     ERC20Upgradeable,
     ERC20BurnableUpgradeable,
-    PausableUpgradeable,
-    AccessControlUpgradeable,
-    AddressConstants
+    ImportsManager
 {
-    event RegistryAddressUpdated(IAddressRegistry newAddress);
-
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
@@ -43,9 +34,7 @@ contract RandToken is
     ) public initializer {
         __ERC20_init(name_, symbol_);
         __ERC20Burnable_init();
-        __Pausable_init();
-        __AccessControl_init();
-        __UUPSUpgradeable_init();
+        __ImportsManager_init();
 
         REGISTRY = _registry;
 
@@ -56,12 +45,12 @@ contract RandToken is
         _mint(_multisigVault, _initialSupply * 10**decimals());
     }
 
-    /// @notice Function to allow Safety Module to move funds without multiple approve and transfer steps
+    /// @notice Function to allow admins to move funds without multiple approve and transfer steps
     /// @dev Aims to allow simple UX
     /// @param owner is the address who's tokens are approved and transferred
     /// @param recipient is the address where to transfer the funds
     /// @param amount is the amount of transfer
-    function approveAndTransfer(
+    function adminTransfer(
         address owner,
         address recipient,
         uint256 amount
@@ -70,21 +59,7 @@ contract RandToken is
             REGISTRY.getAddress(SAFETY_MODULE) == _msgSender(),
             "RND: Not accessible by msg.sender"
         );
-        uint256 currentAllowance = allowance(owner, recipient);
-        _approve(owner, recipient, currentAllowance + amount);
         _transfer(owner, recipient, amount);
-    }
-
-    /// @notice Function to let Rand to update the address of the Safety Module
-    /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
-    /// @param newAddress where the new Safety Module contract is located
-    function updateRegistryAddress(IAddressRegistry newAddress)
-        public
-        whenPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        REGISTRY = newAddress;
-        emit RegistryAddressUpdated(newAddress);
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
@@ -119,10 +94,4 @@ contract RandToken is
     ) internal override whenNotPaused {
         super._beforeTokenTransfer(from, to, amount);
     }
-
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
 }

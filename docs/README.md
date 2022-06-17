@@ -2,7 +2,6 @@
 
 ### Table of contents
 
-
 * [AddressConstants](ecosystem/AddressConstants.md)
 * [AddressRegistry](ecosystem/AddressRegistry.md)
 * [EcosystemReserve](ecosystem/EcosystemReserve.md)

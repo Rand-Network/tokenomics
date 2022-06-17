@@ -29,6 +29,10 @@ contract AddressRegistry is
     constructor() initializer {}
 
     function initialize(address _multisigVault) public initializer {
+        require(
+            _multisigVault != address(0),
+            "AR: Multisig vault address cannot be null"
+        );
         __Pausable_init();
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -72,6 +76,10 @@ contract AddressRegistry is
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        require(
+            contractAddress != address(0),
+            "REG: Address cannot be null address"
+        );
         bytes memory tempStringByte = bytes(name);
         address[] storage tempAddresses = addressStorage[name];
         require(tempStringByte.length > 0, "Registry: No contract name set");
@@ -95,10 +103,12 @@ contract AddressRegistry is
         onlyRole(DEFAULT_ADMIN_ROLE)
         returns (bool)
     {
+        require(
+            contractAddress != address(0),
+            "REG: Address cannot be null address"
+        );
         bytes memory tempStringByte = bytes(name);
         require(tempStringByte.length > 0, "Registry: No name set");
-        require(contractAddress != address(0), "Registry: No address set");
-        //require(!_existInArray(name), "Registry: Contract name already exists");
         if (_existInArray(name)) {
             return false;
         }
