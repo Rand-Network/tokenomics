@@ -6,15 +6,16 @@ require("hardhat-gas-reporter");
 require("@atixlabs/hardhat-time-n-mine");
 require("@tenderly/hardhat-tenderly");
 require("solidity-coverage");
+require('@primitivefi/hardhat-dodoc');
 require('dotenv').config();
 const { ContractFactory } = require("ethers");
 const { abi2sol, abi2json } = require("./scripts/abi2sol.js");
 const { deploy_testnet } = require("./scripts/deploy_testnet_task.js");
 const { execute, cleanFile } = require("./scripts/flatten.js");
 const { chains } = require("./scripts/EtherscanChainConfig.js");
-const axios = require('axios');
-const pinataSDK = require('@pinata/sdk');
+const { axios } = require('axios');
 const { json } = require("hardhat/internal/core/params/argumentTypes");
+const pinataSDK = require('@pinata/sdk');
 const pinata = pinataSDK(process.env.PINATA_KEY, process.env.PINATA_SECRET);
 
 // Get network id
@@ -302,8 +303,17 @@ module.exports = {
     ],
 
   },
+  dodoc: {
+    runOnCompile: true,
+    debugMode: false,
+    keepFileStructure: true,
+    freshOutput: true,
+    outputDir: './docs',
+    include: ['ecosystem'],
+    tableOfContents: true
+  },
   paths: {
-    sources: "./contracts",
+    sources: "./contracts/",
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts"
