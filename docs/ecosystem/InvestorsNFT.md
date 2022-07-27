@@ -197,6 +197,23 @@ function RAND_TOKEN() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
+### READER_ROLE
+
+```solidity
+function READER_ROLE() external view returns (bytes32)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
 ### REGISTRY
 
 ```solidity

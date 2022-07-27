@@ -27,6 +27,23 @@ function BPT_TOKEN() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
+### BURNER_ROLE
+
+```solidity
+function BURNER_ROLE() external view returns (bytes32)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
 ### DEFAULT_ADMIN_ROLE
 
 ```solidity
@@ -180,6 +197,23 @@ function RAND_TOKEN() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
+### READER_ROLE
+
+```solidity
+function READER_ROLE() external view returns (bytes32)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
 ### REGISTRY
 
 ```solidity
@@ -231,6 +265,24 @@ function VESTING_CONTROLLER() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
+### adminTransfer
+
+```solidity
+function adminTransfer(address owner, address recipient, uint256 amount) external nonpayable
+```
+
+Function to allow admins to move funds without multiple approve and transfer steps
+
+*Aims to allow simple UX*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| owner | address | is the address who&#39;s tokens are approved and transferred |
+| recipient | address | is the address where to transfer the funds |
+| amount | uint256 | is the amount of transfer |
+
 ### allowance
 
 ```solidity
@@ -277,24 +329,6 @@ function approve(address spender, uint256 amount) external nonpayable returns (b
 |---|---|---|
 | _0 | bool | undefined |
 
-### approveAndTransfer
-
-```solidity
-function approveAndTransfer(address owner, address recipient, uint256 amount) external nonpayable
-```
-
-Function to allow Safety Module to move funds without multiple approve and transfer steps
-
-*Aims to allow simple UX*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| owner | address | is the address who&#39;s tokens are approved and transferred |
-| recipient | address | is the address where to transfer the funds |
-| amount | uint256 | is the amount of transfer |
-
 ### balanceOf
 
 ```solidity
@@ -333,23 +367,6 @@ function burn(uint256 amount) external nonpayable
 |---|---|---|
 | amount | uint256 | undefined |
 
-### burn
-
-```solidity
-function burn(address account, uint256 amount) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| account | address | undefined |
-| amount | uint256 | undefined |
-
 ### burnFrom
 
 ```solidity
@@ -359,6 +376,23 @@ function burnFrom(address account, uint256 amount) external nonpayable
 
 
 *Destroys `amount` tokens from `account`, deducting from the caller&#39;s allowance. See {ERC20-_burn} and {ERC20-allowance}. Requirements: - the caller must have allowance for ``accounts``&#39;s tokens of at least `amount`.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| account | address | undefined |
+| amount | uint256 | undefined |
+
+### burnFromAdmin
+
+```solidity
+function burnFromAdmin(address account, uint256 amount) external nonpayable
+```
+
+
+
+
 
 #### Parameters
 

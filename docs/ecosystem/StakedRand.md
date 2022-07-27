@@ -1,10 +1,10 @@
-# SafetyModuleERC20
+# StakedRand
 
 *@adradr - Adrian Lenard*
 
 > Rand.network ERC20 Safety Module
 
-Customized implementation of the OpenZeppelin ERC20 standard to be used for the Safety Module
+Safety Module instance for the staked Rand Token
 
 
 
@@ -616,6 +616,26 @@ function increaseAllowance(address spender, uint256 addedValue) external nonpaya
 |---|---|---|
 | _0 | bool | undefined |
 
+### initialize
+
+```solidity
+function initialize(string __name, string __symbol, uint256 __cooldown_seconds, uint256 __unstake_window, contract IAddressRegistry __registry) external nonpayable
+```
+
+Initializer allow proxy scheme
+
+*For upgradability its necessary to use initialize instead of simple constructor*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| __name | string | Name of the token like `Staked Rand Token ERC20` |
+| __symbol | string | Short symbol like `sRND` |
+| __cooldown_seconds | uint256 | is the period of cooldown before redeeming in seconds |
+| __unstake_window | uint256 | is the period after cooldown in which redeem can happen in seconds |
+| __registry | contract IAddressRegistry | is the address of the AddressRegistry |
+
 ### name
 
 ```solidity
@@ -660,6 +680,23 @@ function paused() external view returns (bool)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
+
+### redeem
+
+```solidity
+function redeem(uint256 tokenId, uint256 amount) external nonpayable
+```
+
+Exposing redeem function of the staked token with vesting, updates rewards and transfers funds
+
+*Only used for vesting token redemption, needs to wait cooldown*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokenId | uint256 | is the id of the vesting token to redeem |
+| amount | uint256 | is the uint256 amount to redeem |
 
 ### redeem
 
@@ -727,6 +764,23 @@ function rewardToken() external view returns (contract IERC20Upgradeable)
 | Name | Type | Description |
 |---|---|---|
 | _0 | contract IERC20Upgradeable | undefined |
+
+### stake
+
+```solidity
+function stake(uint256 tokenId, uint256 amount) external nonpayable
+```
+
+Exposing staking for vesting investors
+
+*Interacts with the vesting controller*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokenId | uint256 | is the id of the vesting token to stake |
+| amount | uint256 | is the uint256 amount to stake |
 
 ### stake
 

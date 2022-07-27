@@ -1,10 +1,10 @@
-# SafetyModuleERC20
+# StakedToken
 
 *@adradr - Adrian Lenard*
 
 > Rand.network ERC20 Safety Module
 
-Customized implementation of the OpenZeppelin ERC20 standard to be used for the Safety Module
+Safety Module instance for the staked Rand Balance Pool Tokens
 
 
 
@@ -615,6 +615,26 @@ function increaseAllowance(address spender, uint256 addedValue) external nonpaya
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
+
+### initialize
+
+```solidity
+function initialize(string __name, string __symbol, uint256 __cooldown_seconds, uint256 __unstake_window, contract IAddressRegistry __registry) external nonpayable
+```
+
+Initializer allow proxy scheme
+
+*For upgradability its necessary to use initialize instead of simple constructor*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| __name | string | Name of the token like `Staked Rand Token ERC20` |
+| __symbol | string | Short symbol like `sRND` |
+| __cooldown_seconds | uint256 | is the period of cooldown before redeeming in seconds |
+| __unstake_window | uint256 | is the period after cooldown in which redeem can happen in seconds |
+| __registry | contract IAddressRegistry | is the address of the AddressRegistry |
 
 ### name
 

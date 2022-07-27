@@ -51,6 +51,23 @@ function assets(address) external view returns (uint256 emissionRate, uint256 la
 | lastUpdateTimestamp | uint256 | undefined |
 | assetIndex | uint256 | undefined |
 
+### rewardToken
+
+```solidity
+function rewardToken() external view returns (contract IERC20Upgradeable)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract IERC20Upgradeable | undefined |
+
 ### trackedAssets
 
 ```solidity

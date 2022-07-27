@@ -27,6 +27,23 @@ function BPT_TOKEN() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
+### BURNER_ROLE
+
+```solidity
+function BURNER_ROLE() external view returns (bytes32)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
 ### DEFAULT_ADMIN_ROLE
 
 ```solidity
@@ -95,6 +112,23 @@ function INVESTOR_NFT() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
+### MINTER_ROLE
+
+```solidity
+function MINTER_ROLE() external view returns (bytes32)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
 ### MULTISIG
 
 ```solidity
@@ -162,6 +196,23 @@ function RAND_TOKEN() external view returns (string)
 | Name | Type | Description |
 |---|---|---|
 | _0 | string | undefined |
+
+### READER_ROLE
+
+```solidity
+function READER_ROLE() external view returns (bytes32)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
 
 ### REGISTRY
 
@@ -401,6 +452,22 @@ function transfer(contract IERC20Upgradeable token, address recipient, uint256 a
 | recipient | address | undefined |
 | amount | uint256 | undefined |
 
+### updateRegistryAddress
+
+```solidity
+function updateRegistryAddress(contract IAddressRegistry newAddress) external nonpayable
+```
+
+Function to let Rand to update the address of the Safety Module
+
+*emits RegistryAddressUpdated() and only accessible by MultiSig*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| newAddress | contract IAddressRegistry | where the new Safety Module contract is located |
+
 ### upgradeTo
 
 ```solidity
@@ -486,6 +553,22 @@ event Paused(address account)
 | Name | Type | Description |
 |---|---|---|
 | account  | address | undefined |
+
+### RegistryAddressUpdated
+
+```solidity
+event RegistryAddressUpdated(contract IAddressRegistry newAddress)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| newAddress  | contract IAddressRegistry | undefined |
 
 ### RoleAdminChanged
 

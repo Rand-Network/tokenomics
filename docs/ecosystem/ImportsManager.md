@@ -1,12 +1,12 @@
-# Governance
+# ImportsManager
 
 *@adradr - Adrian Lenard*
 
-> Rand.network ERC20 Governance Aggregator contract for Automata Witness
+> Rand.network Imports helper to manage all required import which is used in all tokenomics contracts
 
-Default implementation of the OpenZeppelin ERC20 standard by overriding balanceOf() and totalSupply() and disallow token transfers
+Imports all required contracts
 
-
+*Inherited by all ecosystem contracts*
 
 ## Methods
 
@@ -265,45 +265,6 @@ function VESTING_CONTROLLER() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
-### balanceOf
-
-```solidity
-function balanceOf(address account) external view returns (uint256)
-```
-
-Function to summarize balances of an account over multiple Rand Ecosystem tokens
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| account | address | to summarize balance for in VC, SM and RND |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### decimals
-
-```solidity
-function decimals() external pure returns (uint8)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint8 | undefined |
-
 ### getRoleAdmin
 
 ```solidity
@@ -365,52 +326,6 @@ function hasRole(bytes32 role, address account) external view returns (bool)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
-
-### initialize
-
-```solidity
-function initialize(string _name, string _symbol, contract IAddressRegistry _registry) external nonpayable
-```
-
-Initializer allow proxy scheme
-
-*For upgradability its necessary to use initialize instead of simple constructor*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _name | string | Name of the token like `Rand Governance Aggregator ERC20` |
-| _symbol | string | Short symbol like `gRND` |
-| _registry | contract IAddressRegistry | is the address of address registry |
-
-### name
-
-```solidity
-function name() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### pause
-
-```solidity
-function pause() external nonpayable
-```
-
-
-
-
-
 
 ### paused
 
@@ -484,51 +399,6 @@ function supportsInterface(bytes4 interfaceId) external view returns (bool)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
-
-### symbol
-
-```solidity
-function symbol() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### totalSupply
-
-```solidity
-function totalSupply() external view returns (uint256)
-```
-
-Function to override default totalSupply and point it to the totalSupply of RND token contract
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### unpause
-
-```solidity
-function unpause() external nonpayable
-```
-
-
-
-
-
 
 ### updateRegistryAddress
 
