@@ -78,7 +78,7 @@ contract RandToken is
         _mint(to, amount);
     }
 
-    function burn(address account, uint256 amount)
+    function burnFromAdmin(address account, uint256 amount)
         public
         whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
