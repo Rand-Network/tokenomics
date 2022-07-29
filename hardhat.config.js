@@ -10,7 +10,7 @@ require('@primitivefi/hardhat-dodoc');
 require('dotenv').config();
 const { ContractFactory } = require("ethers");
 const { abi2sol, abi2json } = require("./scripts/abi2sol.js");
-const { deploy_testnet } = require("./scripts/deploy_testnet_task.js");
+const { deploy } = require("./scripts/deploy_task.js");
 const { execute, cleanFile } = require("./scripts/flatten.js");
 const { chains } = require("./scripts/EtherscanChainConfig.js");
 const { axios } = require('axios');
@@ -125,10 +125,11 @@ task("flatten-clean", "Flattens and cleans soldity contract for Etherscan single
 task("deploy", "Deploys to a network and optionally verifies and mints sample investment")
   .addFlag("verify", "To verify the contract on the deployed network with Etherscan API")
   .addFlag("initialize", "To initially mint some investments and do allowances")
-  .setAction(async ({ verify, initialize }) => {
+  .addOptionalParam("nameprefix", "Prefix used for deployment params, use RND for live deployments only!", "Test")
+  .setAction(async ({ verify, initialize, nameprefix }) => {
     console.log("Starting deployment..");
-    console.log("initialize:%s,\nverify:%s\n------------", initialize, verify);
-    await deploy_testnet(initialize, verify);
+    console.log("initialize:%s,\nverify:%s\nnameprefix: %s\n------------", initialize, verify, nameprefix);
+    await deploy(initialize = initialize, verify = verify, nameprefix = nameprefix);
   });
 
 task("verifyProxy", "Verifies a proxy on Etherscan using the current network so Read/Write as proxy is avaiable")

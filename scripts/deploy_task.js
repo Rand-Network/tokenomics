@@ -1,40 +1,41 @@
 require('@openzeppelin/hardhat-upgrades');
 require("@nomiclabs/hardhat-etherscan");
+const readline = require('readline');
 const { BigNumber } = require("ethers");
 require("ethers");
 
 //Deployment params for initializer
 var _RNDdeployParams = {
   _name: "Token ERC20",
-  _symbol: "tRND",
+  _symbol: "Token",
   _initialSupply: BigNumber.from(200e6),
   _registry: ""
 };
 
 var _VCdeployParams = {
   _name: "Vesting Controller ERC721",
-  _symbol: "tvRND",
+  _symbol: "vToken",
   _periodSeconds: 1,
   _registry: ""
 };
 
 var _SMdeployParams = {
   _name: "Safety Module ERC20",
-  _symbol: "tsRND",
+  _symbol: "stToken",
   _cooldown_seconds: 120, // 604800 7 days
   _unstake_window: 240,
   _registry: ""
 };
 
 var _NFTdeployParams = {
-  _name: "Rand Early Investors NFT",
-  _symbol: "RandNFT",
+  _name: "Investors NFT",
+  _symbol: "nftToken",
   _registry: ""
 };
 
 var _GovDeployParams = {
-  _name: "Rand Governance Aggregator",
-  _symbol: "gRND",
+  _name: "Governance Aggregator",
+  _symbol: "govToken",
   _registry: ""
 };
 
@@ -55,14 +56,39 @@ async function get_wallets() {
   return { owner, alice, backend };
 }
 
-async function deploy_testnet(
+async function deploy(
   initialize = false,
   verify = false,
+  name_prefix = '',
   RNDdeployParams = _RNDdeployParams,
   VCdeployParams = _VCdeployParams,
   SMdeployParams = _SMdeployParams,
   NFTdeployParams = _NFTdeployParams,
   GovDeployParams = _GovDeployParams) {
+
+  // Rename deployed contracts
+  if (name_prefix != '') {
+    RNDdeployParams._name = name_prefix + ' ' + RNDdeployParams._name;
+    VCdeployParams._name = name_prefix + ' ' + VCdeployParams._name;
+    SMdeployParams._name = name_prefix + ' ' + SMdeployParams._name;
+    NFTdeployParams._name = name_prefix + ' ' + NFTdeployParams._name;
+    GovDeployParams._name = name_prefix + ' ' + GovDeployParams._name;
+
+    // Set mainnet live symbols and params
+    if (name_prefix == 'RND') {
+      RNDdeployParams._symbol = 'RND';
+      VCdeployParams._symbol = 'vRND';
+      SMdeployParams._symbol = 'stRND';
+      NFTdeployParams._symbol = 'nftRND';
+      GovDeployParams._symbol = 'govRND';
+
+      RNDdeployParams._initialSupply = BigNumber.from(200e6);   // 200M
+      VCdeployParams._periodSeconds = 1 * 60 * 60 * 24;         // 1 day
+      SMdeployParams._cooldown_seconds = 1 * 60 * 60 * 24;      // 1 day
+      SMdeployParams._unstake_window = 1 * 60 * 60 * 24 * 10;   // 10 day
+    }
+
+  }
 
   // Getting network information 
   gotNetwork = await ethers.provider.getNetwork();
@@ -129,7 +155,18 @@ async function deploy_testnet(
     Token,
     Object.values(RNDdeployParams),
     { kind: "uups" });
+  console.log('------------------- TOKEN INFO ---------------------');
   console.log('Deployed Token proxy at:', RandToken.address);
+  var totalSupply = await RandToken.totalSupply();
+  var decimals = await RandToken.decimals();
+  var readableTotalSupply = ethers.utils.formatUnits(totalSupply, decimals);
+  var formatter = new Intl.NumberFormat('en-US', {});
+  console.log('Token name:', await RandToken.name());
+  console.log('Token symbol:', await RandToken.symbol());
+  console.log('Token supply:', totalSupply);
+  console.log('Token decimals:', decimals);
+  console.log('Token supply readable:', formatter.format(parseInt(readableTotalSupply)));
+  //console.log('-----------------------------------------------------');
   txRandToken = RandToken.deployTransaction;
   await txRandToken.wait(numConfirmation);
   tx = await RandRegistry.setNewAddress("RND", RandToken.address);
@@ -139,7 +176,13 @@ async function deploy_testnet(
     VestingController,
     Object.values(VCdeployParams),
     { kind: "uups" });
+  console.log('\n------------------- VC INFO ---------------------');
   console.log('Deployed VC proxy at:', RandVC.address);
+  var totalSupply = await RandVC.totalSupply();
+  console.log('VC name:', await RandVC.name());
+  console.log('VC symbol:', await RandVC.symbol());
+  console.log('VC supply:', totalSupply);
+  //console.log('-----------------------------------------------------');
   txRandVC = RandVC.deployTransaction;
   await txRandVC.wait(numConfirmation);
   tx = await RandRegistry.setNewAddress("VC", RandVC.address);
@@ -149,7 +192,17 @@ async function deploy_testnet(
     SafetyModule,
     Object.values(SMdeployParams),
     { kind: "uups" });
+  console.log('\n------------------- SM INFO ---------------------');
   console.log('Deployed SM proxy at:', RandSM.address);
+  var totalSupply = await RandSM.totalSupply();
+  var decimals = await RandSM.decimals();
+  var readableTotalSupply = ethers.utils.formatUnits(totalSupply);
+  var formatter = new Intl.NumberFormat('en-US', {});
+  console.log('VC name:', await RandSM.name());
+  console.log('VC symbol:', await RandSM.symbol());
+  console.log('VC supply:', totalSupply);
+  console.log('VC supply readable:', formatter.format(parseInt(readableTotalSupply)));
+  //console.log('-----------------------------------------------------');
   txRandSM = RandSM.deployTransaction;
   await txRandSM.wait(numConfirmation);
   tx = await RandRegistry.setNewAddress("SM", RandSM.address);
@@ -159,7 +212,13 @@ async function deploy_testnet(
     InvestorsNFT,
     Object.values(NFTdeployParams),
     { kind: "uups" });
+  console.log('\n------------------- NFT INFO ---------------------');
   console.log('Deployed NFT proxy at:', RandNFT.address);
+  var totalSupply = await RandNFT.totalSupply();
+  console.log('NFT name:', await RandNFT.name());
+  console.log('NFT symbol:', await RandNFT.symbol());
+  console.log('NFT supply:', totalSupply);
+  //console.log('-----------------------------------------------------');
   txRandNFT = RandNFT.deployTransaction;
   await txRandNFT.wait(numConfirmation);
   tx = await RandRegistry.setNewAddress("NFT", RandNFT.address);
@@ -169,14 +228,25 @@ async function deploy_testnet(
     Governance,
     Object.values(GovDeployParams),
     { kind: "uups" });
+  console.log('\n------------------- GOV INFO ---------------------');
   console.log('Deployed Gov proxy at:', RandGov.address);
+  var totalSupply = await RandGov.totalSupply();
+  var decimals = await RandGov.decimals();
+  var readableTotalSupply = ethers.utils.formatUnits(totalSupply, decimals);
+  var formatter = new Intl.NumberFormat('en-US', {});
+  console.log('GOV name:', await RandGov.name());
+  console.log('GOV symbol:', await RandGov.symbol());
+  console.log('GOV supply:', totalSupply);
+  console.log('GOV decimals:', decimals);
+  console.log('GOV supply readable:', formatter.format(parseInt(readableTotalSupply)));
+  //console.log('-----------------------------------------------------');
   txRandGov = RandGov.deployTransaction;
   await txRandGov.wait(numConfirmation);
   tx = await RandRegistry.setNewAddress("GOV", RandGov.address);
   await tx.wait(numConfirmation);
 
   // Verify contracts
-  console.log("");
+  console.log('\n--------------- IMPLEMENTATION INFO -----------------');
   RandRegistryImpl = await upgrades.erc1967.getImplementationAddress(RandRegistry.address);
   console.log('Deployed Registry implementation at:', RandRegistryImpl);
   RandTokenImpl = await upgrades.erc1967.getImplementationAddress(RandToken.address);
@@ -189,6 +259,7 @@ async function deploy_testnet(
   console.log('Deployed NFT implementation at:', RandNFTImpl);
   RandGovImpl = await upgrades.erc1967.getImplementationAddress(RandGov.address);
   console.log('Deployed Gov implementation at:', RandGovImpl);
+  console.log('-----------------------------------------------------');
 
   if (initialize) {
     // Variables
@@ -325,7 +396,7 @@ async function deploy_testnet(
 }
 
 module.exports = {
-  deploy_testnet,
+  deploy,
   get_factories,
   get_wallets,
   _RNDdeployParams,
