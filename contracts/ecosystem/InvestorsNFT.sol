@@ -59,7 +59,6 @@ contract InvestorsNFT is
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
-        _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _vcAddress);
     }
 
@@ -93,13 +92,7 @@ contract InvestorsNFT is
         super._beforeTokenTransfer(from, to, tokenId);
     }
 
-    function burn(uint256 tokenId)
-        public
-        virtual
-        override
-        whenNotPaused
-        onlyRole(BURNER_ROLE)
-    {
+    function burn(uint256 tokenId) public virtual override whenNotPaused {
         require(
             _isApprovedOrOwner(_msgSender(), tokenId),
             "ERC721Burnable: caller is not owner nor approved"

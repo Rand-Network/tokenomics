@@ -27,23 +27,6 @@ function BPT_TOKEN() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
-### BURNER_ROLE
-
-```solidity
-function BURNER_ROLE() external view returns (bytes32)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
 ### DEFAULT_ADMIN_ROLE
 
 ```solidity

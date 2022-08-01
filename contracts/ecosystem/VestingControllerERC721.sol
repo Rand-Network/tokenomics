@@ -95,7 +95,6 @@ contract VestingControllerERC721 is
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
-        _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _backendAddress);
     }
 
@@ -458,16 +457,31 @@ contract VestingControllerERC721 is
         super._beforeTokenTransfer(from, to, tokenId);
     }
 
+    /// @notice Burn vesting token by admin (avaiable only for DEFAULT_ADMIN_ROLE)
+    /// @dev Returns collateral tokens to the caller
+    /// @param tokenId to be burned
     function burn(uint256 tokenId)
         public
         virtual
         override
-        onlyRole(BURNER_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        require(
-            _isApprovedOrOwner(_msgSender(), tokenId),
-            "ERC721Burnable: caller is not owner nor approved"
+        require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
+
+        // Get still vesting tokens
+        uint256 rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
+        uint256 rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
+        uint256 rndStakedAmount = vestingToken[tokenId].rndStakedAmount;
+        uint256 rndTotalAmount = rndTokenAmount -
+            rndClaimedAmount -
+            rndStakedAmount;
+        // Transfer RND tokens back to the caller
+        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransferFrom(
+            address(this),
+            _msgSender(),
+            rndTotalAmount
         );
+        // Burn his investment token
         _burn(tokenId);
     }
 

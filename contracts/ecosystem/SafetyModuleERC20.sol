@@ -399,12 +399,23 @@ contract SafetyModuleERC20 is
         emit PeriodUpdated("Unstake", newPeriod);
     }
 
+    /// @notice Burn staked tokens (avaiable only for DEFAULT_ADMIN_ROLE)
+    /// @dev Returns collateral tokens to the caller
+    /// @param account is the address of the user to burn tokens from
+    /// @param amount is the uint256 amount to burn
     function burn(address account, uint256 amount)
         public
         whenNotPaused
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        // Destroy tokens
         _burn(account, amount);
+        // Transfer RND tokens back to the caller
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).adminTransfer(
+            address(this),
+            _msgSender(),
+            amount
+        );
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {

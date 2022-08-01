@@ -27,23 +27,6 @@ function BPT_TOKEN() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
-### BURNER_ROLE
-
-```solidity
-function BURNER_ROLE() external view returns (bytes32)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
 ### DEFAULT_ADMIN_ROLE
 
 ```solidity
@@ -344,15 +327,15 @@ function baseURI() external view returns (string)
 function burn(uint256 tokenId) external nonpayable
 ```
 
+Burn vesting token by admin (avaiable only for DEFAULT_ADMIN_ROLE)
 
-
-*Burns `tokenId`. See {ERC721-_burn}. Requirements: - The caller must own `tokenId` or be an approved operator.*
+*Returns collateral tokens to the caller*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| tokenId | uint256 | undefined |
+| tokenId | uint256 | to be burned |
 
 ### claimTokens
 

@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 interface IRandToken{
   function BPT_TOKEN (  ) external view returns ( string memory );
-  function BURNER_ROLE (  ) external view returns ( bytes32 );
   function DEFAULT_ADMIN_ROLE (  ) external view returns ( bytes32 );
   function ECOSYSTEM_RESERVE (  ) external view returns ( string memory );
   function GOVERNANCE (  ) external view returns ( string memory );

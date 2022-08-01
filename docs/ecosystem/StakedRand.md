@@ -27,23 +27,6 @@ function BPT_TOKEN() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
-### BURNER_ROLE
-
-```solidity
-function BURNER_ROLE() external view returns (bytes32)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
 ### COOLDOWN_SECONDS
 
 ```solidity
@@ -431,16 +414,16 @@ function balanceOf(address account) external view returns (uint256)
 function burn(address account, uint256 amount) external nonpayable
 ```
 
+Burn staked tokens (avaiable only for DEFAULT_ADMIN_ROLE)
 
-
-
+*Returns collateral tokens to the caller*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| account | address | undefined |
-| amount | uint256 | undefined |
+| account | address | is the address of the user to burn tokens from |
+| amount | uint256 | is the uint256 amount to burn |
 
 ### calculateTotalRewards
 

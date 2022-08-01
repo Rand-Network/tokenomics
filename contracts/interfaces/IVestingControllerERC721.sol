@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 interface IVestingControllerERC721{
   function BPT_TOKEN (  ) external view returns ( string memory );
-  function BURNER_ROLE (  ) external view returns ( bytes32 );
   function DEFAULT_ADMIN_ROLE (  ) external view returns ( bytes32 );
   function ECOSYSTEM_RESERVE (  ) external view returns ( string memory );
   function GOVERNANCE (  ) external view returns ( string memory );
@@ -14,6 +13,7 @@ interface IVestingControllerERC721{
   function PAUSER_ROLE (  ) external view returns ( bytes32 );
   function PERIOD_SECONDS (  ) external view returns ( uint256 );
   function RAND_TOKEN (  ) external view returns ( string memory );
+  function READER_ROLE (  ) external view returns ( bytes32 );
   function REGISTRY (  ) external view returns ( address );
   function SAFETY_MODULE (  ) external view returns ( string memory );
   function VESTING_CONTROLLER (  ) external view returns ( string memory );
@@ -52,7 +52,6 @@ interface IVestingControllerERC721{
   function tokenURI ( uint256 tokenId ) external view returns ( string memory );
   function totalSupply (  ) external view returns ( uint256 );
   function transferFrom ( address from, address to, uint256 tokenId ) external;
-  function transferRNDFromVC ( address recipient, uint256 rndTokenAmount ) external;
   function unpause (  ) external;
   function updateRegistryAddress ( address newAddress ) external;
   function upgradeTo ( address newImplementation ) external;
