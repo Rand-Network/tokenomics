@@ -124,12 +124,42 @@ task("flatten-clean", "Flattens and cleans soldity contract for Etherscan single
 
 task("deploy", "Deploys to a network and optionally verifies and mints sample investment")
   .addFlag("verify", "To verify the contract on the deployed network with Etherscan API")
-  .addFlag("initialize", "To initially mint some investments and do allowances")
-  .addOptionalParam("nameprefix", "Prefix used for deployment params, use RND for live deployments only!", "Test")
-  .setAction(async ({ verify, initialize, nameprefix }) => {
-    console.log("Starting deployment..");
-    console.log("initialize:%s,\nverify:%s\nnameprefix: %s\n------------", initialize, verify, nameprefix);
-    await deploy(initialize = initialize, verify = verify, nameprefix = nameprefix);
+  .addFlag("initialize", "Assign roles to the multisig and Defender Relay addresses")
+  .addFlag("testMint", "To initially mint some investments and do allowances")
+  .addFlag("exportCsv", "Exports deployed contract addresses to csv file to the project root")
+  .addOptionalParam("namePrefix", "Prefix used for deployment params, use RND for live deployments only!", "Test")
+  .addOptionalParam("multisigAddress", "Address of the multisig to assign DEFAULT_ADMIN_ROLE on all contracts, default DEPLOYER address", "default")
+  .addOptionalParam("relayerAddress", "Address of the Defender Relayer to assign appropiate on all contracts, default DEPLOYER address", "default")
+  .setAction(async ({ verify, testMint, initialize, namePrefix, multisigAddress, relayerAddress, exportCsv }) => {
+    console.log("Starting deployment..\n------------");
+    console.log("testMint: %s,\ninitialize: %s,\nverify: %s\nnameprefix: %s\nmultisig: %s\nrelayer: %s\n------------",
+      testMint, initialize, verify, namePrefix, multisigAddress, relayerAddress, exportCsv);
+    // If we are NOT initilializing, we need to get the multisig and relayer addresses
+    if (!initialize) {
+      // Set multisig from the DEPLOYER address from .env file
+      const accounts = await ethers.getSigners();
+      multisig = accounts[0].address;
+      relayer = accounts[0].address;
+      await deploy(
+        initialize = initialize,
+        verify = verify,
+        test_mint = testMint,
+        export_csv = exportCsv,
+        name_prefix = namePrefix,
+        multisig = multisigAddress,
+        relayer = relayerAddress
+      );
+    } else {
+      // Set multisig from the supplied arguments
+      await deploy(
+        initialize = initialize,
+        verify = verify,
+        test_mint = testMint,
+        export_csv = exportCsv,
+        name_prefix = namePrefix,
+        multisig = multisigAddress,
+        relayer = relayerAddress);
+    }
   });
 
 task("verifyProxy", "Verifies a proxy on Etherscan using the current network so Read/Write as proxy is avaiable")

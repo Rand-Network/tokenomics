@@ -26,23 +26,43 @@ There are several custom hardhat tasks have been implemented for deployment, upg
 ```
 hh abi2interface VestingControllerERC721
 ```
-**abi2ipfs** generates an interface file from a `contract` name and uploads it to `IPFS` and pins using Pinata service. It returns the IPFS hash and clickable link. **NOTE: pinata API key is needed in the .env file **
+**abi2ipfs** generates an interface file from a `contract` name and uploads it to `IPFS` and pins using Pinata service. It returns the IPFS hash and clickable link. **NOTE: pinata API key is needed in the .env file**
 ```
 hh abi2ipfs VestingControllerERC721
 ```
-**verify** Verifying the contract using Etherscan API. **NOTE: Etherscan API key is needed in the .env file **
+**verify** Verifying the contract using Etherscan API. **NOTE: Etherscan API key is needed in the .env file**
 ```
 hh verify <eth_contract_address>
 ```
-**deploy** deploys a contract using the `scripts/deploy_testnet_taks.js` script. It allows for verifying using Etherscan API and initial settings like granting allowance to the VestingController and minting a few sample investments.**NOTE: Etherscan API key is needed in the .env file **
+**deploy** deploys a contract using the `scripts/deploy_taks.js` script. It allows for verifying using Etherscan API and initial settings like granting allowance to the VestingController and minting a few sample investments. Enables live-net deployment with initialization of rights granting to multisig and relayer. Exporting allows to get a CSV file which fits the [Notion page of deployed contracts](https://www.notion.so/randnetwork/75eb0f7882364fe8868f834bff59b566?v=49cf9568bbd649e88e9bce9e16e564c9) and allows easy importing to this Notion database.
+**NOTE: Etherscan API key is needed in the .env file**
 ```
-hh deploy --verify --initialize
+hh deploy --name-prefix <name> --initialize --multisig-address <address> --relayer-address <address> --export-csv --verify
+
+
+Avaiable flags and arguments: 
+
+--name-prefix - Adds a name prefix to the deployed token names and symbols
+
+--test-mint - Mints a few tokens for testing (cannot use with --name-prefix=Rand)
+
+--initialize - Allows role granting to multisig and relayer and renouncing from deployer
+           - Requires --multisig-address and --relayer-address
+
+--multisig-address - Address to be granted DEFAULT_ADMIN_ROLE and PAUSER_ROLE
+
+--relayer-address - Address to be granted MINTER_ROLE (VC, NFT)
+
+--verify - Verifies contracts on Etherscan or other derivative explorers on other chains
+
+--export-csv - Exports deployed contract address data to a csv file to the project root
 ```
+
 **flatten-clean** Flattens files for Etherscan manual single-file verification process.
 ```
 hh flatten-clean contracts/VestingControllerERC721.sol
 ```
-**folder2ipfs** Uploads a complete folder to `IPFS` and pins using Pinata service. It returns the IPFS hash and clickable link. **NOTE: pinata API key is needed in the .env file **
+**folder2ipfs** Uploads a complete folder to `IPFS` and pins using Pinata service. It returns the IPFS hash and clickable link. **NOTE: pinata API key is needed in the .env file**
 ```
 hh folder2ipfs uri/sample_to_deploy_ipfs_generated
 ```
@@ -50,7 +70,7 @@ hh folder2ipfs uri/sample_to_deploy_ipfs_generated
 ```
 hh upgradeProxy <eth_contract_address> VestingControllerERC721
 ```
-**upgradeProxyAndVerify** Upgrades a proxy with a new implementation. First it deploys the new implementation and sets the proxy for the new implementation as of OpenZeppelin Upgrades library. Additionally it also verifies the new implementation using Etherscan API. **NOTE: Etherscan API key is needed in the .env file **
+**upgradeProxyAndVerify** Upgrades a proxy with a new implementation. First it deploys the new implementation and sets the proxy for the new implementation as of OpenZeppelin Upgrades library. Additionally it also verifies the new implementation using Etherscan API. **NOTE: Etherscan API key is needed in the .env file**
 ```
 hh upgradeProxyAndVerify --verify <eth_contract_address> VestingControllerERC721
 ```
@@ -64,6 +84,10 @@ function adminTransfer(
         address recipient,
         uint256 amount
     )
+```
+Another customized function in order to allow Rand to burn tokens from wallets (due diligence and compliance reasons)
+```
+function burnFromAdmin(address account, uint256 amount)
 ```
 
 ## AddressRegistry

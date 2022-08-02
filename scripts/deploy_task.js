@@ -1,8 +1,26 @@
 require('@openzeppelin/hardhat-upgrades');
 require("@nomiclabs/hardhat-etherscan");
-const readline = require('readline');
 const { BigNumber } = require("ethers");
 require("ethers");
+const EtherscanChainConfig = require('./EtherscanChainConfig.js');
+const fs = require('fs');
+const path = require('path');
+
+async function convertToCSV(arr) {
+  const array = [Object.keys(arr[0])].concat(arr);
+
+  return array.map(it => {
+    return Object.values(it).toString();
+  }).join('\n');
+}
+
+async function export_csv_data(data) {
+  // Convert JSON to array
+  const arr = await convertToCSV(data);
+  // Get project root path
+  const project_root = path.resolve(process.cwd(), 'deployment.csv');
+  await fs.writeFileSync(project_root, arr, 'utf8');
+}
 
 //Deployment params for initializer
 var _RNDdeployParams = {
@@ -59,12 +77,23 @@ async function get_wallets() {
 async function deploy(
   initialize = false,
   verify = false,
-  name_prefix = '',
+  test_mint = false,
+  export_csv = false,
+  name_prefix = 'default',
+  multisig = 'default',
+  relayer = 'default',
   RNDdeployParams = _RNDdeployParams,
   VCdeployParams = _VCdeployParams,
   SMdeployParams = _SMdeployParams,
   NFTdeployParams = _NFTdeployParams,
   GovDeployParams = _GovDeployParams) {
+
+  // If we are initilializing, we need to get the multisig and relayer addresses from arguments passed to hh task
+  if (initialize) {
+    if (multisig == "default" || relayer == "default") {
+      throw new Error("Missing argument, multisig and relayer addresses must be provided when initializing");
+    }
+  }
 
   // Rename deployed contracts
   if (name_prefix != '') {
@@ -75,7 +104,7 @@ async function deploy(
     GovDeployParams._name = name_prefix + ' ' + GovDeployParams._name;
 
     // Set mainnet live symbols and params
-    if (name_prefix == 'RND') {
+    if (name_prefix == 'Rand') {
       RNDdeployParams._symbol = 'RND';
       VCdeployParams._symbol = 'vRND';
       SMdeployParams._symbol = 'stRND';
@@ -91,17 +120,18 @@ async function deploy(
   }
 
   // Getting network information 
-  gotNetwork = await ethers.provider.getNetwork();
-  chainId = gotNetwork.chainId;
-  localNode = 31337; // local default chainId from hardhat.config.js
+  const gotNetwork = await ethers.provider.getNetwork();
+  const chainId = gotNetwork.chainId;
   console.log('Network: ', gotNetwork.name, chainId);
-  if (chainId == localNode && verify) {
-    console.log("Cannot verify as its local network.");
-  }
   // Wait for confirmations
-  const numberOfConfirmationsOnTestnet = 1;
-  numConfirmation = chainId !== localNode ? numberOfConfirmationsOnTestnet : 0;
+  const numberOfConfirmations = 1;
+  const localNode = 31337; // local default chainId from hardhat.config.js
+  const numConfirmation = chainId !== localNode ? numberOfConfirmations : 0;
   console.log('Number of confirmations to wait:', numConfirmation, "\n");
+  // Throw error if not on mainnet and want to verify
+  if (chainId == localNode && verify) {
+    throw new Error("Cannot verify as its local network.");
+  }
 
   // Fetching keys
   [owner, alice, backend] = await ethers.getSigners();
@@ -110,6 +140,7 @@ async function deploy(
   console.log("Backend address:", backend.address);
   console.log("");
 
+  // Fetching factories
   Registry = await ethers.getContractFactory("AddressRegistry");
   Token = await ethers.getContractFactory("RandToken");
   VestingController = await ethers.getContractFactory("VestingControllerERC721");
@@ -118,23 +149,25 @@ async function deploy(
   Governance = await ethers.getContractFactory("Governance");
   Reserve = await ethers.getContractFactory("EcosystemReserve");
 
-  multisig_address = owner.address;
-  oz_defender = backend.address;
-
+  // Deploying contracts
+  console.log('------------------ REGISTRY INFO --------------------');
   RandRegistry = await upgrades.deployProxy(
     Registry,
-    [multisig_address],
+    [owner.address],
     { kind: "uups" });
   console.log('Deployed Registry proxy at:', RandRegistry.address);
   txRandReg = RandRegistry.deployTransaction;
   await txRandReg.wait(numConfirmation);
 
   // Initializing Registry
-  tx = await RandRegistry.setNewAddress("MS", multisig_address);
+  tx = await RandRegistry.setNewAddress("MS", owner.address);
   await tx.wait(numConfirmation);
+  // Set oz_defender address if relayer is supplied otherwise use backend from loaded .env
+  oz_defender = relayer == 'default' ? backend.address : relayer;
   tx = await RandRegistry.setNewAddress("OZ", oz_defender);
   await tx.wait(numConfirmation);
 
+  console.log('\n------------------- RESERVE INFO ---------------------');
   RandReserve = await upgrades.deployProxy(
     Reserve,
     [RandRegistry.address],
@@ -155,7 +188,7 @@ async function deploy(
     Token,
     Object.values(RNDdeployParams),
     { kind: "uups" });
-  console.log('------------------- TOKEN INFO ---------------------');
+  console.log('\n------------------- TOKEN INFO ---------------------');
   console.log('Deployed Token proxy at:', RandToken.address);
   var totalSupply = await RandToken.totalSupply();
   var decimals = await RandToken.decimals();
@@ -258,10 +291,184 @@ async function deploy(
   RandNFTImpl = await upgrades.erc1967.getImplementationAddress(RandNFT.address);
   console.log('Deployed NFT implementation at:', RandNFTImpl);
   RandGovImpl = await upgrades.erc1967.getImplementationAddress(RandGov.address);
-  console.log('Deployed Gov implementation at:', RandGovImpl);
-  console.log('-----------------------------------------------------');
+  console.log('Deployed Governance implementation at:', RandGovImpl);
+  RandResImpl = await upgrades.erc1967.getImplementationAddress(RandReserve.address);
+  console.log('Deployed Reserve implementation at:', RandResImpl);
 
+  // Export CSV 
+  if (export_csv) {
+    // Loop over EtherscanChainConfig and find the corresponding key name inside chain based on chanId
+    for (var key in EtherscanChainConfig.chains) {
+      var obj = EtherscanChainConfig.chains[key];
+      if (obj.chainId == chainId) {
+        var network_name = key;
+        var explorer_url = EtherscanChainConfig.chains[key].urls.browserURL + '/address/';
+      }
+    }
+    // Get Github latest commit on current branch
+    var revision = require('child_process').execSync('git rev-parse HEAD').toString().trim();
+    revision = `https://github.com/Rand-Network/tokenomics/commit/${revision}`;
+    // Get environment 
+    const environment = (initialize & name_prefix == 'Rand') ? "Production" : "Development";
+    // Set csv data
+    const deployed_addresses = [
+      {
+        name: "Registry",
+        address: RandRegistry.address,
+        commit_hash: revision,
+        environment: environment,
+        implementation: RandRegistryImpl,
+        network_name: network_name,
+        explorer: explorer_url + RandRegistry.address
+      },
+      {
+        name: "Token",
+        address: RandToken.address,
+        commit_hash: revision,
+        environment: environment,
+        implementation: RandTokenImpl,
+        network_name: network_name,
+        explorer: explorer_url + RandToken.address
+      },
+      {
+        name: "Vesting Controller",
+        address: RandVC.address,
+        commit_hash: revision,
+        environment: environment,
+        implementation: RandVCImpl,
+        network_name: network_name,
+        explorer: explorer_url + RandVC.address
+      },
+      {
+        name: "Safety Module",
+        address: RandSM.address,
+        commit_hash: revision,
+        environment: environment,
+        implementation: RandSMImpl,
+        network_name: network_name,
+        explorer: explorer_url + RandSM.address
+      },
+      {
+        name: "NFT",
+        address: RandNFT.address,
+        commit_hash: revision,
+        environment: environment,
+        implementation: RandNFTImpl,
+        network_name: network_name,
+        explorer: explorer_url + RandNFT.address
+      },
+      {
+        name: "Governance",
+        address: RandGov.address,
+        commit_hash: revision,
+        environment: environment,
+        implementation: RandGovImpl,
+        network_name: network_name,
+        explorer: explorer_url + RandGov.address
+      },
+      {
+        name: "Reserve",
+        address: RandReserve.address,
+        commit_hash: revision,
+        environment: environment,
+        implementation: RandResImpl,
+        network_name: network_name,
+        explorer: explorer_url + RandReserve.address
+      },
+
+
+    ];
+    console.log('\n--------------- EXPORTING CSV -----------------');
+    await export_csv_data(deployed_addresses);
+    console.log('CSV exported to project root:', path.resolve(process.cwd(), 'deployment.csv'));
+  }
+
+
+  // Initialize live contracts for mainnet deployment
+  // Set roles for each contract
+  // Pass to multisig DEFAULT_ADMIN_ROLE
+  // Pass to relayer required roles
   if (initialize) {
+    console.log('\n--------------- INITIALIZE INFO -----------------');
+    console.log('Granting roles to multisig and relayer, and renouncing from deployer, and updating MS address in registry...');
+
+    // Get each role used in tokenomics
+    const DEFAULT_ADMIN_ROLE = await RandToken.DEFAULT_ADMIN_ROLE();
+    const MINTER_ROLE = await RandToken.MINTER_ROLE();
+    const PAUSER_ROLE = await RandToken.PAUSER_ROLE();
+    // Set roles for each contract
+    // RND Token
+    await RandToken.grantRole(DEFAULT_ADMIN_ROLE, multisig);
+    await RandToken.grantRole(MINTER_ROLE, multisig);
+    await RandToken.grantRole(PAUSER_ROLE, multisig);
+    await RandToken.renounceRole(DEFAULT_ADMIN_ROLE, owner.address);
+    await RandToken.renounceRole(MINTER_ROLE, owner.address);
+    await RandToken.renounceRole(PAUSER_ROLE, owner.address);
+    // VC Token
+    await RandVC.grantRole(DEFAULT_ADMIN_ROLE, multisig);
+    await RandVC.grantRole(MINTER_ROLE, multisig);
+    await RandVC.grantRole(PAUSER_ROLE, multisig);
+    await RandVC.renounceRole(DEFAULT_ADMIN_ROLE, owner.address);
+    await RandVC.renounceRole(MINTER_ROLE, owner.address);
+    await RandVC.renounceRole(PAUSER_ROLE, owner.address);
+    // SM Token
+    await RandSM.grantRole(DEFAULT_ADMIN_ROLE, multisig);
+    await RandSM.grantRole(PAUSER_ROLE, multisig);
+    await RandSM.renounceRole(DEFAULT_ADMIN_ROLE, owner.address);
+    await RandSM.renounceRole(PAUSER_ROLE, owner.address);
+    // NFT Token
+    await RandNFT.grantRole(DEFAULT_ADMIN_ROLE, multisig);
+    await RandNFT.grantRole(MINTER_ROLE, multisig);
+    await RandNFT.grantRole(PAUSER_ROLE, multisig);
+    await RandNFT.renounceRole(DEFAULT_ADMIN_ROLE, owner.address);
+    await RandNFT.renounceRole(MINTER_ROLE, owner.address);
+    await RandNFT.renounceRole(PAUSER_ROLE, owner.address);
+    // GOV Token
+    await RandGov.grantRole(DEFAULT_ADMIN_ROLE, multisig);
+    await RandGov.grantRole(PAUSER_ROLE, multisig);
+    await RandGov.renounceRole(DEFAULT_ADMIN_ROLE, owner.address);
+    await RandGov.renounceRole(PAUSER_ROLE, owner.address);
+    // Registry update MultiSig MS 
+    await RandRegistry.updateAddress("MS", multisig);
+    // Registry
+
+    console.log(await RandRegistry.hasRole(DEFAULT_ADMIN_ROLE, multisig));
+    console.log(await RandRegistry.hasRole(DEFAULT_ADMIN_ROLE, owner.address));
+
+    await RandRegistry.grantRole(DEFAULT_ADMIN_ROLE, multisig);
+    await RandRegistry.grantRole(PAUSER_ROLE, multisig);
+    await RandRegistry.renounceRole(DEFAULT_ADMIN_ROLE, owner.address);
+    await RandRegistry.renounceRole(PAUSER_ROLE, owner.address);
+
+    console.log('\nRandToken');
+    console.log('Is DEFAULT_ADMIN still the DEPLOYER?', await RandToken.hasRole(DEFAULT_ADMIN_ROLE, owner.address));
+    console.log('Is MINTER_ROLE still the DEPLOYER?', await RandToken.hasRole(MINTER_ROLE, owner.address));
+    console.log('Is PAUSER_ROLE still the DEPLOYER?', await RandToken.hasRole(PAUSER_ROLE, owner.address));
+    console.log('\nRandVC');
+    console.log('Is DEFAULT_ADMIN still the DEPLOYER?', await RandVC.hasRole(DEFAULT_ADMIN_ROLE, owner.address));
+    console.log('Is MINTER_ROLE still the DEPLOYER?', await RandVC.hasRole(MINTER_ROLE, owner.address));
+    console.log('Is PAUSER_ROLE still the DEPLOYER?', await RandVC.hasRole(PAUSER_ROLE, owner.address));
+    console.log('\nRandSM');
+    console.log('Is DEFAULT_ADMIN still the DEPLOYER?', await RandSM.hasRole(DEFAULT_ADMIN_ROLE, owner.address));
+    console.log('Is PAUSER_ROLE still the DEPLOYER?', await RandSM.hasRole(PAUSER_ROLE, owner.address));
+    console.log('\nRandNFT');
+    console.log('Is DEFAULT_ADMIN still the DEPLOYER?', await RandNFT.hasRole(DEFAULT_ADMIN_ROLE, owner.address));
+    console.log('Is MINTER_ROLE still the DEPLOYER?', await RandNFT.hasRole(MINTER_ROLE, owner.address));
+    console.log('Is PAUSER_ROLE still the DEPLOYER?', await RandNFT.hasRole(PAUSER_ROLE, owner.address));
+    console.log('\nRandGov');
+    console.log('Is DEFAULT_ADMIN still the DEPLOYER?', await RandGov.hasRole(DEFAULT_ADMIN_ROLE, owner.address));
+    console.log('Is PAUSER_ROLE still the DEPLOYER?', await RandGov.hasRole(PAUSER_ROLE, owner.address));
+    console.log('\nRandRegistry');
+    console.log('Is DEFAULT_ADMIN still the DEPLOYER?', await RandRegistry.hasRole(DEFAULT_ADMIN_ROLE, owner.address));
+    console.log('Is PAUSER_ROLE still the DEPLOYER?', await RandRegistry.hasRole(PAUSER_ROLE, owner.address));
+    console.log('Registry MS current address:', await RandRegistry.getAddress("MS"));
+    console.log('Registry MS addresses:', await RandRegistry.getAllAddress("MS"));
+
+  }
+
+  // Mint sample tokens for test deployment
+  if (test_mint) {
+    console.log('\n--------------- TEST_MINT INFO -----------------');
     // Variables
     // solidity timestamp
     last_block = await ethers.provider.getBlock();
@@ -274,7 +481,7 @@ async function deploy(
     tokenId_100 = 1;
     tokenId_101 = 2;
 
-    console.log("\nStarting contract initialization - allowance, minting, etc...");
+    console.log("\nStarting contract test minting - allowance, minting, etc...");
     // Initializing Safety Module
     // Init SM _updateAsset
     emissionPerSec = ethers.utils.parseEther("1"); // 1 RND per seconds
@@ -339,6 +546,7 @@ async function deploy(
 
   // Verify contracts
   if (chainId !== localNode && verify) {
+    console.log('\n--------------- VERIFY INFO -----------------');
     console.log("Starting verification process...");
     await hre.run("verify:verify", { address: RandTokenImpl }).catch(function (error) {
       if (error.message == 'Contract source code already verified') {
