@@ -9,7 +9,7 @@ const {
   expectRevert, // Assertions for transactions that should fail
 } = require('@openzeppelin/test-helpers');
 const { executeContractCallWithSigners } = require("@gnosis.pm/safe-contracts");
-const { deploy_testnet } = require("../scripts/deploy_testnet_task.js");
+const { deploy } = require("../scripts/deploy_task.js");
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -58,8 +58,14 @@ describe("Rand Token with Vesting Controller", function () {
     let alice;
     let backend;
 
-    deployed = await deploy_testnet(
-      initialize = false, verify = false,
+    deployed = await deploy(
+      initialize = false,
+      verify = false,
+      test_mint = false,
+      export_csv = false,
+      name_prefix = "default",
+      multisig = "default",
+      relayer = "default",
       RNDdeployParams = _RNDdeployParams,
       VCdeployParams = _VCdeployParams,
       SMdeployParams = _SMdeployParams,
@@ -105,13 +111,7 @@ describe("Rand Token with Vesting Controller", function () {
       const ownerBalanceAfter = await RandToken.balanceOf(owner.address);
       expect(ownerBalanceBefore.add(amount)).to.equal(ownerBalanceAfter);
       // Should not mint from alice
-      if (chainId !== localNode) {
-        await RandToken.connect(alice).mint(alice.address, amount).catch(function (error) {
-          expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
-        });
-      } else {
-        await expectRevert.unspecified(RandToken.connect(alice).mint(alice.address, amount));
-      }
+      await expectRevert.unspecified(RandToken.connect(alice).mint(alice.address, amount));
 
     });
     it("Burning tokens", async function () {
@@ -125,13 +125,7 @@ describe("Rand Token with Vesting Controller", function () {
       const ownerBalanceAfter = await RandToken.balanceOf(owner.address);
       expect(ownerBalanceBefore.sub(amount)).to.equal(ownerBalanceAfter);
       // Should not burn from owner by alice
-      if (chainId !== localNode) {
-        await RandToken.connect(alice).burnFrom(owner.address, amount).catch(function (error) {
-          expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
-        });
-      } else {
-        await expectRevert.unspecified(RandToken.connect(alice).burnFrom(owner.address, amount));
-      }
+      await expectRevert.unspecified(RandToken.connect(alice).burnFrom(owner.address, amount));
 
     });
     it("Transferring tokens", async function () {
@@ -149,13 +143,7 @@ describe("Rand Token with Vesting Controller", function () {
       tx = await RandToken.pause();
       await tx.wait(numConfirmation);
       const amount = BigNumber.from("1").pow(18);
-      if (chainId !== localNode) {
-        await RandToken.transfer(alice.address, amount).catch(function (error) {
-          expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
-        });
-      } else {
-        await expectRevert.unspecified(RandToken.transfer(alice.address, amount));
-      }
+      await expectRevert.unspecified(RandToken.transfer(alice.address, amount));
       tx = await RandToken.unpause();
       await tx.wait(numConfirmation);
       expect(await RandToken.transfer(alice.address, amount));
@@ -208,13 +196,7 @@ describe("Rand Token with Vesting Controller", function () {
       expect(await RandVC.totalSupply()).to.equal(2);
     });
     it("Should not be able to burn tokens", async function () {
-      if (chainId !== localNode) {
-        await RandVC.connect(alice).burn(e_tokenId).catch(function (error) {
-          expect(error.code).to.be.equal('UNPREDICTABLE_GAS_LIMIT');
-        });
-      } else {
-        await expectRevert.unspecified(RandVC.connect(alice).burn(e_tokenId));
-      }
+      await expectRevert.unspecified(RandVC.connect(alice).burn(e_tokenId));
     });
     it("Checking claimable tokens", async function () {
       claimable = rndTokenAmount.div(vestingPeriod).mul(3);
@@ -332,8 +314,11 @@ describe("Rand Token with Vesting Controller", function () {
       expect(await RandVC.connect(backend).getTokenIdOfNFT(tokenId_100)).to.equal(e_tokenId1);
       expect(await RandVC.connect(backend).getTokenIdOfNFT(tokenId_101)).to.equal(e_tokenId2);
     });
-    it("Should not be able to burn", async function () {
-      await expectRevert.unspecified(RandNFT.connect(alice).burn(tokenId_100));
+    it("Should be able to burn by admin", async function () {
+      await expectRevert.unspecified(RandNFT.connect(owner).burn(tokenId_100));
+    });
+    it("Should be able to burn", async function () {
+      await expect(RandNFT.connect(alice).burn(tokenId_100));
     });
   });
 
@@ -499,8 +484,14 @@ describe("Rand Token with Vesting Controller", function () {
     });
 
     it("SM staking multiple users full flow, redeployed state", async function () {
-      deployed = await deploy_testnet(
-        initialize = false, verify = false,
+      deployed = await deploy(
+        initialize = false,
+        verify = false,
+        test_mint = false,
+        export_csv = false,
+        name_prefix = "default",
+        multisig = "default",
+        relayer = "default",
         RNDdeployParams = _RNDdeployParams,
         VCdeployParams = _VCdeployParams,
         SMdeployParams = _SMdeployParams,
@@ -675,8 +666,14 @@ describe("Rand Token with Vesting Controller", function () {
     let aliceTotalBalance;
 
     before(async function () {
-      deployed = await deploy_testnet(
-        initialize = false, verify = false,
+      deployed = await deploy(
+        initialize = false,
+        verify = false,
+        test_mint = false,
+        export_csv = false,
+        name_prefix = "default",
+        multisig = "default",
+        relayer = "default",
         RNDdeployParams = _RNDdeployParams,
         VCdeployParams = _VCdeployParams,
         SMdeployParams = _SMdeployParams,
@@ -690,7 +687,7 @@ describe("Rand Token with Vesting Controller", function () {
         RandGov = deployed.RandGov,
         RandRegistry = deployed.RandRegistry;
 
-      //RandToken, RandVC, RandSM, RandNFT, RandGov, RandRegistry = await deploy_testnet();
+      //RandToken, RandVC, RandSM, RandNFT, RandGov, RandRegistry = await deploy();
       allowanceAmount = ethers.utils.parseEther('1000');
       tx = await RandToken.increaseAllowance(RandVC.address, allowanceAmount);
       // Mint a VC Investment - 200 RND total
