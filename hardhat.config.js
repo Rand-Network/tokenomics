@@ -18,6 +18,8 @@ const { axios } = require('axios');
 const { json } = require("hardhat/internal/core/params/argumentTypes");
 const pinataSDK = require('@pinata/sdk');
 const pinata = pinataSDK(process.env.PINATA_KEY, process.env.PINATA_SECRET);
+const { get_factories } = require("./scripts/deploy_task.js");
+
 
 // Get network id
 function findNetworInArgs(item, index, arr) {
@@ -53,14 +55,20 @@ task("accounts", "Prints the list of accounts", async () => {
 
 
 /* 
-hh proposeGnosisSafe --safe-address 0xb8877cAdd56afFC20EDcE26706E4d56ba8C09751 \
+
+Sample query for Defender Multisig Proposing
+
+hh proposeGnosisSafe \
+--safe-address 0xb8877cAdd56afFC20EDcE26706E4d56ba8C09751 \
 --contract-address 0xc0f25f7C795633B77995df4f5aef00956a150D71 \
 --title "Update asset config by initializing" \
 --description "Configure 1 RND per second emission with zero total staked amounts for this asset" \
---function-interface '{ "name": "updateAsset", "inputs": [{ "type": "address", "name": "_asset" }, { "type": "uint256", "name": "_emission" }, { "type": "uint256", "name": "_totalStaked" }] }' \
+--contract-name "SafetyModule" \
+--function-name "updateAsset" \
 --function-inputs '["0xc0f25f7C795633B77995df4f5aef00956a150D71", "1000000000000000000", "0"]' \
 --contract-network matic \
---verbose-inputs 
+--verbose-inputs
+
 */
 
 task("proposeGnosisSafe", "Submits a proposal to the OpenZeppelin Defender Multisig wallet via defender-admin-client pkg")
@@ -69,17 +77,31 @@ task("proposeGnosisSafe", "Submits a proposal to the OpenZeppelin Defender Multi
   .addOptionalParam("contractNetwork", "Network of the contract to interact with via Gnosis Safe")
   .addOptionalParam("title", "Title of the proposal")
   .addOptionalParam("description", "Short description of the proposal, e.g. '{ \"name\": \"setFee\", \"inputs\": [{ \"type\": \"uint256\", \"name\": \"fee\" }] }'")
-  .addOptionalParam("functionInterface", "Interface ABI of the function to call in JSON format string, e.g. '[\"1\",\"2\",\"3\"]'")
+  .addOptionalParam("contractName", "Name of the contract to interact with via Gnosis Safe, e.g. 'Token/SafetyModule/VestingController/Governance/etc.'")
+  .addOptionalParam("functionName", "Name of the function from the contract defined above to call, e.g. 'setFee'")
   .addOptionalParam("functionInputs", "Arguments to pass to the function")
   .addFlag("verboseInputs", "Prints the parsed function interface and inputs")
-  .setAction(async ({ safeAddress, contractAddress, contractNetwork, title, description, functionInterface, functionInputs, verboseInputs }) => {
+  .setAction(async ({ safeAddress, contractAddress, contractNetwork, title, description, contractName, functionName, functionInputs, verboseInputs }) => {
 
-    if (!safeAddress | !contractAddress | !contractNetwork | !title | !description | !functionInterface | !functionInputs) {
+    if (!safeAddress | !contractAddress | !contractNetwork | !title | !description | !contractName | !functionName | !functionInputs) {
       throw new Error("Missing required parameters");
     }
 
+    // Obtaining factory contracts to fetch ABI from it
+    factories = await get_factories();
+    factory = factories[contractName];
+    string_abi = factory.interface.format(ethers.utils.FormatTypes.json);
+    json_abi = JSON.parse(string_abi);
+
+    // Iterate over the ABI and find the function we want to call
+    for (var i = 0; i < json_abi.length; i++) {
+      if (json_abi[i].name == functionName) {
+        function_abi = json_abi[i];
+      }
+    }
+
     if (verboseInputs) {
-      console.log("Function interface:", JSON.parse(functionInterface));
+      console.log("Function interface:", function_abi);
       console.log("Function inputs:", JSON.parse(functionInputs));
     }
 
@@ -91,7 +113,7 @@ task("proposeGnosisSafe", "Submits a proposal to the OpenZeppelin Defender Multi
       title: title,
       description: description,
       type: 'custom', // Use 'custom' for custom admin actions
-      functionInterface: JSON.parse(functionInterface), // Function ABI
+      functionInterface: function_abi, // Function ABI
       functionInputs: JSON.parse(functionInputs), // Arguments to the function
       via: safeAddress, // Multisig address
       viaType: 'Gnosis Safe' // Either Gnosis Safe or Gnosis Multisig
