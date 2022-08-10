@@ -1,6 +1,7 @@
 require("@nomiclabs/hardhat-waffle");
 require('@openzeppelin/hardhat-upgrades');
 require("@openzeppelin/hardhat-defender");
+const { AdminClient } = require('defender-admin-client');
 require('@nomiclabs/hardhat-etherscan');
 require("hardhat-gas-reporter");
 require("@atixlabs/hardhat-time-n-mine");
@@ -49,6 +50,56 @@ task("accounts", "Prints the list of accounts", async () => {
   }
 });
 
+
+
+/* 
+hh proposeGnosisSafe --safe-address 0xb8877cAdd56afFC20EDcE26706E4d56ba8C09751 \
+--contract-address 0xc0f25f7C795633B77995df4f5aef00956a150D71 \
+--title "Update asset config by initializing" \
+--description "Configure 1 RND per second emission with zero total staked amounts for this asset" \
+--function-interface '{ "name": "updateAsset", "inputs": [{ "type": "address", "name": "_asset" }, { "type": "uint256", "name": "_emission" }, { "type": "uint256", "name": "_totalStaked" }] }' \
+--function-inputs '["0xc0f25f7C795633B77995df4f5aef00956a150D71", "1000000000000000000", "0"]' \
+--contract-network matic \
+--verbose-inputs 
+*/
+
+task("proposeGnosisSafe", "Submits a proposal to the OpenZeppelin Defender Multisig wallet via defender-admin-client pkg")
+  .addOptionalParam("safeAddress", "Address of the Gnosis Safe in OZ Defender")
+  .addOptionalParam("contractAddress", "Address of the contract to interact with via Gnosis Safe")
+  .addOptionalParam("contractNetwork", "Network of the contract to interact with via Gnosis Safe")
+  .addOptionalParam("title", "Title of the proposal")
+  .addOptionalParam("description", "Short description of the proposal, e.g. '{ \"name\": \"setFee\", \"inputs\": [{ \"type\": \"uint256\", \"name\": \"fee\" }] }'")
+  .addOptionalParam("functionInterface", "Interface ABI of the function to call in JSON format string, e.g. '[\"1\",\"2\",\"3\"]'")
+  .addOptionalParam("functionInputs", "Arguments to pass to the function")
+  .addFlag("verboseInputs", "Prints the parsed function interface and inputs")
+  .setAction(async ({ safeAddress, contractAddress, contractNetwork, title, description, functionInterface, functionInputs, verboseInputs }) => {
+
+    if (!safeAddress | !contractAddress | !contractNetwork | !title | !description | !functionInterface | !functionInputs) {
+      throw new Error("Missing required parameters");
+    }
+
+    if (verboseInputs) {
+      console.log("Function interface:", JSON.parse(functionInterface));
+      console.log("Function inputs:", JSON.parse(functionInputs));
+    }
+
+    // Create a new admin client
+    const client = new AdminClient({ apiKey: process.env.DEFENDER_API_KEY, apiSecret: process.env.DEFENDER_API_SECRET_KEY });
+    // Propose approval to Gnosis Safe
+    responseProposal = await client.createProposal({
+      contract: { address: contractAddress, network: contractNetwork }, // Target contract
+      title: title,
+      description: description,
+      type: 'custom', // Use 'custom' for custom admin actions
+      functionInterface: JSON.parse(functionInterface), // Function ABI
+      functionInputs: JSON.parse(functionInputs), // Arguments to the function
+      via: safeAddress, // Multisig address
+      viaType: 'Gnosis Safe' // Either Gnosis Safe or Gnosis Multisig
+    });
+    console.log(responseProposal);
+  });
+
+
 task("upgradeProxyAndVerify", "Upgrades proxy with OZ upgrades plugin and verifies new implementation")
   .addPositionalParam("proxyAddress", "Address of the proxy contract")
   .addPositionalParam("contractFactory", "Name of the contract")
@@ -78,7 +129,6 @@ task("upgradeProxyAndVerify", "Upgrades proxy with OZ upgrades plugin and verifi
         }
       });
     }
-
   });
 
 task("abi2interface", "Generates solidity interface contracts from ABIs, needs to matching contract name .sol name")
@@ -219,7 +269,8 @@ gasPriceApis = {
   mainnet: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   hardhat: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   moonbaseAlpha: 'https://api-moonbase.moonscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.MOONSCAN_API_KEY,
-  moonbeam: 'https://api-moonbase.moonscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.MOONSCAN_API_KEY
+  moonbeam: 'https://api-moonbase.moonscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.MOONSCAN_API_KEY,
+  polygon: 'https://api.polygonscan.com/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.POLYGONSCAN_API_KEY,
 };
 
 let gasPriceApi;
@@ -295,6 +346,11 @@ module.exports = {
     },
     polygonMumbai: {
       url: process.env.POLYGON_TESTNET_URL || '',
+      accounts: accountkeys,
+      timeout: 5 * 60 * 1e3,
+    },
+    polygon: {
+      url: process.env.POLYGON_MAINNET_URL || '',
       accounts: accountkeys,
       timeout: 5 * 60 * 1e3,
     },
