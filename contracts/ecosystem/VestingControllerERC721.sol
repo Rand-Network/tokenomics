@@ -139,6 +139,7 @@ contract VestingControllerERC721 is
     /// @return rndClaimedAmount amounts of tokens an investor already claimed and received
     /// @return vestingPeriod number of periods the investment is vested for
     /// @return vestingStartTime the timestamp when the vesting starts to kick-in
+    /// @return rndStakedAmount the amount of tokens an investor is staking
     function getInvestmentInfo(uint256 tokenId)
         public
         view
