@@ -439,7 +439,7 @@ View function to get information about a vested investment token
 | rndClaimedAmount | uint256 | amounts of tokens an investor already claimed and received |
 | vestingPeriod | uint256 | number of periods the investment is vested for |
 | vestingStartTime | uint256 | the timestamp when the vesting starts to kick-in |
-| rndStakedAmount | uint256 | undefined |
+| rndStakedAmount | uint256 | the amount of tokens an investor is staking |
 
 ### getInvestmentInfoForNFT
 
