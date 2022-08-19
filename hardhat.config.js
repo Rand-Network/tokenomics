@@ -19,6 +19,7 @@ const { json } = require("hardhat/internal/core/params/argumentTypes");
 const pinataSDK = require('@pinata/sdk');
 const pinata = pinataSDK(process.env.PINATA_KEY, process.env.PINATA_SECRET);
 const { get_factories } = require("./scripts/deploy_task.js");
+const prompt = require('prompt-sync')();
 
 
 // Get network id
@@ -83,39 +84,47 @@ task("proposeGnosisSafe", "Submits a proposal to the OpenZeppelin Defender Multi
   .addFlag("verboseInputs", "Prints the parsed function interface and inputs")
   .setAction(async ({ safeAddress, contractAddress, contractNetwork, title, description, contractName, functionName, functionInputs, verboseInputs }) => {
 
-    if (!safeAddress | !contractAddress | !contractNetwork | !title | !description | !contractName | !functionName | !functionInputs) {
-      throw new Error("Missing required parameters");
-    }
+    // Allow user inputs
+    const input_contractName = !contractName ? prompt("Enter the name of the contract to interact with via Gnosis Safe: ") : contractName;
+    const input_contractAddress = !contractAddress ? prompt("Enter the contract address to interact with via Gnosis Safe: ") : contractAddress;
+    if (!contractNetwork) console.log("Avaiable networks: mainnet | rinkeby | ropsten | kovan | goerli | bsc | bsctest | fantom | fantomtest | moonbase | moonriver | moonbeam | matic | mumbai | optimistic | optimistic-kovan | arbitrum | arbitrum-rinkeby");
+    const input_contractNetwork = !contractNetwork ? prompt("Enter the network of the contract to interact with via Gnosis Safe: ") : contractNetwork;
+    const input_title = !title ? prompt("Enter the title of the proposal: ") : title;
+    const input_description = !description ? prompt("Enter the short description of the proposal: ") : description;
+    const input_functionName = !functionName ? prompt("Enter the name of the function from the contract defined above to call: ") : functionName;
+    if (!functionInputs) console.log("Example input: e.g. [\"0xc0f25f7C795633B77995df4f5aef00956a150D71\", \"1000000000000000000\", \"0\"]");
+    const input_functionInputs = !functionInputs ? prompt("Enter the arguments to pass to the function: ") : functionInputs;
+    const input_safeAddress = !safeAddress ? prompt("Enter the Gnosis Safe address in OZ Defender: ") : safeAddress;
 
     // Obtaining factory contracts to fetch ABI from it
     factories = await get_factories();
-    factory = factories[contractName];
+    factory = factories[input_contractName];
     string_abi = factory.interface.format(ethers.utils.FormatTypes.json);
     json_abi = JSON.parse(string_abi);
 
     // Iterate over the ABI and find the function we want to call
     for (var i = 0; i < json_abi.length; i++) {
-      if (json_abi[i].name == functionName) {
+      if (json_abi[i].name == input_functionName) {
         function_abi = json_abi[i];
       }
     }
 
     if (verboseInputs) {
       console.log("Function interface:", function_abi);
-      console.log("Function inputs:", JSON.parse(functionInputs));
+      console.log("Function inputs:", JSON.parse(input_functionInputs));
     }
 
     // Create a new admin client
     const client = new AdminClient({ apiKey: process.env.DEFENDER_API_KEY, apiSecret: process.env.DEFENDER_API_SECRET_KEY });
     // Propose approval to Gnosis Safe
     responseProposal = await client.createProposal({
-      contract: { address: contractAddress, network: contractNetwork }, // Target contract
-      title: title,
-      description: description,
+      contract: { address: input_contractAddress, network: input_contractNetwork }, // Target contract
+      title: input_title,
+      description: input_description,
       type: 'custom', // Use 'custom' for custom admin actions
       functionInterface: function_abi, // Function ABI
-      functionInputs: JSON.parse(functionInputs), // Arguments to the function
-      via: safeAddress, // Multisig address
+      functionInputs: JSON.parse(input_functionInputs), // Arguments to the function
+      via: input_safeAddress, // Multisig address
       viaType: 'Gnosis Safe' // Either Gnosis Safe or Gnosis Multisig
     });
     console.log(responseProposal);
