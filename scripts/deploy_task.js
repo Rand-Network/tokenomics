@@ -63,6 +63,7 @@ async function get_factories() {
   Token = await ethers.getContractFactory("RandToken");
   VestingController = await ethers.getContractFactory("VestingControllerERC721");
   SafetyModule = await ethers.getContractFactory("StakedRand");
+  RewardDistributionManager = await ethers.getContractFactory("RewardDistributionManagerV2");
   InvestorsNFT = await ethers.getContractFactory("InvestorsNFT");
   Governance = await ethers.getContractFactory("Governance");
 
@@ -124,9 +125,9 @@ async function deploy(
   const chainId = gotNetwork.chainId;
   console.log('Network: ', gotNetwork.name, chainId);
   // Wait for confirmations
-  const numberOfConfirmations = 1;
   const localNode = 31337; // local default chainId from hardhat.config.js
-  const numConfirmation = chainId !== localNode ? numberOfConfirmations : 0;
+  // Define number of block to wait for confirmation
+  const numConfirmation = chainId !== localNode ? 1 : 0;
   console.log('Number of confirmations to wait:', numConfirmation, "\n");
   // Throw error if not on mainnet and want to verify
   if (chainId == localNode && verify) {
@@ -463,6 +464,10 @@ async function deploy(
     console.log('Is PAUSER_ROLE still the DEPLOYER?', await RandRegistry.hasRole(PAUSER_ROLE, owner.address));
     console.log('Registry MS current address:', await RandRegistry.getAddress("MS"));
     console.log('Registry MS addresses:', await RandRegistry.getAllAddress("MS"));
+
+    // [] Transfer initial RND supply to the treasury account OR increase RND allowance for the VC over the total amount of investments to be minted
+    // [] Initialize SM assets with the asset config params
+    // [] Transfer RND supply to the Reserve for the SM rewards
 
   }
 
