@@ -294,6 +294,7 @@ task("verifyProxy", "Verifies a proxy on Etherscan using the current network so 
 
 
 gasPriceApis = {
+  sepolia: 'https://api-sepolia.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   goerli: 'https://api-goerli.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   ropsten: 'https://api-ropsten.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   rinkeby: 'https://api-rinkeby.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
@@ -363,6 +364,12 @@ module.exports = {
       //gasPrice: 200e9,
       gas: 2100000
     },
+    sepolia: {
+      url: process.env.SEPOLIA_TESTNET_URL || '',
+      accounts: accountkeys,
+      timeout: 5 * 60 * 1e3,
+      //gasPrice: 200e9
+    },
     goerli: {
       url: process.env.GOERLI_TESTNET_URL || '',
       accounts: accountkeys,
@@ -388,6 +395,7 @@ module.exports = {
   },
   etherscan: {
     apiKey: {
+      sepolia: process.env.ETHERSCAN_API_KEY,
       goerli: process.env.ETHERSCAN_API_KEY,
       rinkeby: process.env.ETHERSCAN_API_KEY,
       ropsten: process.env.ETHERSCAN_API_KEY,
