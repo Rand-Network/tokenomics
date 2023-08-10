@@ -128,6 +128,22 @@ event AssetUpdated(address asset, uint256 newEmission)
 | asset  | address | undefined |
 | newEmission  | uint256 | undefined |
 
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
+
 ### UserIndexUpdated
 
 ```solidity
