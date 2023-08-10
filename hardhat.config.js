@@ -1,7 +1,7 @@
 require("@nomiclabs/hardhat-waffle");
 require('@openzeppelin/hardhat-upgrades');
 require("@openzeppelin/hardhat-defender");
-const { AdminClient } = require('defender-admin-client');
+const { AdminClient } = require('@openzeppelin/defender-admin-client');
 require('@nomiclabs/hardhat-etherscan');
 require("hardhat-gas-reporter");
 require("@atixlabs/hardhat-time-n-mine");
