@@ -449,13 +449,14 @@ contract VestingControllerERC721 is
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 tokenId
+        uint256 tokenId,
+        uint256 batchSize
     )
         internal
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
         whenNotPaused
     {
-        super._beforeTokenTransfer(from, to, tokenId);
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
 
     /// @notice Burn vesting token by admin (avaiable only for DEFAULT_ADMIN_ROLE)
