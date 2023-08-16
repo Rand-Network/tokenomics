@@ -94,6 +94,10 @@ async function deploy(
     if (multisig == "default" || relayer == "default") {
       throw new Error("Missing argument, multisig and relayer addresses must be provided when initializing");
     }
+
+    if (test_mint) {
+      throw new Error("Cannot mint test tokens when initializing. Initialize is for mainnet deployment only.");
+    }
   }
 
   // Rename deployed contracts

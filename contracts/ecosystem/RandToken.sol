@@ -51,8 +51,6 @@ contract RandToken is
     /// @param recipient is the address where to transfer the funds
     /// @param amount is the amount of transfer
     function SafetyModuleTransfer(
-        // TODO: Rename to SafetyModuleTransfer or delete,
-        // but then we need to deploy the token as a proxy if want to add this feature later
         address owner,
         address recipient,
         uint256 amount

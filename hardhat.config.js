@@ -7,7 +7,7 @@ require("hardhat-gas-reporter");
 require("@atixlabs/hardhat-time-n-mine");
 require("@tenderly/hardhat-tenderly");
 require("solidity-coverage");
-require('@primitivefi/hardhat-dodoc');
+require('@adradr/hardhat-dodoc');
 require('dotenv').config();
 const { ContractFactory } = require("ethers");
 const { abi2sol, abi2json } = require("./scripts/abi2sol.js");

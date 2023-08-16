@@ -9,6 +9,7 @@
 * [ImportsManager](ecosystem/ImportsManager.md)
 * [InvestorsNFT](ecosystem/InvestorsNFT.md)
 * [RandToken](ecosystem/RandToken.md)
+* [RandTokenV2](ecosystem/RandTokenV2.md)
 * [RewardDistributionManagerV2](ecosystem/RewardDistributionManagerV2.md)
 * [SafetyModuleERC20](ecosystem/SafetyModuleERC20.md)
 * [StakedRand](ecosystem/StakedRand.md)
