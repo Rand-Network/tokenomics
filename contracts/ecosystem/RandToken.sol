@@ -42,7 +42,7 @@ contract RandToken is
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
-        _mint(_multisigVault, _initialSupply * 10**decimals());
+        _mint(_multisigVault, _initialSupply * 10 ** decimals());
     }
 
     /// @notice Function to allow admins to move funds without multiple approve and transfer steps
@@ -50,7 +50,9 @@ contract RandToken is
     /// @param owner is the address who's tokens are approved and transferred
     /// @param recipient is the address where to transfer the funds
     /// @param amount is the amount of transfer
-    function adminTransfer(
+    function SafetyModuleTransfer(
+        // TODO: Rename to SafetyModuleTransfer or delete,
+        // but then we need to deploy the token as a proxy if want to add this feature later
         address owner,
         address recipient,
         uint256 amount
@@ -70,19 +72,18 @@ contract RandToken is
         _unpause();
     }
 
-    function mint(address to, uint256 amount)
-        public
-        whenNotPaused
-        onlyRole(MINTER_ROLE)
-    {
+    function mint(
+        address to,
+        uint256 amount
+    ) public whenNotPaused onlyRole(MINTER_ROLE) {
         _mint(to, amount);
     }
 
-    function burnFromAdmin(address account, uint256 amount)
-        public
-        whenNotPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    // TODO: Rename this or change to really only allow burn from admin
+    function burnFromAdmin(
+        address account,
+        uint256 amount
+    ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         _burn(account, amount);
     }
 

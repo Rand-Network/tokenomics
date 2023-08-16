@@ -129,12 +129,9 @@ contract SafetyModuleERC20 is
     /// @notice Redeems the staked token without vesting, updates rewards and transfers funds
     /// @dev Only used for non-vesting token redemption, needs to wait cooldown
     /// @param amount is the uint256 amount to redeem
-    function redeem(uint256 amount)
-        public
-        whenNotPaused
-        nonReentrant
-        redeemable(amount)
-    {
+    function redeem(
+        uint256 amount
+    ) public whenNotPaused nonReentrant redeemable(amount) {
         require(amount != 0, "SM: Redeem amount cannot be zero");
 
         uint256 balanceOfMsgSender = balanceOf(_msgSender());
@@ -149,12 +146,10 @@ contract SafetyModuleERC20 is
     /// @dev Only used for vesting token redemption, needs to wait cooldown
     /// @param amount is the uint256 amount to redeem
     /// @param tokenId is the id of the vesting token to redeem
-    function _redeem(uint256 tokenId, uint256 amount)
-        internal
-        whenNotPaused
-        nonReentrant
-        redeemable(amount)
-    {
+    function _redeem(
+        uint256 tokenId,
+        uint256 amount
+    ) internal whenNotPaused nonReentrant redeemable(amount) {
         require(amount != 0, "SM: Redeem amount cannot be zero");
 
         uint256 balanceOfMsgSender = balanceOf(_msgSender());
@@ -222,11 +217,10 @@ contract SafetyModuleERC20 is
     /// @dev Interacts with the vesting controller
     /// @param tokenId is the id of the vesting token to stake
     /// @param amount is the uint256 amount to stake
-    function _stake(uint256 tokenId, uint256 amount)
-        internal
-        whenNotPaused
-        nonReentrant
-    {
+    function _stake(
+        uint256 tokenId,
+        uint256 amount
+    ) internal whenNotPaused nonReentrant {
         require(amount != 0, "SM: Stake amount cannot be zero");
         uint256 rewards = _updateUserAssetState(
             _msgSender(),
@@ -299,7 +293,7 @@ contract SafetyModuleERC20 is
             "SM: Not enough stakable amount on VC tokenId"
         );
 
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).adminTransfer(
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).SafetyModuleTransfer(
             _vc,
             address(this),
             amount
@@ -343,7 +337,7 @@ contract SafetyModuleERC20 is
         );
         rewardsToclaim[_msgSender()] = totalRewards - amount;
 
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).adminTransfer(
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).SafetyModuleTransfer(
             REGISTRY.getAddress(ECOSYSTEM_RESERVE),
             _msgSender(),
             amount
@@ -381,20 +375,16 @@ contract SafetyModuleERC20 is
         return totalRewards;
     }
 
-    function updateCooldownPeriod(uint256 newPeriod)
-        public
-        whenNotPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateCooldownPeriod(
+        uint256 newPeriod
+    ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         COOLDOWN_SECONDS = newPeriod;
         emit PeriodUpdated("Cooldown", newPeriod);
     }
 
-    function updateUnstakePeriod(uint256 newPeriod)
-        public
-        whenNotPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateUnstakePeriod(
+        uint256 newPeriod
+    ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         UNSTAKE_WINDOW = newPeriod;
         emit PeriodUpdated("Unstake", newPeriod);
     }
@@ -403,15 +393,14 @@ contract SafetyModuleERC20 is
     /// @dev Returns collateral tokens to the caller
     /// @param account is the address of the user to burn tokens from
     /// @param amount is the uint256 amount to burn
-    function burn(address account, uint256 amount)
-        public
-        whenNotPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function burn(
+        address account,
+        uint256 amount
+    ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         // Destroy tokens
         _burn(account, amount);
         // Transfer RND tokens back to the caller
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).adminTransfer(
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).SafetyModuleTransfer(
             address(this),
             _msgSender(),
             amount

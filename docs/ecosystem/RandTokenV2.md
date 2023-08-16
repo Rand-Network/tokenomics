@@ -1,4 +1,4 @@
-# RandToken
+# RandTokenV2
 
 *@adradr - Adrian Lenard*
 
@@ -679,6 +679,28 @@ function symbol() external view returns (string)
 | Name | Type | Description |
 |---|---|---|
 | _0 | string | undefined |
+
+### testUpgrade
+
+```solidity
+function testUpgrade(uint256 _amount) external view returns (uint256)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _amount | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### totalSupply
 

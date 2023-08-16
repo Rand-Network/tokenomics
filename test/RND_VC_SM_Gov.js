@@ -10,6 +10,7 @@ const {
 } = require('@openzeppelin/test-helpers');
 const { executeContractCallWithSigners } = require("@gnosis.pm/safe-contracts");
 const { deploy } = require("../scripts/deploy_task.js");
+const { assert } = require("console");
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -734,10 +735,35 @@ describe("Rand Token with Vesting Controller", function () {
     });
   });
 
-  describe.skip("Upgrading deployment of RND-ERC20 and VC-ERC721", function () {
-    it("Upgrading RND", async function () { });
-    it("Upgrading VC", async function () { });
-    it("Upgrading SM", async function () { });
-    it("Upgrading Registry", async function () { });
+  describe("Upgrading deployment of RND-ERC20 and VC-ERC721", function () {
+    it("Upgrading Test (RND)", async function () {
+      deployed = await deploy(
+        initialize = false,
+        verify = false,
+        test_mint = false,
+        export_csv = false,
+        name_prefix = "default",
+        multisig = "default",
+        relayer = "default",
+        RNDdeployParams = _RNDdeployParams,
+        VCdeployParams = _VCdeployParams,
+        SMdeployParams = _SMdeployParams,
+        NFTdeployParams = _NFTdeployParams,
+        GovDeployParams = _GovDeployParams
+      );
+
+      let RandToken = deployed.RandToken;
+      let RandTokenV2Factory = await ethers.getContractFactory("RandTokenV2");
+      let RandTokenV2 = await upgrades.upgradeProxy(RandToken.address, RandTokenV2Factory);
+      console.log('Upgraded RandToken proxy at:', RandTokenV2.address);
+      txRandTokenV2 = RandTokenV2.deployTransaction;
+      await txRandTokenV2.wait(numConfirmation);
+
+      expect(await RandTokenV2.name()).to.equal(_RNDdeployParams._name);
+      expect(await RandTokenV2.symbol()).to.equal(_RNDdeployParams._symbol);
+      expect(await RandTokenV2.decimals()).to.equal(18);
+      expect(await RandTokenV2.totalSupply()).to.equal(ethers.utils.parseEther(_RNDdeployParams._initialSupply.toString()));
+      expect(await RandTokenV2.testUpgrade(1)).to.equal(1);
+    });
   });
 });
