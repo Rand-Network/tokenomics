@@ -293,7 +293,7 @@ contract SafetyModuleERC20 is
             "SM: Not enough stakable amount on VC tokenId"
         );
 
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).SafetyModuleTransfer(
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).safetyModuleTransfer(
             _vc,
             address(this),
             amount
@@ -337,7 +337,7 @@ contract SafetyModuleERC20 is
         );
         rewardsToclaim[_msgSender()] = totalRewards - amount;
 
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).SafetyModuleTransfer(
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).safetyModuleTransfer(
             REGISTRY.getAddress(ECOSYSTEM_RESERVE),
             _msgSender(),
             amount
@@ -400,7 +400,7 @@ contract SafetyModuleERC20 is
         // Destroy tokens
         _burn(account, amount);
         // Transfer RND tokens back to the caller
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).SafetyModuleTransfer(
+        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).safetyModuleTransfer(
             address(this),
             _msgSender(),
             amount

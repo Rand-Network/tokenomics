@@ -30,7 +30,7 @@ interface IRandToken {
 
     function VESTING_CONTROLLER() external view returns (string memory);
 
-    function SafetyModuleTransfer(
+    function safetyModuleTransfer(
         address owner,
         address recipient,
         uint256 amount
