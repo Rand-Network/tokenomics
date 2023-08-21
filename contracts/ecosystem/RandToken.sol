@@ -50,7 +50,7 @@ contract RandToken is
     /// @param owner is the address who's tokens are approved and transferred
     /// @param recipient is the address where to transfer the funds
     /// @param amount is the amount of transfer
-    function SafetyModuleTransfer(
+    function safetyModuleTransfer(
         address owner,
         address recipient,
         uint256 amount

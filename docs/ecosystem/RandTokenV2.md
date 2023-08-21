@@ -231,24 +231,6 @@ function SAFETY_MODULE() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
-### SafetyModuleTransfer
-
-```solidity
-function SafetyModuleTransfer(address owner, address recipient, uint256 amount) external nonpayable
-```
-
-Function to allow admins to move funds without multiple approve and transfer steps
-
-*Aims to allow simple UX*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| owner | address | is the address who&#39;s tokens are approved and transferred |
-| recipient | address | is the address where to transfer the funds |
-| amount | uint256 | is the amount of transfer |
-
 ### VESTING_CONTROLLER
 
 ```solidity
@@ -640,6 +622,24 @@ function revokeRole(bytes32 role, address account) external nonpayable
 |---|---|---|
 | role | bytes32 | undefined |
 | account | address | undefined |
+
+### safetyModuleTransfer
+
+```solidity
+function safetyModuleTransfer(address owner, address recipient, uint256 amount) external nonpayable
+```
+
+Function to allow admins to move funds without multiple approve and transfer steps
+
+*Aims to allow simple UX*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| owner | address | is the address who&#39;s tokens are approved and transferred |
+| recipient | address | is the address where to transfer the funds |
+| amount | uint256 | is the amount of transfer |
 
 ### supportsInterface
 
