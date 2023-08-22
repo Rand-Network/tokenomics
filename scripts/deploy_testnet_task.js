@@ -367,7 +367,15 @@ async function deploy_testnet(
         console.error(error);
       }
     });
-  }
+    await hre.run("verify:verify", { address: RandReserve.address }).catch(function (error) {
+      if (error.message == 'Contract source code already verified') {
+        console.error('Contract source code already verified');
+      }
+      else {
+        console.error(error);
+      }
+    }
+  };
   // Print deployment summary
   console.log("\n----- DEPLOYMENT SUMMARY -----");
   summary.forEach(line => console.log(line));
