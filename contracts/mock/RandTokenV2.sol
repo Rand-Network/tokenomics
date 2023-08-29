@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.2;
 
-import "./RandToken.sol";
+import "../ecosystem//RandToken.sol";
 
 /// @title Rand.network ERC20 Token contract
 /// @author @adradr - Adrian Lenard
