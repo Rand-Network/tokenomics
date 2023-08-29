@@ -44,7 +44,7 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
+        cache: 'yarn'
+    - run: yarn install --frozen-lockfile
     - run: npx hardhat --version
     - run: npx hardhat test

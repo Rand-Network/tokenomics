@@ -1,5 +1,12 @@
 module.exports = {
     chains: {
+        hardhat: {
+            chainId: 31337,
+            urls: {
+                apiURL: NaN,
+                browserURL: NaN
+            },
+        },
         development: {
             chainId: 31337,
             urls: {
