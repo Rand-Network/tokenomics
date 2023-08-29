@@ -92,7 +92,7 @@ function burnFromAdmin(address account, uint256 amount)
 
 ## AddressRegistry
 
-Address registry is a simple contract to keep track of the ecosystem contract addresses. It can register a new entity with `setNewAddress(string calldata name, address contractAddress)` and also update an existing entity with the `updateAddress(string calldata name, address contractAddress)`. To fetch the current address for a contract use `getAddress(string calldata name)` and also the `getRegistryList()` function is useful to list the strings stored for the contracts.
+Address registry is a simple contract to keep track of the ecosystem contract addresses. It can register a new entity with `setNewAddress(string calldata name, address contractAddress)` and also update an existing entity with the `updateAddress(string calldata name, address contractAddress)`. To fetch the current address for a contract use `getAddressOf(string calldata name)` and also the `getRegistryList()` function is useful to list the strings stored for the contracts.
 
 In the ecosystem contracts there is a function to update the address of the registry used which can be done on the contracts with `updateRegistryAddress(IAddressRegistry newAddress)`.
 
