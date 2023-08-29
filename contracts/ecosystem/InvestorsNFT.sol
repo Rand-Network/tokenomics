@@ -54,8 +54,8 @@ contract InvestorsNFT is
 
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
-        address _vcAddress = REGISTRY.getAddress(VESTING_CONTROLLER);
+        address _multisigVault = REGISTRY.getAddressOf(MULTISIG);
+        address _vcAddress = REGISTRY.getAddressOf(VESTING_CONTROLLER);
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
@@ -70,12 +70,10 @@ contract InvestorsNFT is
         _unpause();
     }
 
-    function mintInvestmentNFT(address to, uint256 tokenId)
-        external
-        whenNotPaused
-        onlyRole(MINTER_ROLE)
-        returns (uint256)
-    {
+    function mintInvestmentNFT(
+        address to,
+        uint256 tokenId
+    ) external whenNotPaused onlyRole(MINTER_ROLE) returns (uint256) {
         _mint(to, tokenId);
         return tokenId;
     }
@@ -113,7 +111,7 @@ contract InvestorsNFT is
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount
-        ) = IVestingControllerERC721(REGISTRY.getAddress(VESTING_CONTROLLER))
+        ) = IVestingControllerERC721(REGISTRY.getAddressOf(VESTING_CONTROLLER))
                 .getInvestmentInfoForNFT(tokenId);
 
         bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
@@ -124,11 +122,9 @@ contract InvestorsNFT is
         super._transfer(from, to, tokenId);
     }
 
-    function setBaseURI(string memory newURI)
-        public
-        whenNotPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function setBaseURI(
+        string memory newURI
+    ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         baseURI = newURI;
         emit BaseURIChanged(baseURI);
     }
@@ -137,12 +133,9 @@ contract InvestorsNFT is
         return baseURI;
     }
 
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721Upgradeable)
-        returns (string memory)
-    {
+    function tokenURI(
+        uint256 tokenId
+    ) public view override(ERC721Upgradeable) returns (string memory) {
         require(
             _exists(tokenId),
             "ERC721Metadata: URI query for nonexistent token"
@@ -152,7 +145,7 @@ contract InvestorsNFT is
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount
-        ) = IVestingControllerERC721(REGISTRY.getAddress(VESTING_CONTROLLER))
+        ) = IVestingControllerERC721(REGISTRY.getAddressOf(VESTING_CONTROLLER))
                 .getInvestmentInfoForNFT(tokenId);
 
         bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
@@ -172,7 +165,9 @@ contract InvestorsNFT is
                 : "";
     }
 
-    function supportsInterface(bytes4 interfaceId)
+    function supportsInterface(
+        bytes4 interfaceId
+    )
         public
         view
         override(

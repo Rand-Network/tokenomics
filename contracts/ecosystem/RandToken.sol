@@ -38,7 +38,7 @@ contract RandToken is
 
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
+        address _multisigVault = REGISTRY.getAddressOf(MULTISIG);
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
@@ -56,7 +56,7 @@ contract RandToken is
         uint256 amount
     ) external whenNotPaused {
         require(
-            REGISTRY.getAddress(SAFETY_MODULE) == _msgSender(),
+            REGISTRY.getAddressOf(SAFETY_MODULE) == _msgSender(),
             "RND: Not accessible by msg.sender"
         );
         _transfer(owner, recipient, amount);

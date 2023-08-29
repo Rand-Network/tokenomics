@@ -40,10 +40,11 @@ interface IVestingControllerERC721{
   function ownerOf ( uint256 tokenId ) external view returns ( address );
   function pause (  ) external;
   function paused (  ) external view returns ( bool );
+  function proxiableUUID (  ) external view returns ( bytes32 );
   function renounceRole ( bytes32 role, address account ) external;
   function revokeRole ( bytes32 role, address account ) external;
   function safeTransferFrom ( address from, address to, uint256 tokenId ) external;
-  function safeTransferFrom ( address from, address to, uint256 tokenId, bytes memory _data ) external;
+  function safeTransferFrom ( address from, address to, uint256 tokenId, bytes memory data ) external;
   function setApprovalForAll ( address operator, bool approved ) external;
   function supportsInterface ( bytes4 interfaceId ) external view returns ( bool );
   function symbol (  ) external view returns ( string memory );

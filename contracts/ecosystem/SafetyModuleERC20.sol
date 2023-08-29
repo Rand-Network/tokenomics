@@ -69,7 +69,7 @@ contract SafetyModuleERC20 is
         __ImportsManager_init();
 
         REGISTRY = _registry;
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
+        address _multisigVault = REGISTRY.getAddressOf(MULTISIG);
 
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
@@ -166,7 +166,7 @@ contract SafetyModuleERC20 is
     /// @param amount is the uint256 amount to redeem
     function _redeemOnTokenId(uint256 tokenId, uint256 amount) internal {
         // Fetching address from registry
-        address _vc = REGISTRY.getAddress("VC");
+        address _vc = REGISTRY.getAddressOf("VC");
         uint256 vcBalanceOfStaker = onBehalf[_msgSender()][_vc];
         require(
             vcBalanceOfStaker >= amount,
@@ -190,7 +190,7 @@ contract SafetyModuleERC20 is
         );
 
         // Transfer tokens
-        IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).safeTransfer(
+        IERC20Upgradeable(REGISTRY.getAddressOf(RAND_TOKEN)).safeTransfer(
             address(_vc),
             amount
         );
@@ -207,7 +207,7 @@ contract SafetyModuleERC20 is
         // Update onBehalf amounts
         onBehalf[_msgSender()][_msgSender()] -= amount;
         // Transfer tokens back to user
-        IERC20Upgradeable(REGISTRY.getAddress(STAKED_TOKEN)).safeTransfer(
+        IERC20Upgradeable(REGISTRY.getAddressOf(STAKED_TOKEN)).safeTransfer(
             _msgSender(),
             amount
         );
@@ -256,7 +256,7 @@ contract SafetyModuleERC20 is
     /// @param amount is the uint256 amount to stake
     function _stakeOnTokens(uint256 amount) internal {
         // Requires approve from user
-        IERC20Upgradeable(REGISTRY.getAddress(STAKED_TOKEN)).safeTransferFrom(
+        IERC20Upgradeable(REGISTRY.getAddressOf(STAKED_TOKEN)).safeTransferFrom(
             _msgSender(),
             address(this),
             amount
@@ -273,7 +273,7 @@ contract SafetyModuleERC20 is
     /// @param amount is the uint256 amount to stake
     function _stakeOnTokenId(uint256 tokenId, uint256 amount) internal {
         // Fetching address from registry
-        address _vc = REGISTRY.getAddress("VC");
+        address _vc = REGISTRY.getAddressOf("VC");
 
         require(
             IVestingControllerERC721(_vc).ownerOf(tokenId) == _msgSender(),
@@ -293,7 +293,7 @@ contract SafetyModuleERC20 is
             "SM: Not enough stakable amount on VC tokenId"
         );
 
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).safetyModuleTransfer(
+        IRandToken(REGISTRY.getAddressOf(RAND_TOKEN)).safetyModuleTransfer(
             _vc,
             address(this),
             amount
@@ -337,8 +337,8 @@ contract SafetyModuleERC20 is
         );
         rewardsToclaim[_msgSender()] = totalRewards - amount;
 
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).safetyModuleTransfer(
-            REGISTRY.getAddress(ECOSYSTEM_RESERVE),
+        IRandToken(REGISTRY.getAddressOf(RAND_TOKEN)).safetyModuleTransfer(
+            REGISTRY.getAddressOf(ECOSYSTEM_RESERVE),
             _msgSender(),
             amount
         );
@@ -400,7 +400,7 @@ contract SafetyModuleERC20 is
         // Destroy tokens
         _burn(account, amount);
         // Transfer RND tokens back to the caller
-        IRandToken(REGISTRY.getAddress(RAND_TOKEN)).safetyModuleTransfer(
+        IRandToken(REGISTRY.getAddressOf(RAND_TOKEN)).safetyModuleTransfer(
             address(this),
             _msgSender(),
             amount

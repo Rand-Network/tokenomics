@@ -49,11 +49,9 @@ contract AddressRegistry is
     /// @notice Returns the current address for a contract located in the ecosystem
     /// @param name is the string name of the contract
     /// @return contractAddress is the address of the input name contract
-    function getAddress(string calldata name)
-        public
-        view
-        returns (address contractAddress)
-    {
+    function getAddressOf(
+        string calldata name
+    ) public view returns (address contractAddress) {
         address[] storage tempAddresses = addressStorage[name];
         return tempAddresses[tempAddresses.length - 1];
     }
@@ -61,21 +59,19 @@ contract AddressRegistry is
     /// @notice Useful to query all the addresses used for a contract
     /// @param name is the string name of the contract
     /// @return an array of addresses of the contract
-    function getAllAddress(string calldata name)
-        public
-        view
-        returns (address[] memory)
-    {
+    function getAllAddress(
+        string calldata name
+    ) public view returns (address[] memory) {
         return addressStorage[name];
     }
 
     /// @notice Used to update the latest address for a contract
     /// @param name is the string name of the contract
     /// @param contractAddress is the new address to set for a contract
-    function updateAddress(string calldata name, address contractAddress)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateAddress(
+        string calldata name,
+        address contractAddress
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(
             contractAddress != address(0),
             "REG: Address cannot be null address"
@@ -98,11 +94,10 @@ contract AddressRegistry is
     /// @param name is the string name of the contract
     /// @param contractAddress is the new address to set for a contract
     /// @return true if successful, false if already exists
-    function setNewAddress(string calldata name, address contractAddress)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-        returns (bool)
-    {
+    function setNewAddress(
+        string calldata name,
+        address contractAddress
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) returns (bool) {
         require(
             contractAddress != address(0),
             "REG: Address cannot be null address"
@@ -141,9 +136,7 @@ contract AddressRegistry is
         _unpause();
     }
 
-    function _authorizeUpgrade(address)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
+    function _authorizeUpgrade(
+        address
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

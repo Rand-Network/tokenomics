@@ -25,7 +25,7 @@ contract EcosystemReserve is ImportsManager {
         __ImportsManager_init();
 
         REGISTRY = _registry;
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
+        address _multisigVault = REGISTRY.getAddressOf(MULTISIG);
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
     }

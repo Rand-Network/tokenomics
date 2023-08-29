@@ -44,10 +44,10 @@ function PAUSER_ROLE() external view returns (bytes32)
 |---|---|---|
 | _0 | bytes32 | undefined |
 
-### getAddress
+### getAddressOf
 
 ```solidity
-function getAddress(string name) external view returns (address contractAddress)
+function getAddressOf(string name) external view returns (address contractAddress)
 ```
 
 Returns the current address for a contract located in the ecosystem
