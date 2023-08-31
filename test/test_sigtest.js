@@ -1,40 +1,20 @@
 const { expect } = require("chai");
 const { ethers, getNamedAccounts, deployments } = require('hardhat');
 
-async function createSignature(signer, recipient, amount, timestamp) {
-
-    // Create the message
-    const message = ethers.solidityPacked(
-        //["address", "uint256", "uint256"],
-        //[recipient, amount, timestamp]
-        ["address"], [signer.address]
-
+async function redeemSignature(signer_wallet, sender_addr, recipient_addr, amount, timestamp, chainId) {
+    // STEP 1:
+    // building hash has to come from system address
+    // 32 bytes of data
+    let messageHash = ethers.solidityPackedKeccak256(
+        ["address", "address", "uint256", "uint256", "uint256"],
+        [sender_addr, recipient_addr, amount, timestamp, chainId]
     );
 
-    // Hash the message
-    const hash = ethers.solidityPackedKeccak256(["bytes"], [message])
+    // STEP 2: 32 bytes of data in Uint8Array
+    let messageHashBinary = ethers.getBytes(messageHash);
 
-    // Convert to Ethereum Signed Message Hash
-    const signedMessage = ethers.hashMessage(ethers.getBytes(hash));
-
-    // Sign the message hash
-    const signature = await signer.signMessage(ethers.getBytes(signedMessage));
-    const decoded = ethers.verifyMessage(ethers.getBytes(signedMessage), signature);
-
-    console.log("signer:", signer.address);
-    console.log("recipient:", recipient);
-    console.log("amount:", amount);
-    console.log("timestamp:", timestamp);
-
-    console.log("message:", message);
-    console.log("hash:", hash);
-    console.log("signedMessage:", signedMessage);
-    console.log("signature:", signature);
-    console.log("decoded:", decoded);
-
-    return signature;
-
-
+    // STEP 3: To sign the 32 bytes of data, make sure you pass in the data
+    return await signer_wallet.signMessage(messageHashBinary);
 }
 
 describe("SigTest", function () {
@@ -59,25 +39,32 @@ describe("SigTest", function () {
     it("Verify", async function () {
 
         const [adminWallet, userWallet] = await ethers.getSigners();
-        const timestamp = Date.now();
+        // Create solidity block.timestamp compatible timestamp
+        const timestamp = Math.ceil(Date.now() / 1000);
         const amount = 100;
         const recipient = userWallet.address;
+        const sender = userWallet;
+        const chainId = (await ethers.provider.getNetwork()).chainId;
 
-        // STEP 1:
-        // building hash has to come from system address
-        // 32 bytes of data
-        let messageHash = ethers.solidityPackedKeccak256(
-            ["address", "address", "uint256", "uint256"],
-            [userWallet.address, recipient, amount, timestamp]
-        );
-
-        // STEP 2: 32 bytes of data in Uint8Array
-        let messageHashBinary = ethers.getBytes(messageHash);
-
-        // STEP 3: To sign the 32 bytes of data, make sure you pass in the data
-        let signature = await adminWallet.signMessage(messageHashBinary);
+        const signature = redeemSignature(adminWallet, sender.address, recipient, amount, timestamp, chainId);
 
         // STEP 4: Fire off the transaction with the adminWallet signed data
-        await sigTest.connect(userWallet).isDataValid(recipient, amount, timestamp, signature);
+        tx = await sigTest.connect(sender).redeemSignature(recipient, amount, timestamp, signature)
+        // Expect the transaction to succeed and return true
+        expect(await tx.wait()).to.emit(sigTest, "SignatureUsed").withArgs(sender.address, recipient, amount, timestamp, signature);
+
+        // Try again with same signature, should revert
+        let errorOccurred = false;
+        let errorMessage = '';
+        try {
+            await sigTest.connect(sender).redeemSignature(recipient, amount, timestamp, signature);
+        } catch (error) {
+            errorOccurred = true;
+            errorMessage = error.message;
+        }
+        expect(errorOccurred).to.be.true;
+        expect(errorMessage).to.include("VC: Signature already used");
+
+
     });
 });
