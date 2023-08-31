@@ -1,7 +1,10 @@
 const { expect } = require("chai");
 const { ethers, getNamedAccounts, deployments } = require('hardhat');
 
-async function redeemSignature(signer_wallet, sender_addr, recipient_addr, amount, timestamp, chainId) {
+async function createSignature(signer_wallet, sender_addr, recipient_addr, amount, timestamp, chainId) {
+    // Sleep for 1 second to make sure the timestamp is different
+    await new Promise(r => setTimeout(r, 1000));
+
     // STEP 1:
     // building hash has to come from system address
     // 32 bytes of data
@@ -25,9 +28,6 @@ describe("SigTest", function () {
         deployer = namedAccounts.deployer;
         alice = namedAccounts.alice;
 
-        console.log("alice:", alice);
-        console.log("deployer:", deployer);
-
         // Deploying contracts
         await deployments.fixture(["SigTest"]);
 
@@ -38,33 +38,104 @@ describe("SigTest", function () {
 
     it("Verify", async function () {
 
-        const [adminWallet, userWallet] = await ethers.getSigners();
+        [adminWallet, userWallet] = await ethers.getSigners();
         // Create solidity block.timestamp compatible timestamp
-        const timestamp = Math.ceil(Date.now() / 1000);
-        const amount = 100;
-        const recipient = userWallet.address;
-        const sender = userWallet;
-        const chainId = (await ethers.provider.getNetwork()).chainId;
+        timestamp = Math.ceil(Date.now() / 1000);
+        amount = 100;
+        recipient = userWallet.address;
+        sender = userWallet;
+        chainId = (await ethers.provider.getNetwork()).chainId;
 
-        const signature = redeemSignature(adminWallet, sender.address, recipient, amount, timestamp, chainId);
+        signature = createSignature(adminWallet, userWallet.address, recipient, amount, timestamp, chainId);
 
         // STEP 4: Fire off the transaction with the adminWallet signed data
-        tx = await sigTest.connect(sender).redeemSignature(recipient, amount, timestamp, signature)
+        tx = await sigTest.connect(userWallet).redeemSignature(recipient, amount, timestamp, signature)
         // Expect the transaction to succeed and return true
-        expect(await tx.wait()).to.emit(sigTest, "SignatureUsed").withArgs(sender.address, recipient, amount, timestamp, signature);
+        expect(await tx.wait()).to.emit(sigTest, "SignatureUsed").withArgs(userWallet.address, recipient, amount, timestamp, signature);
+    });
 
+    it("Try to verify same signature", async function () {
         // Try again with same signature, should revert
         let errorOccurred = false;
         let errorMessage = '';
         try {
-            await sigTest.connect(sender).redeemSignature(recipient, amount, timestamp, signature);
+            await sigTest.connect(userWallet).redeemSignature(recipient, amount, timestamp, signature);
         } catch (error) {
             errorOccurred = true;
             errorMessage = error.message;
         }
         expect(errorOccurred).to.be.true;
         expect(errorMessage).to.include("VC: Signature already used");
-
-
     });
+
+    it("Try to verify with wrong amount", async function () {
+        // Try again with same signature, should return false
+        timestamp = Math.ceil(Date.now() / 1000);
+        fail_amount = 300;
+        signature = createSignature(adminWallet, userWallet.address, recipient, amount, timestamp, chainId);
+
+        // Try again with same signature, should revert
+        let errorOccurred = false;
+        let errorMessage = '';
+        try {
+            await sigTest.connect(userWallet).redeemSignature(recipient, fail_amount, timestamp, signature)
+        } catch (error) {
+            errorOccurred = true;
+            errorMessage = error.message;
+        }
+        expect(errorOccurred).to.be.true;
+        expect(errorMessage).to.include("VC: Signature not valid");
+    });
+    it("Try to verify from wrong sender", async function () {
+        // Try again with same signature, should return false
+        timestamp = Math.ceil(Date.now() / 1000);
+        signature = createSignature(adminWallet, userWallet.address, recipient, amount, timestamp, chainId);
+
+        // Try again with same signature, should revert
+        let errorOccurred = false;
+        let errorMessage = '';
+        try {
+            await sigTest.connect(adminWallet).redeemSignature(recipient, amount, timestamp, signature)
+        } catch (error) {
+            errorOccurred = true;
+            errorMessage = error.message;
+        }
+        expect(errorOccurred).to.be.true;
+        expect(errorMessage).to.include("VC: Signature not valid");
+    });
+    it("Try to verify from wrong recipient", async function () {
+        // Try again with same signature, should return false
+        timestamp = Math.ceil(Date.now() / 1000);
+        signature = createSignature(adminWallet, userWallet.address, recipient, amount, timestamp, chainId);
+
+        // Try again with same signature, should revert
+        let errorOccurred = false;
+        let errorMessage = '';
+        try {
+            await sigTest.connect(userWallet).redeemSignature(adminWallet.address, amount, timestamp, signature)
+        } catch (error) {
+            errorOccurred = true;
+            errorMessage = error.message;
+        }
+        expect(errorOccurred).to.be.true;
+        expect(errorMessage).to.include("VC: Signature not valid");
+    });
+    it("Try to verify old timestamp", async function () {
+        // Try again with same signature, but an 1hr old timestamp, should return false
+        timestamp = Math.ceil(Date.now() / 1000) - 3600;
+        signature = createSignature(adminWallet, userWallet.address, recipient, amount, timestamp, chainId);
+
+        // Try again with same signature, should revert
+        let errorOccurred = false;
+        let errorMessage = '';
+        try {
+            await sigTest.connect(userWallet).redeemSignature(recipient, amount, timestamp, signature)
+        } catch (error) {
+            errorOccurred = true;
+            errorMessage = error.message;
+        }
+        expect(errorOccurred).to.be.true;
+        expect(errorMessage).to.include("VC: Signature has expired");
+    });
+
 });

@@ -29,7 +29,7 @@ contract SigTest {
         require(signature.length == 65, "VC: Invalid signature length");
         // Check if timestamp is valid and not older than 1 hour
         require(
-            block.timestamp <= timestamp + 3600,
+            timestamp <= block.timestamp + 3600 && timestamp >= block.timestamp,
             "VC: Signature has expired"
         );
         // Check if the signature has been used before
@@ -46,6 +46,11 @@ contract SigTest {
         );
         // Append the EIP-191 version byte
         bytes32 signedHash = ECDSA.toEthSignedMessageHash(msgHash);
+        // Recover the signer address and check if it matches the system address
+        require(
+            ECDSA.recover(signedHash, signature) == systemAddress,
+            "VC: Signature not valid"
+        );
         // Set the signature as used
         _usedSignatures[signature] = true;
         // Emit the signature
@@ -58,6 +63,6 @@ contract SigTest {
             signature
         );
 
-        return (ECDSA.recover(signedHash, signature) == systemAddress);
+        return true;
     }
 }
