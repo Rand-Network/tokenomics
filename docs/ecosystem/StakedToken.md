@@ -146,23 +146,6 @@ function MULTISIG() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
-### OPENZEPPELIN_DEFENDER
-
-```solidity
-function OPENZEPPELIN_DEFENDER() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
 ### PAUSER_ROLE
 
 ```solidity
@@ -303,6 +286,23 @@ function UNSTAKE_WINDOW() external view returns (uint256)
 
 ```solidity
 function VESTING_CONTROLLER() external view returns (string)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | string | undefined |
+
+### VESTING_CONTROLLER_SIGNER
+
+```solidity
+function VESTING_CONTROLLER_SIGNER() external view returns (string)
 ```
 
 

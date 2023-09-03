@@ -129,23 +129,6 @@ function MULTISIG() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
-### OPENZEPPELIN_DEFENDER
-
-```solidity
-function OPENZEPPELIN_DEFENDER() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
 ### PAUSER_ROLE
 
 ```solidity
@@ -265,6 +248,23 @@ function VESTING_CONTROLLER() external view returns (string)
 |---|---|---|
 | _0 | string | undefined |
 
+### VESTING_CONTROLLER_SIGNER
+
+```solidity
+function VESTING_CONTROLLER_SIGNER() external view returns (string)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | string | undefined |
+
 ### approve
 
 ```solidity
@@ -357,17 +357,19 @@ Claim function to withdraw vested tokens
 ### distributeTokens
 
 ```solidity
-function distributeTokens(address recipient, uint256 rndTokenAmount) external nonpayable
+function distributeTokens(bytes signature, uint256 signatureTimestamp, address recipient, uint256 rndTokenAmount) external nonpayable
 ```
 
 Transfers RND Tokens to non-vesting investor, its used to distribute public sale tokens by backend
 
-*emits InvestmentTransferred() and only accessible with MINTER_ROLE*
+*emits InvestmentTransferred() and only accessible with signature from Rand*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
+| signature | bytes | undefined |
+| signatureTimestamp | uint256 | undefined |
 | recipient | address | is the address to whom the token should be transferred to |
 | rndTokenAmount | uint256 | is the amount of the total investment |
 
@@ -593,55 +595,51 @@ function isApprovedForAll(address owner, address operator) external view returns
 ### mintNewInvestment
 
 ```solidity
-function mintNewInvestment(address recipient, uint256 rndTokenAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 cliffPeriod, uint256 nftTokenId) external nonpayable returns (uint256 tokenId)
+function mintNewInvestment(bytes signature, uint256 signatureTimestamp, VestingControllerERC721.MintParameters params, uint256 nftTokenId) external nonpayable returns (uint256 tokenId)
 ```
 
-Mints a token and associates an investment to it and sets tokenURI and also mints an investors NFT
 
-*emits NewInvestmentTokenMinted() and only accessible with MINTER_ROLE*
+
+
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| recipient | address | is the address to whom the investment token should be minted to |
-| rndTokenAmount | uint256 | is the amount of the total investment |
-| vestingPeriod | uint256 | number of periods the investment is vested for |
-| vestingStartTime | uint256 | the timestamp when the vesting starts to kick-in |
-| cliffPeriod | uint256 | is the number of periods the vestingStartTime is shifted by |
-| nftTokenId | uint256 | is the tokenId to be used on the investors NFT when minting |
+| signature | bytes | undefined |
+| signatureTimestamp | uint256 | undefined |
+| params | VestingControllerERC721.MintParameters | undefined |
+| nftTokenId | uint256 | undefined |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| tokenId | uint256 | the id of the minted token on VC |
+| tokenId | uint256 | undefined |
 
 ### mintNewInvestment
 
 ```solidity
-function mintNewInvestment(address recipient, uint256 rndTokenAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 cliffPeriod) external nonpayable returns (uint256 tokenId)
+function mintNewInvestment(bytes signature, uint256 signatureTimestamp, VestingControllerERC721.MintParameters params) external nonpayable returns (uint256 tokenId)
 ```
 
-Mints a token and associates an investment to it and sets tokenURI
 
-*emits NewInvestmentTokenMinted() and only accessible with MINTER_ROLE*
+
+
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| recipient | address | is the address to whom the investment token should be minted to |
-| rndTokenAmount | uint256 | is the amount of the total investment |
-| vestingPeriod | uint256 | number of periods the investment is vested for |
-| vestingStartTime | uint256 | the timestamp when the vesting starts to kick-in |
-| cliffPeriod | uint256 | is the number of periods the vestingStartTime is shifted by |
+| signature | bytes | undefined |
+| signatureTimestamp | uint256 | undefined |
+| params | VestingControllerERC721.MintParameters | undefined |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| tokenId | uint256 | the id of the minted token on VC |
+| tokenId | uint256 | undefined |
 
 ### modifyStakedAmount
 
@@ -1205,10 +1203,10 @@ event InvestmentTransferred(address recipient, uint256 amount)
 | recipient  | address | undefined |
 | amount  | uint256 | undefined |
 
-### NewInvestmentTokenMinted
+### NFTInvestmentTokenMinted
 
 ```solidity
-event NewInvestmentTokenMinted(address recipient, uint256 rndTokenAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 cliffPeriod, uint256 mintTimestamp, uint256 tokenId)
+event NFTInvestmentTokenMinted(uint256 nftTokenId, uint256 tokenId)
 ```
 
 
@@ -1219,12 +1217,24 @@ event NewInvestmentTokenMinted(address recipient, uint256 rndTokenAmount, uint25
 
 | Name | Type | Description |
 |---|---|---|
-| recipient  | address | undefined |
-| rndTokenAmount  | uint256 | undefined |
-| vestingPeriod  | uint256 | undefined |
-| vestingStartTime  | uint256 | undefined |
-| cliffPeriod  | uint256 | undefined |
-| mintTimestamp  | uint256 | undefined |
+| nftTokenId  | uint256 | undefined |
+| tokenId  | uint256 | undefined |
+
+### NewInvestmentTokenMinted
+
+```solidity
+event NewInvestmentTokenMinted(VestingControllerERC721.VestingInvestment investment, uint256 tokenId)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| investment  | VestingControllerERC721.VestingInvestment | undefined |
 | tokenId  | uint256 | undefined |
 
 ### Paused
@@ -1329,6 +1339,27 @@ event RoleRevoked(bytes32 indexed role, address indexed account, address indexed
 | role `indexed` | bytes32 | undefined |
 | account `indexed` | address | undefined |
 | sender `indexed` | address | undefined |
+
+### SignatureUsed
+
+```solidity
+event SignatureUsed(address sender, address recipient, uint256 amount, uint256 timestamp, uint256 chainId, bytes signature)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| sender  | address | undefined |
+| recipient  | address | undefined |
+| amount  | uint256 | undefined |
+| timestamp  | uint256 | undefined |
+| chainId  | uint256 | undefined |
+| signature  | bytes | undefined |
 
 ### StakedAmountModified
 
