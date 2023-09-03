@@ -44,7 +44,9 @@ async function getParams() {
 
         _RegistryAddressbook: {
             _MS: deployer,
-            _OZ: deployer,
+            _VCS: deployer,
+            _SM: deployer,
+            _GOV: deployer,
         }
     }
 }
