@@ -45,6 +45,9 @@ async function mintInvestment(
     nftTokenId = null
 ) {
 
+    // Wait 500ms to avoid nonce issues
+    await new Promise(r => setTimeout(r, 1000));
+
     // Get current timestamp
     timestamp = await getBlockTimestamp();
 
@@ -77,6 +80,9 @@ async function distributeTokens(
     recipient,
     rndTokenAmount
 ) {
+    // Wait 500ms to avoid nonce issues
+    await new Promise(r => setTimeout(r, 1000));
+
     // Get current timestamp
     timestamp = await getBlockTimestamp();
 
@@ -302,7 +308,7 @@ describe("VC ERC721 functions", function () {
         // Burn the investment token
         await VestingController.burn(e_tokenId_3);
     });
-    it("Claiming vested tokens by user and backend", async function () {
+    it("Claiming vested tokens by investor", async function () {
         // Mint a new investment token
         // solidity timestamp
         tx = await RandToken.increaseAllowance(await VestingController.getAddress(), rndTokenAmount);
@@ -404,6 +410,19 @@ describe("VC ERC721 functions", function () {
         e_tokenId_5 = logs[0].args.tokenId;
         expect(logsNFT[0].args.nftTokenId).to.equal(nftTokenId);
         expect(logsNFT[0].args.tokenId).to.equal(BigInt(5));
+
+        // Call getTokenIdOfNFT to get VestingController tokenId based on NFT tokenId
+        tokenId = await VestingController.getTokenIdOfNFT(nftTokenId);
+        expect(tokenId).to.equal(e_tokenId_5);
+
+        // Get full investment info for NFT with getInvestmentInfoForNFT function
+        await AddressRegistry.updateAddress("NFT", deployer_signer.address);
+        await VestingController.getInvestmentInfoForNFT(nftTokenId).then(function (res) {
+            var var1 = res[0];
+            var var2 = res[1];
+            expect(var1).to.be.equal(rndTokenAmount);
+            expect(var2).to.be.equal(BigInt(0)); //rndClaimedAmount
+        });
     });
     it("Distribute tokens to investors", async function () {
         // Mint new non-vested investment token

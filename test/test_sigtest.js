@@ -9,7 +9,7 @@ async function getBlockTimestamp() {
 
 async function createSignature(signer_wallet, sender_addr, recipient_addr, amount, timestamp) {
     // Wait 100ms to make sure the timestamp is different
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 1000));
     // Get the chainId
     chainId = (await ethers.provider.getNetwork()).chainId;
 

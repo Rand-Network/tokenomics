@@ -90,5 +90,26 @@ describe("RandToken ERC20 functions", function () {
         tx = await RandToken.unpause();
         expect(await RandToken.transfer(alice, amount));
     });
+    it("Checking ImportsManager's updateRegistryAddress", async function () {
+        // Should revert as Pausable: not paused
+        await expect(RandToken.updateRegistryAddress(await AddressRegistry.getAddress())).to.be.revertedWith("Pausable: not paused");
+
+        // Need to pause contract to update registry address
+        tx = await RandToken.pause();
+
+        // Update registry address
+        tx = await RandToken.updateRegistryAddress(await AddressRegistry.getAddress());
+        var rc = await tx.wait(1);
+        var logs = await RandToken.queryFilter(RandToken.filters.RegistryAddressUpdated(), rc.blockNumber, rc.blockNumber);
+        new_address = logs[0].args.newAddress
+        expect(new_address).to.equal(await AddressRegistry.getAddress());
+
+        // Should not update registry address from alice
+        const DEFAULT_ADMIN_ROLE = await RandToken.DEFAULT_ADMIN_ROLE();
+        const alice_lower = ethers.getAddress(alice).toLowerCase();
+        const expectedErrorMessage = `AccessControl: account ${alice_lower} is missing role ${DEFAULT_ADMIN_ROLE}`;
+        await expect(RandToken.connect(alice_signer).updateRegistryAddress(await AddressRegistry.getAddress())).to.be.revertedWith(expectedErrorMessage);
+
+    });
 });
 
