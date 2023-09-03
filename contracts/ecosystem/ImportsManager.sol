@@ -32,12 +32,12 @@ contract ImportsManager is
     string public constant MULTISIG = "MS";
     string public constant RAND_TOKEN = "RND";
     string public constant VESTING_CONTROLLER = "VC";
+    string public constant VESTING_CONTROLLER_SIGNER = "VCS";
     string public constant SAFETY_MODULE = "SM";
     string public constant ECOSYSTEM_RESERVE = "RES";
     string public constant GOVERNANCE = "GOV";
     string public constant INVESTOR_NFT = "NFT";
     string public constant BPT_TOKEN = "BPT";
-    string public constant OPENZEPPELIN_DEFENDER = "OZ";
 
     function __ImportsManager_init() internal onlyInitializing {
         __Pausable_init();
@@ -48,18 +48,14 @@ contract ImportsManager is
     /// @notice Function to let Rand to update the address of the Safety Module
     /// @dev emits RegistryAddressUpdated() and only accessible by MultiSig
     /// @param newAddress where the new Safety Module contract is located
-    function updateRegistryAddress(IAddressRegistry newAddress)
-        public
-        whenPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateRegistryAddress(
+        IAddressRegistry newAddress
+    ) public whenPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         REGISTRY = newAddress;
         emit RegistryAddressUpdated(newAddress);
     }
 
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }
