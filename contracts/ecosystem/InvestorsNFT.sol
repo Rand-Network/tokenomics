@@ -32,6 +32,14 @@ contract InvestorsNFT is
     using StringsUpgradeable for uint256;
 
     string public baseURI;
+    CountersUpgradeable.Counter internal _tokenIdCounter;
+    enum TokenLevel {
+        BLACK,
+        GOLD,
+        RED,
+        BLUE
+    } // Priority order: 1 - Black, 2 - Gold, 3 - Red, 4 - Blue
+    mapping(uint256 => TokenLevel) internal _tokenLevel;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -70,11 +78,24 @@ contract InvestorsNFT is
         _unpause();
     }
 
+    /// @notice Mints a new NFT for an investor
+    /// @dev Only the VestingController can mint NFTs
+    /// @param to is the address of the investor
+    /// @param tokenLevel is the level of the NFT
+    /// @return tokenId of the NFT
     function mintInvestmentNFT(
         address to,
-        uint256 tokenId
-    ) external whenNotPaused onlyRole(MINTER_ROLE) returns (uint256) {
-        _mint(to, tokenId);
+        TokenLevel tokenLevel
+    ) external whenNotPaused onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+        tokenId = _safeMint(to);
+        _tokenLevel[tokenId] = tokenLevel;
+        return tokenId;
+    }
+
+    function _safeMint(address to) internal returns (uint256) {
+        uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(to, tokenId);
         return tokenId;
     }
 
@@ -150,10 +171,11 @@ contract InvestorsNFT is
 
         bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
 
+        // Return token level instead of tokenId
         return
             bytes(baseURIString).length > 0
                 ? isClaimedAll
-                    ? string(abi.encodePacked(baseURI, tokenId.toString(), "_"))
+                    ? string(abi.encodePacked(baseURI, "claimed"))
                     : string(abi.encodePacked(baseURI, tokenId.toString()))
                 : "";
     }

@@ -60,11 +60,14 @@ module.exports = async function (hre) {
         params._RegistryAddressbook._GOV
     );
 
+
     const AddressRegistry = await ethers.getContractFactory("AddressRegistry");
     const registryInstance = AddressRegistry.attach(registry.address);
     deployments.log("MS  address:", await registryInstance.getAddressOf("MS"));
     deployments.log("VCS address:", await registryInstance.getAddressOf("VCS"));
     deployments.log("SM  address:", await registryInstance.getAddressOf("SM"));
+    deployments.log("GOV address:", await registryInstance.getAddressOf("GOV"));
+
 
     // Verifying contracts if not on local network
     const networkId = await hre.network.config.chainId;

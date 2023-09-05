@@ -13,6 +13,7 @@ module.exports = async function (hre) {
     params = await getParams();
     params._NFTdeployParams._registry = registry.address;
 
+
     const nft = await deploy('InvestorsNFT', {
         from: deployer,
         proxy: {

@@ -33,7 +33,11 @@ contract VestingControllerERC721 is
         VestingInvestment investment,
         uint256 tokenId
     );
-    event NFTInvestmentTokenMinted(uint256 nftTokenId, uint256 tokenId);
+    event NewInvestmentTokenMintedWithNFT(
+        uint256 nftTokenId,
+        uint256 tokenId,
+        uint8 nftLevel
+    );
     event InvestmentTransferred(address recipient, uint256 amount);
     event RNDTransferred(address recipient, uint256 amount);
     event FetchedRND(uint256 amount);
@@ -288,25 +292,28 @@ contract VestingControllerERC721 is
     /// @param signature is the signature which is used to verify the minting
     /// @param signatureTimestamp is the expiration timestamp of the signature
     /// @param params is the struct with all the parameters for the investment
-    /// @param nftTokenId is the tokenId to be used on the investors NFT when minting
+    /// @param nftLevel is the level of the NFT to be minted
     /// @return tokenId the id of the minted token on VC
     function mintNewInvestment(
         bytes memory signature,
         uint256 signatureTimestamp,
         MintParameters memory params,
-        uint256 nftTokenId
+        //uint256 nftTokenId
+        uint8 nftLevel
     ) public whenNotPaused nonReentrant returns (uint256 tokenId) {
         // Minting vesting investment inside VC
         tokenId = _mintNewInvestment(signature, signatureTimestamp, params);
 
         // Minting NFT investment for early investors
-        IInvestorsNFT(REGISTRY.getAddressOf(INVESTOR_NFT)).mintInvestmentNFT(
-            params.recipient,
-            nftTokenId
-        );
+        uint256 nftTokenId = IInvestorsNFT(REGISTRY.getAddressOf(INVESTOR_NFT))
+            .mintInvestmentNFT(
+                params.recipient,
+                //nftTokenId
+                nftLevel
+            );
 
         // Emit event for the NFT tokenId
-        emit NFTInvestmentTokenMinted(nftTokenId, tokenId);
+        emit NewInvestmentTokenMintedWithNFT(nftTokenId, tokenId, nftLevel);
 
         // Storing the VC tokenId to the corresponding NFT tokenId
         _nftTokenToVCToken[nftTokenId] = tokenId;

@@ -595,7 +595,7 @@ function isApprovedForAll(address owner, address operator) external view returns
 ### mintNewInvestment
 
 ```solidity
-function mintNewInvestment(bytes signature, uint256 signatureTimestamp, VestingControllerERC721.MintParameters params, uint256 nftTokenId) external nonpayable returns (uint256 tokenId)
+function mintNewInvestment(bytes signature, uint256 signatureTimestamp, VestingControllerERC721.MintParameters params, uint8 nftLevel) external nonpayable returns (uint256 tokenId)
 ```
 
 
@@ -609,7 +609,7 @@ function mintNewInvestment(bytes signature, uint256 signatureTimestamp, VestingC
 | signature | bytes | undefined |
 | signatureTimestamp | uint256 | undefined |
 | params | VestingControllerERC721.MintParameters | undefined |
-| nftTokenId | uint256 | undefined |
+| nftLevel | uint8 | undefined |
 
 #### Returns
 
@@ -1203,23 +1203,6 @@ event InvestmentTransferred(address recipient, uint256 amount)
 | recipient  | address | undefined |
 | amount  | uint256 | undefined |
 
-### NFTInvestmentTokenMinted
-
-```solidity
-event NFTInvestmentTokenMinted(uint256 nftTokenId, uint256 tokenId)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| nftTokenId  | uint256 | undefined |
-| tokenId  | uint256 | undefined |
-
 ### NewInvestmentTokenMinted
 
 ```solidity
@@ -1236,6 +1219,24 @@ event NewInvestmentTokenMinted(VestingControllerERC721.VestingInvestment investm
 |---|---|---|
 | investment  | VestingControllerERC721.VestingInvestment | undefined |
 | tokenId  | uint256 | undefined |
+
+### NewInvestmentTokenMintedWithNFT
+
+```solidity
+event NewInvestmentTokenMintedWithNFT(uint256 nftTokenId, uint256 tokenId, uint8 nftLevel)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| nftTokenId  | uint256 | undefined |
+| tokenId  | uint256 | undefined |
+| nftLevel  | uint8 | undefined |
 
 ### Paused
 

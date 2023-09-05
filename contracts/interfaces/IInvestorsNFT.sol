@@ -9,13 +9,13 @@ interface IInvestorsNFT{
   function INVESTOR_NFT (  ) external view returns ( string memory );
   function MINTER_ROLE (  ) external view returns ( bytes32 );
   function MULTISIG (  ) external view returns ( string memory );
-  function OPENZEPPELIN_DEFENDER (  ) external view returns ( string memory );
   function PAUSER_ROLE (  ) external view returns ( bytes32 );
   function RAND_TOKEN (  ) external view returns ( string memory );
   function READER_ROLE (  ) external view returns ( bytes32 );
   function REGISTRY (  ) external view returns ( address );
   function SAFETY_MODULE (  ) external view returns ( string memory );
   function VESTING_CONTROLLER (  ) external view returns ( string memory );
+  function VESTING_CONTROLLER_SIGNER (  ) external view returns ( string memory );
   function approve ( address to, uint256 tokenId ) external;
   function balanceOf ( address owner ) external view returns ( uint256 );
   function baseURI (  ) external view returns ( string memory );
@@ -27,7 +27,7 @@ interface IInvestorsNFT{
   function hasRole ( bytes32 role, address account ) external view returns ( bool );
   function initialize ( string memory _erc721_name, string memory _erc721_symbol, address _registry ) external;
   function isApprovedForAll ( address owner, address operator ) external view returns ( bool );
-  function mintInvestmentNFT ( address to, uint256 tokenId ) external returns ( uint256 );
+  function mintInvestmentNFT ( address to, uint8 tokenLevel ) external returns ( uint256 tokenId );
   function name (  ) external view returns ( string memory );
   function ownerOf ( uint256 tokenId ) external view returns ( address );
   function pause (  ) external;

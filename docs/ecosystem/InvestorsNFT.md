@@ -465,25 +465,25 @@ function isApprovedForAll(address owner, address operator) external view returns
 ### mintInvestmentNFT
 
 ```solidity
-function mintInvestmentNFT(address to, uint256 tokenId) external nonpayable returns (uint256)
+function mintInvestmentNFT(address to, enum InvestorsNFT.TokenLevel tokenLevel) external nonpayable returns (uint256 tokenId)
 ```
 
+Mints a new NFT for an investor
 
-
-
+*Only the VestingController can mint NFTs*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| to | address | undefined |
-| tokenId | uint256 | undefined |
+| to | address | is the address of the investor |
+| tokenLevel | enum InvestorsNFT.TokenLevel | is the level of the NFT |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | uint256 | undefined |
+| tokenId | uint256 | of the NFT |
 
 ### name
 
