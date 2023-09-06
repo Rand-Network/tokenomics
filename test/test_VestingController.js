@@ -434,7 +434,7 @@ describe("VC ERC721 functions", function () {
         NftTokenId = await VestingController.getTokenIdOfNFT(e_tokenId_5);
 
         // Check tokenURI
-        expect(await InvestorsNFT.tokenURI(NftTokenId)).to.equal(baseURI + BigInt(0).toString());
+        expect(await InvestorsNFT.tokenURI(NftTokenId)).to.equal(baseURI + "BLACK");
     });
     it("Get investment info for NFT", async function () {
         // Get full investment info for NFT with getInvestmentInfoForNFT function

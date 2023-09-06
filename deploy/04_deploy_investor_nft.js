@@ -42,7 +42,7 @@ module.exports = async function (hre) {
     const networkId = await hre.network.config.chainId
 
     if (networkId != "31337") {
-        await hre.run("etherscan-verify", { contractName: "InvestorsNFT" }); // EtherScan verification
+        await hre.run("etherscan-verify", { address: nft.address }); // EtherScan verification
         await hre.run("sourcify", { contractName: "InvestorsNFT" });   // Sourcify verification
     };
 };

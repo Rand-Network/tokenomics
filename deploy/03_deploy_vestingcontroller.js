@@ -44,7 +44,7 @@ module.exports = async function (hre) {
     // Verifying contracts if not on local network
     const networkId = await hre.network.config.chainId
     if (networkId != "31337") {
-        await hre.run("etherscan-verify", { contractName: "VestingControllerERC721" }); // EtherScan verification
+        await hre.run("etherscan-verify", { address: vc.address }); // EtherScan verification
         await hre.run("sourcify", { contractName: "VestingControllerERC721" });   // Sourcify verification
     };
 };

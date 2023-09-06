@@ -38,7 +38,7 @@ contract InvestorsNFT is
         GOLD,
         RED,
         BLUE
-    } // Priority order: 1 - Black, 2 - Gold, 3 - Red, 4 - Blue
+    } // Priority order: 0 - Black, 1 - Gold, 2 - Red, 3 - Blue
     mapping(uint256 => TokenLevel) internal _tokenLevel;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -154,6 +154,22 @@ contract InvestorsNFT is
         return baseURI;
     }
 
+    function tokenLevelToString(
+        TokenLevel level
+    ) internal pure returns (string memory) {
+        if (level == TokenLevel.BLACK) {
+            return "BLACK";
+        } else if (level == TokenLevel.GOLD) {
+            return "GOLD";
+        } else if (level == TokenLevel.RED) {
+            return "RED";
+        } else if (level == TokenLevel.BLUE) {
+            return "BLUE";
+        } else {
+            revert("Unknown token level");
+        }
+    }
+
     function tokenURI(
         uint256 tokenId
     ) public view override(ERC721Upgradeable) returns (string memory) {
@@ -169,6 +185,7 @@ contract InvestorsNFT is
         ) = IVestingControllerERC721(REGISTRY.getAddressOf(VESTING_CONTROLLER))
                 .getInvestmentInfoForNFT(tokenId);
 
+        TokenLevel tokenLevel = _tokenLevel[tokenId];
         bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
 
         // Return token level instead of tokenId
@@ -176,7 +193,12 @@ contract InvestorsNFT is
             bytes(baseURIString).length > 0
                 ? isClaimedAll
                     ? string(abi.encodePacked(baseURI, "claimed"))
-                    : string(abi.encodePacked(baseURI, tokenId.toString()))
+                    : string(
+                        abi.encodePacked(
+                            baseURI,
+                            tokenLevelToString(tokenLevel)
+                        )
+                    )
                 : "";
     }
 

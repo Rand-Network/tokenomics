@@ -11,7 +11,7 @@ require('hardhat-deploy');
 require("hardhat-deploy-ethers");
 require('dotenv').config();
 
-const { axios } = require('axios');
+const axios = require('axios');
 const pinataSDK = require('@pinata/sdk');
 const pinata = pinataSDK(process.env.PINATA_KEY, process.env.PINATA_SECRET);
 const prompt = require('prompt-sync')();
@@ -192,7 +192,7 @@ module.exports = {
   },
   gasReporter: {
     enabled: reportGasSwitch,
-    outputFile: './gas_profile.txt',
+    //outputFile: './gas_profile.txt',
     gasPriceApi: gasPriceApi,
     noColors: true,
     showTimeSpent: true,
@@ -223,7 +223,6 @@ module.exports = {
       url: process.env.GOERLI_TESTNET_URL || '',
       accounts: accountkeys,
       timeout: 5 * 60 * 1e3,
-      gasPrice: 200e9,
       // verify: {
       //   etherscan: {
       //     apiKey: process.env.ETHERSCAN_API_KEY

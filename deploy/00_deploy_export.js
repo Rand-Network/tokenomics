@@ -1,7 +1,7 @@
 require('hardhat-deploy');
 const EtherscanChainConfig = require('../scripts/utils_etherscan_config.js');
 const utils_export_csv = require('../scripts/utils_export_csv.js');
-const { _RNDdeployParams } = require('./00_deploy_params.js');
+const { getParams } = require('./00_deploy_params.js');
 
 
 module.exports = async function (hre) {
@@ -15,6 +15,7 @@ module.exports = async function (hre) {
     const registry = await deployments.get("AddressRegistry");
     const token = await deployments.get("RandToken");
     const vc = await deployments.get("VestingControllerERC721");
+    const nft = await deployments.get("InvestorsNFT");
 
 
     // Loop over EtherscanChainConfig and find the corresponding key name inside chain based on chanId
@@ -39,7 +40,8 @@ module.exports = async function (hre) {
     revision = `https://github.com/Rand-Network/tokenomics/commit/${revision}`;
 
     // Get environment 
-    var name_prefix = _RNDdeployParams._name
+    params = await getParams();
+    var name_prefix = params._RNDdeployParams._name
     const environment = (name_prefix.includes('Rand')) ? "Production" : "Development";
 
     // Create array with deployed addresses
@@ -71,6 +73,15 @@ module.exports = async function (hre) {
             network_name: network_name,
             explorer: explorer_url + vc.address
         },
+        {
+            name: "InvestorsNFT",
+            address: nft.address,
+            commit_hash: revision,
+            environment: environment,
+            implementation: nft.implementation,
+            network_name: network_name,
+            explorer: explorer_url + nft.address
+        }
     ];
 
     // Print deployed addresses
@@ -81,7 +92,7 @@ module.exports = async function (hre) {
     var current_timestamp = new Date().toISOString().replace(/T/, '-').replace(/\..+/, '').replace(/:/g, '-');
 
     // Export deployed addresses to CSV file
-    utils_export_csv.export_csv_data(deployed_addresses, `deployed_addresses_${network_name}_${environment}_${current_timestamp}.csv`);
+    await utils_export_csv.export_csv_data(deployed_addresses, `./deployed_addresses_${network_name}_${environment}_${current_timestamp}.csv`);
     process.exit(1);
 
 };

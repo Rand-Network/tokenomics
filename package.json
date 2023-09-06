@@ -44,6 +44,7 @@
     "@tenderly/hardhat-tenderly": "^1.0.13",
     "@testmachine.ai/cli": "^0.1.39",
     "abi2solidity": "^0.1.2",
+    "axios": "^1.5.0",
     "dotenv": "^14.2.0",
     "hardhat-gas-reporter": "^1.0.9",
     "prompt-sync": "^4.2.0",
