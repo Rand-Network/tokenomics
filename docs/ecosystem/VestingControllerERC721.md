@@ -10,23 +10,6 @@ Manages the vesting schedules for Rand investors
 
 ## Methods
 
-### BPT_TOKEN
-
-```solidity
-function BPT_TOKEN() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
 ### DEFAULT_ADMIN_ROLE
 
 ```solidity
@@ -162,6 +145,23 @@ function PERIOD_SECONDS() external view returns (uint256)
 | Name | Type | Description |
 |---|---|---|
 | _0 | uint256 | undefined |
+
+### POOL_TOKEN
+
+```solidity
+function POOL_TOKEN() external view returns (string)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | string | undefined |
 
 ### RAND_TOKEN
 

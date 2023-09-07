@@ -10,23 +10,6 @@ Safety Module instance for the staked Rand Token
 
 ## Methods
 
-### BPT_TOKEN
-
-```solidity
-function BPT_TOKEN() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
 ### COOLDOWN_SECONDS
 
 ```solidity
@@ -162,6 +145,23 @@ function PAUSER_ROLE() external view returns (bytes32)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bytes32 | undefined |
+
+### POOL_TOKEN
+
+```solidity
+function POOL_TOKEN() external view returns (string)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | string | undefined |
 
 ### PRECISION
 

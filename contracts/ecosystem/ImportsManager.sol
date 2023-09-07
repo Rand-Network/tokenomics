@@ -37,7 +37,7 @@ contract ImportsManager is
     string public constant ECOSYSTEM_RESERVE = "RES";
     string public constant GOVERNANCE = "GOV";
     string public constant INVESTOR_NFT = "NFT";
-    string public constant BPT_TOKEN = "BPT";
+    string public constant POOL_TOKEN = "PT";
 
     function __ImportsManager_init() internal onlyInitializing {
         __Pausable_init();

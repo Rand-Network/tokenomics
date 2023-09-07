@@ -10,23 +10,6 @@ Default implementation of the OpenZeppelin ERC20 standard by overriding balanceO
 
 ## Methods
 
-### BPT_TOKEN
-
-```solidity
-function BPT_TOKEN() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
 ### DEFAULT_ADMIN_ROLE
 
 ```solidity
@@ -145,6 +128,23 @@ function PAUSER_ROLE() external view returns (bytes32)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bytes32 | undefined |
+
+### POOL_TOKEN
+
+```solidity
+function POOL_TOKEN() external view returns (string)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | string | undefined |
 
 ### RAND_TOKEN
 
