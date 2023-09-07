@@ -4,12 +4,8 @@ pragma solidity 0.8.2;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./ImportsManager.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 
@@ -32,6 +28,14 @@ contract InvestorsNFT is
     using StringsUpgradeable for uint256;
 
     string public baseURI;
+    CountersUpgradeable.Counter internal _tokenIdCounter;
+    enum TokenLevel {
+        BLACK,
+        GOLD,
+        RED,
+        BLUE
+    } // Priority order: 0 - Black, 1 - Gold, 2 - Red, 3 - Blue
+    mapping(uint256 => TokenLevel) internal _tokenLevel;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -54,12 +58,11 @@ contract InvestorsNFT is
 
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
-        address _vcAddress = REGISTRY.getAddress(VESTING_CONTROLLER);
+        address _multisigVault = REGISTRY.getAddressOf(MULTISIG);
+        address _vcAddress = REGISTRY.getAddressOf(VESTING_CONTROLLER);
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
-        _grantRole(BURNER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _vcAddress);
     }
 
@@ -71,35 +74,41 @@ contract InvestorsNFT is
         _unpause();
     }
 
-    function mintInvestmentNFT(address to, uint256 tokenId)
-        external
-        whenNotPaused
-        onlyRole(MINTER_ROLE)
-        returns (uint256)
-    {
-        _mint(to, tokenId);
+    /// @notice Mints a new NFT for an investor
+    /// @dev Only the VestingController can mint NFTs
+    /// @param to is the address of the investor
+    /// @param tokenLevel is the level of the NFT
+    /// @return tokenId of the NFT
+    function mintInvestmentNFT(
+        address to,
+        TokenLevel tokenLevel
+    ) external whenNotPaused onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+        tokenId = _safeMint(to);
+        _tokenLevel[tokenId] = tokenLevel;
+        return tokenId;
+    }
+
+    function _safeMint(address to) internal returns (uint256) {
+        uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(to, tokenId);
         return tokenId;
     }
 
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 tokenId
+        uint256 tokenId,
+        uint256 batchSize
     )
         internal
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
         whenNotPaused
     {
-        super._beforeTokenTransfer(from, to, tokenId);
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
 
-    function burn(uint256 tokenId)
-        public
-        virtual
-        override
-        whenNotPaused
-        onlyRole(BURNER_ROLE)
-    {
+    function burn(uint256 tokenId) public virtual override whenNotPaused {
         require(
             _isApprovedOrOwner(_msgSender(), tokenId),
             "ERC721Burnable: caller is not owner nor approved"
@@ -119,7 +128,7 @@ contract InvestorsNFT is
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount
-        ) = IVestingControllerERC721(REGISTRY.getAddress(VESTING_CONTROLLER))
+        ) = IVestingControllerERC721(REGISTRY.getAddressOf(VESTING_CONTROLLER))
                 .getInvestmentInfoForNFT(tokenId);
 
         bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
@@ -130,11 +139,9 @@ contract InvestorsNFT is
         super._transfer(from, to, tokenId);
     }
 
-    function setBaseURI(string memory newURI)
-        public
-        whenNotPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function setBaseURI(
+        string memory newURI
+    ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         baseURI = newURI;
         emit BaseURIChanged(baseURI);
     }
@@ -143,12 +150,25 @@ contract InvestorsNFT is
         return baseURI;
     }
 
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721Upgradeable)
-        returns (string memory)
-    {
+    function tokenLevelToString(
+        TokenLevel level
+    ) internal pure returns (string memory) {
+        if (level == TokenLevel.BLACK) {
+            return "BLACK";
+        } else if (level == TokenLevel.GOLD) {
+            return "GOLD";
+        } else if (level == TokenLevel.RED) {
+            return "RED";
+        } else if (level == TokenLevel.BLUE) {
+            return "BLUE";
+        } else {
+            revert("Unknown token level");
+        }
+    }
+
+    function tokenURI(
+        uint256 tokenId
+    ) public view override(ERC721Upgradeable) returns (string memory) {
         require(
             _exists(tokenId),
             "ERC721Metadata: URI query for nonexistent token"
@@ -158,16 +178,23 @@ contract InvestorsNFT is
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount
-        ) = IVestingControllerERC721(REGISTRY.getAddress(VESTING_CONTROLLER))
+        ) = IVestingControllerERC721(REGISTRY.getAddressOf(VESTING_CONTROLLER))
                 .getInvestmentInfoForNFT(tokenId);
 
+        TokenLevel tokenLevel = _tokenLevel[tokenId];
         bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
 
+        // Return token level instead of tokenId
         return
             bytes(baseURIString).length > 0
                 ? isClaimedAll
-                    ? string(abi.encodePacked(baseURI, tokenId.toString(), "_"))
-                    : string(abi.encodePacked(baseURI, tokenId.toString()))
+                    ? string(abi.encodePacked(baseURI, "claimed"))
+                    : string(
+                        abi.encodePacked(
+                            baseURI,
+                            tokenLevelToString(tokenLevel)
+                        )
+                    )
                 : "";
     }
 
@@ -178,7 +205,9 @@ contract InvestorsNFT is
                 : "";
     }
 
-    function supportsInterface(bytes4 interfaceId)
+    function supportsInterface(
+        bytes4 interfaceId
+    )
         public
         view
         override(

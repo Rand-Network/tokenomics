@@ -28,7 +28,7 @@ contract StakedToken is SafetyModuleERC20 {
         __SM_init(
             __name,
             __symbol,
-            BPT_TOKEN,
+            POOL_TOKEN,
             __cooldown_seconds,
             __unstake_window,
             __registry

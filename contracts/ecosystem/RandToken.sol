@@ -3,10 +3,6 @@ pragma solidity 0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./ImportsManager.sol";
 
 /// @title Rand.network ERC20 Token contract
@@ -38,11 +34,11 @@ contract RandToken is
 
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
+        address _multisigVault = REGISTRY.getAddressOf(MULTISIG);
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
-        _mint(_multisigVault, _initialSupply * 10**decimals());
+        _mint(_multisigVault, _initialSupply * 10 ** decimals());
     }
 
     /// @notice Function to allow admins to move funds without multiple approve and transfer steps
@@ -50,13 +46,13 @@ contract RandToken is
     /// @param owner is the address who's tokens are approved and transferred
     /// @param recipient is the address where to transfer the funds
     /// @param amount is the amount of transfer
-    function adminTransfer(
+    function safetyModuleTransfer(
         address owner,
         address recipient,
         uint256 amount
     ) external whenNotPaused {
         require(
-            REGISTRY.getAddress(SAFETY_MODULE) == _msgSender(),
+            REGISTRY.getAddressOf(SAFETY_MODULE) == _msgSender(),
             "RND: Not accessible by msg.sender"
         );
         _transfer(owner, recipient, amount);
@@ -70,19 +66,18 @@ contract RandToken is
         _unpause();
     }
 
-    function mint(address to, uint256 amount)
-        public
-        whenNotPaused
-        onlyRole(MINTER_ROLE)
-    {
+    function mint(
+        address to,
+        uint256 amount
+    ) public whenNotPaused onlyRole(MINTER_ROLE) {
         _mint(to, amount);
     }
 
-    function burn(address account, uint256 amount)
-        public
-        whenNotPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    // TODO: Rename this or change to really only allow burn from admin
+    function burnFromAdmin(
+        address account,
+        uint256 amount
+    ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         _burn(account, amount);
     }
 
