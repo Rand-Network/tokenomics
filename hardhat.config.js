@@ -207,7 +207,9 @@ module.exports = {
     },
     development: {
       url: "http://127.0.0.1:8545",
-      chainId: 31337
+      chainId: 31337,
+      blockGasLimit: 120e6,
+      allowUnlimitedContractSize: true,
     },
     mainnet: {
       url: process.env.MAINNET_URL || '',
@@ -260,7 +262,7 @@ module.exports = {
           },
           optimizer: {
             enabled: true,
-            runs: 200
+            runs: 1000
           }
         }
       },
@@ -272,7 +274,7 @@ module.exports = {
           },
           optimizer: {
             enabled: true,
-            runs: 200
+            runs: 1000
           }
         }
       },
