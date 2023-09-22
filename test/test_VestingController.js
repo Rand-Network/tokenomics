@@ -42,8 +42,7 @@ async function mintInvestment(
     vestingPeriod,
     vestingStartTime,
     cliffPeriod,
-    //nftTokenId = null
-    nftLevel = null,
+    nftLevel = 0,
 ) {
 
     // Wait 500ms to avoid nonce issues
@@ -57,20 +56,13 @@ async function mintInvestment(
 
 
     // Calling the function using the specific method signature
-    if (nftLevel !== null) {
-        return await VestingController.connect(sender)['mintNewInvestment(bytes,uint256,(address,uint256,uint256,uint256,uint256),uint8)'](
-            signature,
-            timestamp,
-            [recipient, rndTokenAmount, vestingPeriod, vestingStartTime, cliffPeriod],
-            nftLevel
-        );
-    } else {
-        return await VestingController.connect(sender)['mintNewInvestment(bytes,uint256,(address,uint256,uint256,uint256,uint256))'](
-            signature,
-            timestamp,
-            [recipient, rndTokenAmount, vestingPeriod, vestingStartTime, cliffPeriod]
-        );
-    }
+    return await VestingController.connect(sender)['mintNewInvestment(bytes,uint256,(address,uint256,uint256,uint256,uint256),uint8)'](
+        signature,
+        timestamp,
+        [recipient, rndTokenAmount, vestingPeriod, vestingStartTime, cliffPeriod],
+        nftLevel
+    );
+
 }
 
 
@@ -393,7 +385,7 @@ describe("VC ERC721 functions", function () {
         cliffPeriod = BigInt("3");
         claimablePerPeriod = rndTokenAmount / BigInt(vestingPeriod);
         nftTokenId = BigInt(0);
-        nftLevel = BigInt(0);
+        nftLevel = BigInt(1);
 
         // Mint investment token with NFT
         tx = await RandToken.increaseAllowance(await VestingController.getAddress(), rndTokenAmount);
@@ -439,7 +431,7 @@ describe("VC ERC721 functions", function () {
     it("Get investment info for NFT", async function () {
         // Get full investment info for NFT with getInvestmentInfoForNFT function
         await AddressRegistry.updateAddress("NFT", deployer_signer.address);
-        await VestingController.getInvestmentInfoForNFT(nftLevel).then(function (res) {
+        await VestingController.getInvestmentInfoForNFT(nftTokenId).then(function (res) {
             var var1 = res[0];
             var var2 = res[1];
             expect(var1).to.be.equal(rndTokenAmount);

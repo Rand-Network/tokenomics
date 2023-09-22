@@ -617,30 +617,6 @@ function mintNewInvestment(bytes signature, uint256 signatureTimestamp, VestingC
 |---|---|---|
 | tokenId | uint256 | undefined |
 
-### mintNewInvestment
-
-```solidity
-function mintNewInvestment(bytes signature, uint256 signatureTimestamp, VestingControllerERC721.MintParameters params) external nonpayable returns (uint256 tokenId)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| signature | bytes | undefined |
-| signatureTimestamp | uint256 | undefined |
-| params | VestingControllerERC721.MintParameters | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| tokenId | uint256 | undefined |
-
 ### modifyStakedAmount
 
 ```solidity

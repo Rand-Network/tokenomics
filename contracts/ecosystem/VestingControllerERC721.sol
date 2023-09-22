@@ -272,21 +272,6 @@ contract VestingControllerERC721 is
         }
     }
 
-    /// @notice Mints a token and associates an investment to it and sets tokenURI
-    /// @dev emits NewInvestmentTokenMinted() and only accessible with signature from Rand
-    /// @param signature is the signature which is used to verify the minting
-    /// @param signatureTimestamp is the expiration timestamp of the signature
-    /// @param params is the struct with all the parameters for the investment
-    /// @return tokenId the id of the minted token on VC
-    function mintNewInvestment(
-        bytes memory signature,
-        uint256 signatureTimestamp,
-        MintParameters memory params
-    ) public whenNotPaused nonReentrant returns (uint256 tokenId) {
-        // Minting vesting investment inside VC
-        tokenId = _mintNewInvestment(signature, signatureTimestamp, params);
-    }
-
     /// @notice Mints a token and associates an investment to it and sets tokenURI and also mints an investors NFT
     /// @dev emits NewInvestmentTokenMinted() and only accessible with signature from Rand
     /// @param signature is the signature which is used to verify the minting
@@ -298,25 +283,26 @@ contract VestingControllerERC721 is
         bytes memory signature,
         uint256 signatureTimestamp,
         MintParameters memory params,
-        //uint256 nftTokenId
         uint8 nftLevel
     ) public whenNotPaused nonReentrant returns (uint256 tokenId) {
         // Minting vesting investment inside VC
         tokenId = _mintNewInvestment(signature, signatureTimestamp, params);
 
         // Minting NFT investment for early investors
-        uint256 nftTokenId = IInvestorsNFT(REGISTRY.getAddressOf(INVESTOR_NFT))
-            .mintInvestmentNFT(
-                params.recipient,
-                //nftTokenId
-                nftLevel
+        if (nftLevel > 0) {
+            uint256 nftTokenId = IInvestorsNFT(
+                REGISTRY.getAddressOf(INVESTOR_NFT)
+            ).mintInvestmentNFT(params.recipient, nftLevel - 1);
+            // Emit event for the NFT tokenId
+            emit NewInvestmentTokenMintedWithNFT(
+                nftTokenId,
+                tokenId,
+                nftLevel - 1
             );
 
-        // Emit event for the NFT tokenId
-        emit NewInvestmentTokenMintedWithNFT(nftTokenId, tokenId, nftLevel);
-
-        // Storing the VC tokenId to the corresponding NFT tokenId
-        _nftTokenToVCToken[nftTokenId] = tokenId;
+            // Storing the VC tokenId to the corresponding NFT tokenId
+            _nftTokenToVCToken[nftTokenId] = tokenId;
+        }
     }
 
     function _mintNewInvestment(
