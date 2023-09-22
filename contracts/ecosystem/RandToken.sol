@@ -22,6 +22,13 @@ contract RandToken is
     /// @param symbol_ Short symbol like `RND`
     /// @param _initialSupply Total supply to mint initially like `200e6`
     /// @param _registry is the address of address registry
+    /// #if_succeeds totalSupply() == _initialSupply * 10 ** decimals();
+    /// #if_succeeds balanceOf(msg.sender) == _initialSupply;
+    /// #if_succeeds hasRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    /// #if_succeeds hasRole(PAUSER_ROLE, msg.sender);
+    /// #if_succeeds hasRole(MINTER_ROLE, msg.sender);
+    /// #if_succeeds eq_encoded(name(), name_);
+    /// #if_succeeds eq_encoded(symbol(), symbol_);
     function initialize(
         string memory name_,
         string memory symbol_,
@@ -46,6 +53,9 @@ contract RandToken is
     /// @param owner is the address who's tokens are approved and transferred
     /// @param recipient is the address where to transfer the funds
     /// @param amount is the amount of transfer
+    /// #pre REGISTRY.getAddressOf(SAFETY_MODULE) == msg.sender;
+    /// #if_succeeds balanceOf(owner) == old(balanceOf(owner)) - amount;
+    /// #if_succeeds balanceOf(recipient) == old(balanceOf(recipient)) + amount;
     function safetyModuleTransfer(
         address owner,
         address recipient,
@@ -58,14 +68,19 @@ contract RandToken is
         _transfer(owner, recipient, amount);
     }
 
+    /// #if_succeeds paused() == true;
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();
     }
 
+    /// #if_succeeds paused() == false;
     function unpause() public onlyRole(PAUSER_ROLE) {
         _unpause();
     }
 
+    /// #pre hasRole(MINTER_ROLE, msg.sender);
+    /// #if_succeeds balanceOf(to) == old(balanceOf(to)) + amount;
+    /// #if_succeeds totalSupply() == old(totalSupply()) + amount;
     function mint(
         address to,
         uint256 amount
@@ -74,6 +89,9 @@ contract RandToken is
     }
 
     // TODO: Rename this or change to really only allow burn from admin
+    /// #pre hasRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    /// #if_succeeds balanceOf(account) == old(balanceOf(account)) - amount;
+    /// #if_succeeds totalSupply() == old(totalSupply()) - amount;
     function burnFromAdmin(
         address account,
         uint256 amount
@@ -81,7 +99,7 @@ contract RandToken is
         _burn(account, amount);
     }
 
-    /// @inheritdoc	ERC20Upgradeable
+    /// @inheritdoc    ERC20Upgradeable
     function _beforeTokenTransfer(
         address from,
         address to,

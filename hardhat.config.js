@@ -201,6 +201,8 @@ module.exports = {
   networks: {
     hardhat: {
       chainId: 31337,
+      blockGasLimit: 120e6,
+      allowUnlimitedContractSize: true,
       // forking: {
       //   url: process.env.MAINNET_URL,
       // },

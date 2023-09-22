@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 
@@ -21,6 +21,10 @@ contract SignatureVerification {
     /// @param timestamp The timestamp of the signature
     /// @param signature The signature to be redeemed
     /// @return True if the signature is valid
+    /// #if_succeeds {:msg "Valid signature length"} signature.length == 65;
+    /// #if_succeeds {:msg "Valid timestamp and not older than 1 hour"} timestamp >= block.timestamp && timestamp <= block.timestamp + 3600;
+    /// #if_succeeds {:msg "Signature not used before"} !_usedSignatures[signature];
+    /// #if_succeeds {:msg "Signature matches signer address"} ECDSAUpgradeable.recover(ECDSAUpgradeable.toEthSignedMessageHash(keccak256(abi.encodePacked(msg.sender, recipient, amount, timestamp, block.chainid))), signature) == signerAddress;
     function _redeemSignature(
         address recipient,
         uint256 amount,

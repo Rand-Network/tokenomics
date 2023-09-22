@@ -204,6 +204,7 @@ contract VestingControllerERC721 is
     /// @dev emits ClaimedAmount() and only accessible by the investor's wallet, the backend address and safety module contract
     /// @param tokenId is the id of investment to submit the claim on
     /// @param amount is the amount of vested tokens to claim in the process
+    /// #if_succeeds {:msg "Claimed amount is less than or equal to claimable amount"} amount <= getClaimableTokens(tokenId);
     function claimTokens(
         uint256 tokenId,
         uint256 amount
@@ -278,6 +279,9 @@ contract VestingControllerERC721 is
     /// @param signatureTimestamp is the expiration timestamp of the signature
     /// @param params is the struct with all the parameters for the investment
     /// @return tokenId the id of the minted token on VC
+    /// #if_succeeds {:msg "Recipient is not the zero address"} params.recipient != address(0);
+    /// #if_succeeds {:msg "Vesting start time is in the future"} params.vestingStartTime >= block.timestamp;
+    /// #if_succeeds {:msg "Vesting period is positive"} params.vestingPeriod > 0;
     function mintNewInvestment(
         bytes memory signature,
         uint256 signatureTimestamp,
@@ -298,7 +302,6 @@ contract VestingControllerERC721 is
         bytes memory signature,
         uint256 signatureTimestamp,
         MintParameters memory params,
-        //uint256 nftTokenId
         uint8 nftLevel
     ) public whenNotPaused nonReentrant returns (uint256 tokenId) {
         // Minting vesting investment inside VC
@@ -373,6 +376,8 @@ contract VestingControllerERC721 is
     /// @dev emits InvestmentTransferred() and only accessible with signature from Rand
     /// @param recipient is the address to whom the token should be transferred to
     /// @param rndTokenAmount is the amount of the total investment
+    /// #if_succeeds {:msg "Recipient is not the zero address"} recipient != address(0);
+    /// #if_succeeds {:msg "Transferred amount is greater than zero"} rndTokenAmount > 0;
     function distributeTokens(
         bytes memory signature,
         uint256 signatureTimestamp,
@@ -467,6 +472,7 @@ contract VestingControllerERC721 is
     /// @notice Burn vesting token by admin (avaiable only for DEFAULT_ADMIN_ROLE)
     /// @dev Returns collateral tokens to the caller
     /// @param tokenId to be burned
+    /// #if_succeeds {:msg "Only the DEFAULT_ADMIN_ROLE can burn tokens"} hasRole(DEFAULT_ADMIN_ROLE, _msgSender());
     function burn(
         uint256 tokenId
     ) public virtual override onlyRole(DEFAULT_ADMIN_ROLE) {

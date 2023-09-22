@@ -28,6 +28,7 @@ contract AddressRegistry is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
+    /// #if_succeeds {:msg "Admin and pauser roles granted to multisig vault"} hasRole(DEFAULT_ADMIN_ROLE, _multisigVault) && hasRole(PAUSER_ROLE, _multisigVault);
     function initialize(address _multisigVault) public initializer {
         require(
             _multisigVault != address(0),
@@ -68,6 +69,8 @@ contract AddressRegistry is
     /// @notice Used to update the latest address for a contract
     /// @param name is the string name of the contract
     /// @param contractAddress is the new address to set for a contract
+    /// #if_succeeds {:msg "Contract address updated"} getAddressOf(name) == contractAddress;
+    /// #if_succeeds {:msg "New address set for contract"} getAllAddress(name)[getAllAddress(name).length - 1] == contractAddress;
     function updateAddress(
         string calldata name,
         address contractAddress
@@ -94,6 +97,8 @@ contract AddressRegistry is
     /// @param name is the string name of the contract
     /// @param contractAddress is the new address to set for a contract
     /// @return true if successful, false if already exists
+    /// #if_succeeds {:msg "New address set for contract"} getAddressOf(name) == contractAddress;
+    /// #if_succeeds {:msg "New address set for contract"} getAllAddress(name)[getAllAddress(name).length - 1] == contractAddress;
     function setNewAddress(
         string calldata name,
         address contractAddress
