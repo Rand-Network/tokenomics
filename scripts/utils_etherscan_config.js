@@ -1,5 +1,12 @@
 module.exports = {
     chains: {
+        hardhat: {
+            chainId: 31337,
+            urls: {
+                apiURL: NaN,
+                browserURL: NaN
+            },
+        },
         development: {
             chainId: 31337,
             urls: {
@@ -40,6 +47,13 @@ module.exports = {
             urls: {
                 apiURL: "https://api-kovan.etherscan.io/api",
                 browserURL: "https://kovan.etherscan.io",
+            },
+        },
+        sepolia: {
+            chainId: 11155111,
+            urls: {
+                apiURL: "https://api-sepolia.etherscan.io/api",
+                browserURL: "https://sepolia.etherscan.io",
             },
         },
         bsc: {

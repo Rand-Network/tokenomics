@@ -10,40 +10,6 @@ Default implementation of the OpenZeppelin ERC20 standard to be used for the RND
 
 ## Methods
 
-### BPT_TOKEN
-
-```solidity
-function BPT_TOKEN() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### BURNER_ROLE
-
-```solidity
-function BURNER_ROLE() external view returns (bytes32)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
 ### DEFAULT_ADMIN_ROLE
 
 ```solidity
@@ -60,57 +26,6 @@ function DEFAULT_ADMIN_ROLE() external view returns (bytes32)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bytes32 | undefined |
-
-### ECOSYSTEM_RESERVE
-
-```solidity
-function ECOSYSTEM_RESERVE() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### GOVERNANCE
-
-```solidity
-function GOVERNANCE() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### INVESTOR_NFT
-
-```solidity
-function INVESTOR_NFT() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
 
 ### MINTER_ROLE
 
@@ -129,40 +44,6 @@ function MINTER_ROLE() external view returns (bytes32)
 |---|---|---|
 | _0 | bytes32 | undefined |
 
-### MULTISIG
-
-```solidity
-function MULTISIG() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### OPENZEPPELIN_DEFENDER
-
-```solidity
-function OPENZEPPELIN_DEFENDER() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
 ### PAUSER_ROLE
 
 ```solidity
@@ -179,23 +60,6 @@ function PAUSER_ROLE() external view returns (bytes32)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bytes32 | undefined |
-
-### RAND_TOKEN
-
-```solidity
-function RAND_TOKEN() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
 
 ### READER_ROLE
 
@@ -231,58 +95,6 @@ function REGISTRY() external view returns (contract IAddressRegistry)
 |---|---|---|
 | _0 | contract IAddressRegistry | undefined |
 
-### SAFETY_MODULE
-
-```solidity
-function SAFETY_MODULE() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### VESTING_CONTROLLER
-
-```solidity
-function VESTING_CONTROLLER() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### adminTransfer
-
-```solidity
-function adminTransfer(address owner, address recipient, uint256 amount) external nonpayable
-```
-
-Function to allow admins to move funds without multiple approve and transfer steps
-
-*Aims to allow simple UX*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| owner | address | is the address who&#39;s tokens are approved and transferred |
-| recipient | address | is the address where to transfer the funds |
-| amount | uint256 | is the amount of transfer |
-
 ### allowance
 
 ```solidity
@@ -314,7 +126,7 @@ function approve(address spender, uint256 amount) external nonpayable returns (b
 
 
 
-*See {IERC20-approve}. Requirements: - `spender` cannot be the zero address.*
+*See {IERC20-approve}. NOTE: If `amount` is the maximum `uint256`, the allowance is not updated on `transferFrom`. This is semantically equivalent to an infinite approval. Requirements: - `spender` cannot be the zero address.*
 
 #### Parameters
 
@@ -409,7 +221,7 @@ function decimals() external view returns (uint8)
 
 
 
-*Returns the number of decimals used to get its user representation. For example, if `decimals` equals `2`, a balance of `505` tokens should be displayed to a user as `5.05` (`505 / 10 ** 2`). Tokens usually opt for a value of 18, imitating the relationship between Ether and Wei. This is the value {ERC20} uses, unless this function is overridden; NOTE: This information is only used for _display_ purposes: it in no way affects any of the arithmetic of the contract, including {IERC20-balanceOf} and {IERC20-transfer}.*
+*Returns the number of decimals used to get its user representation. For example, if `decimals` equals `2`, a balance of `505` tokens should be displayed to a user as `5.05` (`505 / 10 ** 2`). Tokens usually opt for a value of 18, imitating the relationship between Ether and Wei. This is the default value returned by this function, unless it&#39;s overridden. NOTE: This information is only used for _display_ purposes: it in no way affects any of the arithmetic of the contract, including {IERC20-balanceOf} and {IERC20-transfer}.*
 
 
 #### Returns
@@ -471,7 +283,7 @@ function grantRole(bytes32 role, address account) external nonpayable
 
 
 
-*Grants `role` to `account`. If `account` had not been already granted `role`, emits a {RoleGranted} event. Requirements: - the caller must have ``role``&#39;s admin role.*
+*Grants `role` to `account`. If `account` had not been already granted `role`, emits a {RoleGranted} event. Requirements: - the caller must have ``role``&#39;s admin role. May emit a {RoleGranted} event.*
 
 #### Parameters
 
@@ -529,7 +341,7 @@ function increaseAllowance(address spender, uint256 addedValue) external nonpaya
 ### initialize
 
 ```solidity
-function initialize(string name_, string symbol_, uint256 _initialSupply, contract IAddressRegistry _registry) external nonpayable
+function initialize(string name_, string symbol_, uint256 _initialSupply, uint8 _decimal, contract IAddressRegistry _registry) external nonpayable
 ```
 
 Initializer allow proxy scheme
@@ -543,6 +355,7 @@ Initializer allow proxy scheme
 | name_ | string | Name of the token like `Rand Token ERC20` |
 | symbol_ | string | Short symbol like `RND` |
 | _initialSupply | uint256 | Total supply to mint initially like `200e6` |
+| _decimal | uint8 | undefined |
 | _registry | contract IAddressRegistry | is the address of address registry |
 
 ### mint
@@ -607,6 +420,23 @@ function paused() external view returns (bool)
 |---|---|---|
 | _0 | bool | undefined |
 
+### proxiableUUID
+
+```solidity
+function proxiableUUID() external view returns (bytes32)
+```
+
+
+
+*Implementation of the ERC1822 {proxiableUUID} function. This returns the storage slot used by the implementation. It is used to validate the implementation&#39;s compatibility when performing an upgrade. IMPORTANT: A proxy pointing at a proxiable contract should not be considered proxiable itself, because this risks bricking a proxy that upgrades to it, by delegating to itself until out of gas. Thus it is critical that this function revert if invoked through a proxy. This is guaranteed by the `notDelegated` modifier.*
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
 ### renounceRole
 
 ```solidity
@@ -615,7 +445,7 @@ function renounceRole(bytes32 role, address account) external nonpayable
 
 
 
-*Revokes `role` from the calling account. Roles are often managed via {grantRole} and {revokeRole}: this function&#39;s purpose is to provide a mechanism for accounts to lose their privileges if they are compromised (such as when a trusted device is misplaced). If the calling account had been revoked `role`, emits a {RoleRevoked} event. Requirements: - the caller must be `account`.*
+*Revokes `role` from the calling account. Roles are often managed via {grantRole} and {revokeRole}: this function&#39;s purpose is to provide a mechanism for accounts to lose their privileges if they are compromised (such as when a trusted device is misplaced). If the calling account had been revoked `role`, emits a {RoleRevoked} event. Requirements: - the caller must be `account`. May emit a {RoleRevoked} event.*
 
 #### Parameters
 
@@ -632,7 +462,7 @@ function revokeRole(bytes32 role, address account) external nonpayable
 
 
 
-*Revokes `role` from `account`. If `account` had been granted `role`, emits a {RoleRevoked} event. Requirements: - the caller must have ``role``&#39;s admin role.*
+*Revokes `role` from `account`. If `account` had been granted `role`, emits a {RoleRevoked} event. Requirements: - the caller must have ``role``&#39;s admin role. May emit a {RoleRevoked} event.*
 
 #### Parameters
 
@@ -640,6 +470,24 @@ function revokeRole(bytes32 role, address account) external nonpayable
 |---|---|---|
 | role | bytes32 | undefined |
 | account | address | undefined |
+
+### safetyModuleTransfer
+
+```solidity
+function safetyModuleTransfer(address owner, address recipient, uint256 amount) external nonpayable
+```
+
+Function to allow admins to move funds without multiple approve and transfer steps
+
+*Aims to allow simple UX*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| owner | address | is the address who&#39;s tokens are approved and transferred |
+| recipient | address | is the address where to transfer the funds |
+| amount | uint256 | is the amount of transfer |
 
 ### supportsInterface
 
@@ -700,18 +548,18 @@ function totalSupply() external view returns (uint256)
 ### transfer
 
 ```solidity
-function transfer(address recipient, uint256 amount) external nonpayable returns (bool)
+function transfer(address to, uint256 amount) external nonpayable returns (bool)
 ```
 
 
 
-*See {IERC20-transfer}. Requirements: - `recipient` cannot be the zero address. - the caller must have a balance of at least `amount`.*
+*See {IERC20-transfer}. Requirements: - `to` cannot be the zero address. - the caller must have a balance of at least `amount`.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| recipient | address | undefined |
+| to | address | undefined |
 | amount | uint256 | undefined |
 
 #### Returns
@@ -723,19 +571,19 @@ function transfer(address recipient, uint256 amount) external nonpayable returns
 ### transferFrom
 
 ```solidity
-function transferFrom(address sender, address recipient, uint256 amount) external nonpayable returns (bool)
+function transferFrom(address from, address to, uint256 amount) external nonpayable returns (bool)
 ```
 
 
 
-*See {IERC20-transferFrom}. Emits an {Approval} event indicating the updated allowance. This is not required by the EIP. See the note at the beginning of {ERC20}. Requirements: - `sender` and `recipient` cannot be the zero address. - `sender` must have a balance of at least `amount`. - the caller must have allowance for ``sender``&#39;s tokens of at least `amount`.*
+*See {IERC20-transferFrom}. Emits an {Approval} event indicating the updated allowance. This is not required by the EIP. See the note at the beginning of {ERC20}. NOTE: Does not update the allowance if the current allowance is the maximum `uint256`. Requirements: - `from` and `to` cannot be the zero address. - `from` must have a balance of at least `amount`. - the caller must have allowance for ``from``&#39;s tokens of at least `amount`.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| sender | address | undefined |
-| recipient | address | undefined |
+| from | address | undefined |
+| to | address | undefined |
 | amount | uint256 | undefined |
 
 #### Returns
@@ -858,6 +706,22 @@ event BeaconUpgraded(address indexed beacon)
 | Name | Type | Description |
 |---|---|---|
 | beacon `indexed` | address | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### Paused
 

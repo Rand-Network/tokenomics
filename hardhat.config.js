@@ -1,24 +1,28 @@
+//require('@openzeppelin/hardhat-upgrades');
+//require("@openzeppelin/hardhat-defender");
+//const { AdminClient } = require('@openzeppelin/defender-admin-client');
 require("@nomiclabs/hardhat-waffle");
-require('@openzeppelin/hardhat-upgrades');
-require("@openzeppelin/hardhat-defender");
-require('@nomiclabs/hardhat-etherscan');
+require("@nomiclabs/hardhat-ethers");
 require("hardhat-gas-reporter");
-require("@atixlabs/hardhat-time-n-mine");
 require("@tenderly/hardhat-tenderly");
 require("solidity-coverage");
-require('@primitivefi/hardhat-dodoc');
+require('@adradr/hardhat-dodoc');
+require('hardhat-deploy');
+require("hardhat-deploy-ethers");
 require('dotenv').config();
-const { ContractFactory } = require("ethers");
-const { abi2sol, abi2json } = require("./scripts/abi2sol.js");
-const { deploy_testnet } = require("./scripts/deploy_testnet_task.js");
-const { execute, cleanFile } = require("./scripts/flatten.js");
-const { chains } = require("./scripts/EtherscanChainConfig.js");
-const { axios } = require('axios');
-const { json } = require("hardhat/internal/core/params/argumentTypes");
+
+const axios = require('axios');
+const qs = require('qs');
 const pinataSDK = require('@pinata/sdk');
 const pinata = pinataSDK(process.env.PINATA_KEY, process.env.PINATA_SECRET);
+const prompt = require('prompt-sync')();
 
-// Get network id
+const { abi2sol, abi2json } = require("./scripts/abi2sol.js");
+const { execute, cleanFile } = require("./scripts/utils_flatten.js");
+const { chains } = require("./scripts/utils_etherscan_config.js");
+
+
+// Get network id for Etherscan verification task
 function findNetworInArgs(item, index, arr) {
   //console.log(item, index, arr);
   if (item == '--network') {
@@ -37,9 +41,12 @@ function findNetworInArgs(item, index, arr) {
     }
   }
 }
-var network_id;
-var chain_id;
+
+// Get network id for Etherscan verification task
+let network_id;
+let chain_id;
 process.argv.forEach(findNetworInArgs);
+console.log('Network id:', network_id);
 
 task("accounts", "Prints the list of accounts", async () => {
   const accounts = await ethers.getSigners();
@@ -49,37 +56,6 @@ task("accounts", "Prints the list of accounts", async () => {
   }
 });
 
-task("upgradeProxyAndVerify", "Upgrades proxy with OZ upgrades plugin and verifies new implementation")
-  .addPositionalParam("proxyAddress", "Address of the proxy contract")
-  .addPositionalParam("contractFactory", "Name of the contract")
-  .addFlag("verify", "To verify new implementation with Etherscan API")
-  .setAction(async ({ proxyAddress, contractFactory, verify }) => {
-    const accounts = await ethers.getSigners();
-    var balanceOf = await ethers.provider.getBalance(accounts[0].address);
-    console.log(accounts[0].address, '(balance:', ethers.utils.formatEther(balanceOf), ')');
-    const ContractFactory = await ethers.getContractFactory(contractFactory);
-    //tx = await upgrades.prepareUpgrade(proxyAddress, ContractFactory);
-    tx = await upgrades.upgradeProxy(
-      proxyAddress,
-      ContractFactory,
-      { timeout: 120000 }
-    );
-    tx_upgrade = tx.deployTransaction;
-    await tx_upgrade.wait(1);
-    console.log("Proxy upgraded!");
-    if (verify) {
-      newImplementation = await upgrades.erc1967.getImplementationAddress(tx.address);
-      await hre.run("verify:verify", { address: newImplementation }).catch(function (error) {
-        if (error.message == 'Contract source code already verified') {
-          console.error('Contract source code already verified');
-        }
-        else {
-          console.error(error);
-        }
-      });
-    }
-
-  });
 
 task("abi2interface", "Generates solidity interface contracts from ABIs, needs to matching contract name .sol name")
   .addPositionalParam("contract", "Solidity contract name")
@@ -122,16 +98,8 @@ task("flatten-clean", "Flattens and cleans soldity contract for Etherscan single
     await execute(`mv ${contract}.flatten.cleaned ${contract}.flatten`);
   });
 
-task("deploy", "Deploys to a network and optionally verifies and mints sample investment")
-  .addFlag("verify", "To verify the contract on the deployed network with Etherscan API")
-  .addFlag("initialize", "To initially mint some investments and do allowances")
-  .setAction(async ({ verify, initialize }) => {
-    console.log("Starting deployment..");
-    console.log("initialize:%s,\nverify:%s\n------------", initialize, verify);
-    await deploy_testnet(initialize, verify);
-  });
 
-task("verifyProxy", "Verifies a proxy on Etherscan using the current network so Read/Write as proxy is avaiable")
+task("verify-proxy", "Verifies a proxy on Etherscan using the current network so Read/Write as proxy is avaiable")
   .addParam("proxy", "Address of the proxy contract to verify")
   .addParam("implementation", "Address of the implementation contract")
   .setAction(async ({ proxy, implementation }) => {
@@ -139,60 +107,89 @@ task("verifyProxy", "Verifies a proxy on Etherscan using the current network so 
       console.log("Unable to verify proxy on local development network. Exiting...");
       return;
     }
-    console.log("Starting verification.");
+    console.log("Starting Proxy verification.");
+
+    const { chains } = require("./scripts/utils_etherscan_config.js");
+    network_dict = chains[hre.network.name];
+    network_id = network_dict.urls.apiURL;
+
+    // example curl to create url
+    // curl - d "address=0xbc46363a7669f6e12353fa95bb067aead3675c29&expectedimplementation=0xe45a5176bc0f2c1198e2451c4e4501d4ed9b65a6" "https://api.etherscan.io/api?module=contract&action=verifyproxycontract&apikey=YourApiKeyToken"
+
     data = {
       "address": proxy,
       "expectedimplementation": implementation
     };
-    url = `${network_id}?module=contract&action=verifyproxycontract&apikey=${etherscan_api_key}`;
+    url = `${network_id}?module=contract&action=verifyproxycontract&apikey=${process.env.ETHERSCAN_API_KEY}`;
+
+    console.log("Proxy address:", proxy);
+    console.log("Implementation address:", implementation);
+    console.log("Network id:", network_id);
+    console.log("Network name:", hre.network.name);
+    console.log("URL:", url);
+    console.log("Curl:", `curl -d "address=${proxy}&expectedimplementation=${implementation}" "${url}"`);
 
     await axios({
       method: "post",
       url: url,
-      data: data,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      data: qs.stringify(data),
     })
       .then(function (response) {
         //handle success
         console.log(response.data);
       })
-      .catch(function (response) {
+      .catch(function (error) {
         //handle error
-        console.log(response);
+        console.log(error);
       });
-
-
-    // axios.post(`${network_id}/api?module=contract&action=verifyproxycontract&apikey=${etherscan_api_key}`, {
-    //   "address": proxy,
-    //   "expectedimplementation": implementation
-    // })
-    //   .then(function (response) {
-    //     console.log(response);
-    //     axios.get(`${network_id}/module=contract&action=checkproxyverification&guid${response}=&apikey=${etherscan_api_key}`)
-    //       .then(function (response_2) {
-    //         console.log(response_2);
-    //       })
-    //       .catch(function (error) {
-    //         console.log(error);
-    //       });
-    //   })
-    //   .catch(function (error) {
-    //     console.log(error);
-    //   });
   });
 
 
+task("upgradeProxyAndVerify", "Upgrades proxy with OZ upgrades plugin and verifies new implementation")
+  .addPositionalParam("proxyAddress", "Address of the proxy contract")
+  .addPositionalParam("contractFactory", "Name of the contract")
+  .addFlag("verify", "To verify new implementation with Etherscan API")
+  .setAction(async ({ proxyAddress, contractFactory, verify }) => {
+    const accounts = await ethers.getSigners();
+    var balanceOf = await ethers.provider.getBalance(accounts[0].address);
+    console.log(accounts[0].address, '(balance:', ethers.utils.formatEther(balanceOf), ')');
+    const ContractFactory = await ethers.getContractFactory(contractFactory);
+    //tx = await upgrades.prepareUpgrade(proxyAddress, ContractFactory);
+    tx = await upgrades.upgradeProxy(
+      proxyAddress,
+      ContractFactory,
+      { timeout: 120000 }
+    );
+    tx_upgrade = tx.deployTransaction;
+    await tx_upgrade.wait(1);
+    console.log("Proxy upgraded!");
+    if (verify) {
+      newImplementation = await upgrades.erc1967.getImplementationAddress(tx.address);
+      await hre.run("verify:verify", { address: newImplementation }).catch(function (error) {
+        if (error.message == 'Contract source code already verified') {
+          console.error('Contract source code already verified');
+        }
+        else {
+          console.error(error);
+        }
+      });
+    }
+  });
+
 gasPriceApis = {
+  sepolia: 'https://api-sepolia.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   goerli: 'https://api-goerli.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
-  ropsten: 'https://api-ropsten.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
-  rinkeby: 'https://api-rinkeby.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   mainnet: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
   hardhat: 'https://api.etherscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.ETHERSCAN_API_KEY,
-  moonbaseAlpha: 'https://api-moonbase.moonscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.MOONSCAN_API_KEY,
-  moonbeam: 'https://api-moonbase.moonscan.io/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.MOONSCAN_API_KEY
+  polygon: 'https://api.polygonscan.com/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.POLYGONSCAN_API_KEY,
+  polygonMumbai: 'https://api-testnet.polygonscan.com/api?module=proxy&action=eth_gasPrice&apikey=' + process.env.POLYGONSCAN_API_KEY,
 };
 
 let gasPriceApi;
-let reportGasSwitch = false;
+let reportGasSwitch = true;
 if (process.argv.includes('--network')) {
   idx = process.argv.indexOf('--network');
   gasPriceApi = gasPriceApis[process.argv[idx + 1]];
@@ -207,6 +204,7 @@ const accountkeys = [
   process.env.BACKEND_PRIVATE_KEY
 ];
 
+
 module.exports = {
   defender: {
     apiKey: process.env.DEFENDER_API_KEY,
@@ -214,7 +212,7 @@ module.exports = {
   },
   gasReporter: {
     enabled: reportGasSwitch,
-    //outputFile: './output.txt',
+    //outputFile: './gas_profile.txt',
     gasPriceApi: gasPriceApi,
     noColors: true,
     showTimeSpent: true,
@@ -229,62 +227,52 @@ module.exports = {
     },
     development: {
       url: "http://127.0.0.1:8545",
-      chainId: 31337
-    },
-    moonbeam: {
-      url: process.env.MOONBEAM_URL || '',
-      accounts: accountkeys,
-    },
-    moonbaseAlpha: {
-      url: process.env.MOONBASE_URL || '',
-      accounts: accountkeys,
+      chainId: 31337,
     },
     mainnet: {
       url: process.env.MAINNET_URL || '',
       accounts: accountkeys,
     },
-    rinkeby: {
-      url: process.env.RINKEBY_TESTNET_URL || '',
+    sepolia: {
+      url: process.env.SEPOLIA_TESTNET_URL || '',
       accounts: accountkeys,
       timeout: 5 * 60 * 1e3,
-      //gasPrice: 200e9,
-      gas: 2100000
+      //gasPrice: 200e9
     },
     goerli: {
       url: process.env.GOERLI_TESTNET_URL || '',
       accounts: accountkeys,
       timeout: 5 * 60 * 1e3,
-      //gasPrice: 200e9
-    },
-    ropsten: {
-      url: process.env.ROPSTEN_TESTNET_URL || '',
-      accounts: accountkeys,
-      timeout: 5 * 60 * 1e3,
-      gasPrice: 200e9
     },
     polygonMumbai: {
       url: process.env.POLYGON_TESTNET_URL || '',
       accounts: accountkeys,
       timeout: 5 * 60 * 1e3,
     },
+    polygon: {
+      url: process.env.POLYGON_MAINNET_URL || '',
+      accounts: accountkeys,
+      timeout: 5 * 60 * 1e3,
+    },
   },
   etherscan: {
     apiKey: {
-      goerli: process.env.ETHERSCAN_API_KEY,
-      rinkeby: process.env.ETHERSCAN_API_KEY,
-      ropsten: process.env.ETHERSCAN_API_KEY,
       mainnet: process.env.ETHERSCAN_API_KEY,
-      //moonbeam: process.env.MOONSCAN_API_KEY,
-      moonbaseAlpha: process.env.MOONSCAN_API_KEY,
+      sepolia: process.env.ETHERSCAN_API_KEY,
+      goerli: process.env.ETHERSCAN_API_KEY,
       polygonMumbai: process.env.POLYGONSCAN_API_KEY,
       polygon: process.env.POLYGONSCAN_API_KEY,
     }
   },
+  // compiler
   solidity: {
     compilers: [
       { // Proxy contracts
         version: "0.6.12",
         settings: {
+          metadata: {
+            useLiteralContent: true,
+          },
           optimizer: {
             enabled: true,
             runs: 200
@@ -292,8 +280,11 @@ module.exports = {
         }
       },
       { // Rand contracts
-        version: "0.8.2",
+        version: "0.8.4",
         settings: {
+          metadata: {
+            useLiteralContent: true,
+          },
           optimizer: {
             enabled: true,
             runs: 200
@@ -303,6 +294,41 @@ module.exports = {
     ],
 
   },
+  // paths
+  paths: {
+    sources: "./contracts/",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts",
+    deploy: "./deploy",
+    deployments: "./deployments",
+  },
+  // hardhat-deploy
+  namedAccounts: {
+    deployer: {
+      default: 0,
+    },
+    owner: {
+      default: 0,
+    },
+    alice: {
+      default: 1,
+    },
+    backend: {
+      default: 2,
+    },
+  },
+  saveDeployments: true,
+  // test
+  mocha: {
+    timeout: 5 * 60 * 1e3
+  },
+  // tenderly
+  tenderly: {
+    username: process.env.TENDERLY_USERNAME || '',
+    project: process.env.TENDERLY_PROJECT || ''
+  },
+  // dodoc docs
   dodoc: {
     runOnCompile: true,
     debugMode: false,
@@ -310,19 +336,7 @@ module.exports = {
     freshOutput: true,
     outputDir: './docs',
     include: ['ecosystem'],
+    exclude: ['/contracts/mock'],
     tableOfContents: true
   },
-  paths: {
-    sources: "./contracts/",
-    tests: "./test",
-    cache: "./cache",
-    artifacts: "./artifacts"
-  },
-  mocha: {
-    timeout: 5 * 60 * 1e3
-  },
-  tenderly: {
-    username: process.env.TENDERLY_USERNAME || '',
-    project: process.env.TENDERLY_PROJECT || ''
-  }
 };

@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
 /// @title Rand.network RewardDistributionManagerV2
 /// @author @adradr - Adrian Lenard
 /// @notice Manages the rewards of staked tokens
 /// @dev Inherited by the SafetyModuleERC20
-contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
+contract RewardDistributionManagerV2 is ContextUpgradeable {
     event AssetUpdated(address asset, uint256 newEmission);
     event AssetIndexUpdated(address asset, uint256 index);
     event UserIndexUpdated(address asset, uint256 index);
@@ -61,10 +60,10 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
     /// @param _asset address of the asset which is updated
     /// @param _totalStaked the total staked assets at the moment of update
     /// @return newIdx the updated index state of the asset
-    function _updateAssetState(address _asset, uint256 _totalStaked)
-        internal
-        returns (uint256)
-    {
+    function _updateAssetState(
+        address _asset,
+        uint256 _totalStaked
+    ) internal returns (uint256) {
         AssetData storage asset = assets[_asset];
 
         // If there are no updates since return original idx
@@ -150,7 +149,7 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         uint256 timedelta = block.timestamp - _lastUpdateTimestamp;
 
         return
-            ((_emission * timedelta * (10**PRECISION)) / _totalBalance) +
+            ((_emission * timedelta * (10 ** PRECISION)) / _totalBalance) +
             _currentIdx;
     }
 
@@ -165,7 +164,7 @@ contract RewardDistributionManagerV2 is Initializable, ContextUpgradeable {
         uint256 _assetIdx,
         uint256 _userIdx
     ) internal pure returns (uint256) {
-        return (_userBalance * (_assetIdx - _userIdx)) / (10**(PRECISION));
+        return (_userBalance * (_assetIdx - _userIdx)) / (10 ** (PRECISION));
     }
 
     /// @notice Calculates unclaimed rewards for a user over all tracked assets

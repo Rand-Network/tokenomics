@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.2;
+pragma solidity 0.8.4;
 
-//import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./ImportsManager.sol";
 import "../interfaces/IVestingControllerERC721.sol";
 
@@ -36,7 +31,7 @@ contract Governance is ImportsManager {
         symbol_ = _symbol;
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
+        address _multisigVault = REGISTRY.getAddressOf(REGISTRY.MULTISIG());
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(READER_ROLE, _multisigVault);
@@ -44,23 +39,24 @@ contract Governance is ImportsManager {
 
     /// @notice Function to override default totalSupply and point it to the totalSupply of RND token contract
     function totalSupply() public view returns (uint256) {
-        return IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN)).totalSupply();
+        return
+            IERC20Upgradeable(REGISTRY.getAddressOf(REGISTRY.RAND_TOKEN()))
+                .totalSupply();
     }
 
     /// @notice Function to summarize balances of an account over multiple Rand Ecosystem tokens
     /// @param account to summarize balance for in VC, SM and RND
-    function balanceOf(address account)
-        public
-        view
-        onlyRole(READER_ROLE)
-        returns (uint256)
-    {
+    function balanceOf(
+        address account
+    ) public view onlyRole(READER_ROLE) returns (uint256) {
         // VC balanceOf = rndTokenAmount - rndClaimedAmount - rndStakedAmount
         // tokenOfOwnerByIndex(address owner, uint256 index) → uint256
         // Returns a token ID owned by owner at a given index of its token list.
         // Use along with balanceOf to enumerate all of owner's tokens.
         uint256 _accountBalance;
-        address _vcAddress = REGISTRY.getAddress(VESTING_CONTROLLER);
+        address _vcAddress = REGISTRY.getAddressOf(
+            REGISTRY.VESTING_CONTROLLER()
+        );
         uint256 _vcBalance = IVestingControllerERC721(_vcAddress).balanceOf(
             account
         );
@@ -84,11 +80,13 @@ contract Governance is ImportsManager {
                 rndStakedAmount;
         }
         // SM balanceOf = SM.balanceOf()
-        _accountBalance += IERC20Upgradeable(REGISTRY.getAddress(SAFETY_MODULE))
-            .balanceOf(account);
+        _accountBalance += IERC20Upgradeable(
+            REGISTRY.getAddressOf(REGISTRY.SAFETY_MODULE())
+        ).balanceOf(account);
         // RND balanceOf = RND.balanceOf()
-        _accountBalance += IERC20Upgradeable(REGISTRY.getAddress(RAND_TOKEN))
-            .balanceOf(account);
+        _accountBalance += IERC20Upgradeable(
+            REGISTRY.getAddressOf(REGISTRY.RAND_TOKEN())
+        ).balanceOf(account);
 
         return _accountBalance;
     }
