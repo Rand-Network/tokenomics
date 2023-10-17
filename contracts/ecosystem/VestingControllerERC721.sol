@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.2;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -12,10 +12,24 @@ import "./SignatureVerification.sol";
 import "./ImportsManager.sol";
 import "../interfaces/IInvestorsNFT.sol";
 
+import "hardhat/console.sol";
+
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
 /// @notice Manages the vesting schedules for Rand investors
 /// @dev Interacts with Rand token and Safety Module (SM)
+
+/// VC1: No access role for this address
+/// VC2: Not accessible by msg.sender
+/// VC3: Signature invalid
+/// VC4: tokenId does not exist
+/// VC5: Only Investors NFT allowed to call
+/// VC6: nftTokenId does not exist
+/// VC7: Amount is more than claimable
+/// VC8: Amount to be claimed is more than remaining
+/// VC9: Recipient cannot be zero address
+/// VC10: Amount must be more than zero
+/// VC11: Transfer of token is prohibited until investment is totally claimed
 
 contract VestingControllerERC721 is
     ERC721Upgradeable,
@@ -94,26 +108,25 @@ contract VestingControllerERC721 is
         PERIOD_SECONDS = _periodSeconds;
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddressOf(MULTISIG);
+        address _multisigVault = REGISTRY.getAddressOf(REGISTRY.MULTISIG());
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
     }
 
     modifier onlyInvestorOrRand(uint256 tokenId) {
         bool isTokenOwner = ownerOf(tokenId) == _msgSender();
-        bool isSM = REGISTRY.getAddressOf(SAFETY_MODULE) == _msgSender();
-        bool isGov = REGISTRY.getAddressOf(GOVERNANCE) == _msgSender();
-        require(
-            isTokenOwner || isSM || isGov,
-            "VC: No access role for this address"
-        );
+        bool isSM = REGISTRY.getAddressOf(REGISTRY.SAFETY_MODULE()) ==
+            _msgSender();
+        bool isGov = REGISTRY.getAddressOf(REGISTRY.GOVERNANCE()) ==
+            _msgSender();
+        require(isTokenOwner || isSM || isGov, "VC1: Only investor or Rand");
         _;
     }
 
     modifier onlySM() {
         require(
-            REGISTRY.getAddressOf(SAFETY_MODULE) == _msgSender(),
-            "VC: Not accessible by msg.sender"
+            REGISTRY.getAddressOf(REGISTRY.SAFETY_MODULE()) == _msgSender(),
+            "VC2: Not accessible by msg.sender"
         );
         _;
     }
@@ -130,9 +143,9 @@ contract VestingControllerERC721 is
                 amount,
                 timestamp,
                 signature,
-                REGISTRY.getAddressOf(VESTING_CONTROLLER_SIGNER)
+                REGISTRY.getAddressOf(REGISTRY.VESTING_CONTROLLER_SIGNER())
             ),
-            "VC: Signature not valid"
+            "VC3: Signature invalid"
         );
         _;
     }
@@ -170,7 +183,7 @@ contract VestingControllerERC721 is
         )
     {
         // _nftTokenToVCToken[tokenId] != 0
-        require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
+        require(vestingToken[tokenId].exists, "VC4: tokenId does not exist");
 
         rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
         rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
@@ -188,12 +201,12 @@ contract VestingControllerERC721 is
         uint256 nftTokenId
     ) external view returns (uint256 rndTokenAmount, uint256 rndClaimedAmount) {
         require(
-            REGISTRY.getAddressOf("NFT") == _msgSender(),
-            "VC: Only Investors NFT allowed to call"
+            REGISTRY.getAddressOf(REGISTRY.INVESTOR_NFT()) == _msgSender(),
+            "VC5: Only Investors NFT allowed to call"
         );
         require(
             _nftTokenToVCToken[nftTokenId] != 0,
-            "VC: nftTokenId does not exist"
+            "VC6: nftTokenId does not exist"
         );
         uint256 tokenId = _nftTokenToVCToken[nftTokenId];
         rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
@@ -216,12 +229,10 @@ contract VestingControllerERC721 is
     {
         address recipient = ownerOf(tokenId);
         uint256 claimable = _calculateClaimableTokens(tokenId);
-        require(claimable >= amount, "VC: amount is more than claimable");
+        require(claimable >= amount, "VC7: Amount is more than claimable");
         _addClaimedTokens(amount, tokenId);
-        IERC20Upgradeable(REGISTRY.getAddressOf(RAND_TOKEN)).safeTransfer(
-            recipient,
-            amount
-        );
+        IERC20Upgradeable(REGISTRY.getAddressOf(REGISTRY.RAND_TOKEN()))
+            .safeTransfer(recipient, amount);
         emit ClaimedAmount(tokenId, recipient, amount);
     }
 
@@ -233,7 +244,7 @@ contract VestingControllerERC721 is
         VestingInvestment storage investment = vestingToken[tokenId];
         require(
             investment.rndTokenAmount - investment.rndClaimedAmount >= amount,
-            "VC: Amount to be claimed is more than remaining"
+            "VC8: Amount to be claimed is more than remaining"
         );
         vestingToken[tokenId].rndClaimedAmount += amount;
     }
@@ -244,7 +255,7 @@ contract VestingControllerERC721 is
     function _calculateClaimableTokens(
         uint256 tokenId
     ) internal view returns (uint256 claimableAmount) {
-        require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
+        require(vestingToken[tokenId].exists, "VC4: tokenId does not exist");
         VestingInvestment memory investment = vestingToken[tokenId];
         // If the vestingStartTime is in the future return zero
         if (block.timestamp < investment.vestingStartTime) {
@@ -291,7 +302,7 @@ contract VestingControllerERC721 is
         // Minting NFT investment for early investors
         if (nftLevel > 0) {
             uint256 nftTokenId = IInvestorsNFT(
-                REGISTRY.getAddressOf(INVESTOR_NFT)
+                REGISTRY.getAddressOf(REGISTRY.INVESTOR_NFT())
             ).mintInvestmentNFT(params.recipient, nftLevel - 1);
             // Emit event for the NFT tokenId
             emit NewInvestmentTokenMintedWithNFT(
@@ -322,7 +333,7 @@ contract VestingControllerERC721 is
         // Requiring that the recipient is not the zero address
         require(
             params.recipient != address(0),
-            "VC: Recipient cannot be zero address"
+            "VC9: Recipient cannot be zero address"
         );
         // Fetching RND from Multisig
         _getRND(params.rndTokenAmount);
@@ -375,16 +386,17 @@ contract VestingControllerERC721 is
             signatureTimestamp
         )
     {
-        require(rndTokenAmount > 0, "VC: Amount must be more than zero");
+        require(rndTokenAmount > 0, "VC10: Amount must be more than zero");
         require(
             recipient != address(0),
-            "VC: Recipient cannot be zero address"
+            "VC9: Recipient cannot be zero address"
         );
-        IERC20Upgradeable(REGISTRY.getAddressOf(RAND_TOKEN)).safeTransferFrom(
-            REGISTRY.getAddressOf(MULTISIG),
-            recipient,
-            rndTokenAmount
-        );
+        IERC20Upgradeable(REGISTRY.getAddressOf(REGISTRY.RAND_TOKEN()))
+            .safeTransferFrom(
+                REGISTRY.getAddressOf(REGISTRY.ECOSYSTEM_RESERVE()),
+                recipient,
+                rndTokenAmount
+            );
         emit InvestmentTransferred(recipient, rndTokenAmount);
     }
 
@@ -396,7 +408,7 @@ contract VestingControllerERC721 is
         uint256 tokenId,
         uint256 amount
     ) external whenNotPaused onlySM {
-        require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
+        require(vestingToken[tokenId].exists, "VC4: tokenId does not exist");
         vestingToken[tokenId].rndStakedAmount = amount;
         emit StakedAmountModified(tokenId, amount);
     }
@@ -405,11 +417,12 @@ contract VestingControllerERC721 is
     /// @dev emit FetchedRND(), needs allowance from MultiSig on initial RND supply
     /// @param amount of tokens to fetch from the Rand Multisig when minting a new investment
     function _getRND(uint256 amount) internal {
-        IERC20Upgradeable(REGISTRY.getAddressOf(RAND_TOKEN)).safeTransferFrom(
-            REGISTRY.getAddressOf(MULTISIG),
-            address(this),
-            amount
-        );
+        IERC20Upgradeable(REGISTRY.getAddressOf(REGISTRY.RAND_TOKEN()))
+            .safeTransferFrom(
+                REGISTRY.getAddressOf(REGISTRY.ECOSYSTEM_RESERVE()),
+                address(this),
+                amount
+            );
         emit FetchedRND(amount);
     }
 
@@ -456,7 +469,7 @@ contract VestingControllerERC721 is
     function burn(
         uint256 tokenId
     ) public virtual override onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(vestingToken[tokenId].exists, "VC: tokenId does not exist");
+        require(vestingToken[tokenId].exists, "VC4: tokenId does not exist");
 
         // Get still vesting tokens
         uint256 rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
@@ -467,10 +480,8 @@ contract VestingControllerERC721 is
             rndStakedAmount;
 
         // Transfer RND tokens back to the caller
-        IERC20Upgradeable(REGISTRY.getAddressOf(RAND_TOKEN)).transfer(
-            _msgSender(),
-            rndTotalAmount
-        );
+        IERC20Upgradeable(REGISTRY.getAddressOf(REGISTRY.RAND_TOKEN()))
+            .transfer(_msgSender(), rndTotalAmount);
         // Burn his investment token
         _burn(tokenId);
     }
@@ -492,7 +503,7 @@ contract VestingControllerERC721 is
         }
         require(
             isClaimedAll,
-            "VC: Transfer of token is prohibited until investment is totally claimed"
+            "VC11: Transfer of token is prohibited until investment is totally claimed"
         );
         super._transfer(from, to, tokenId);
     }
