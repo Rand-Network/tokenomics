@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.2;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
@@ -58,8 +58,10 @@ contract InvestorsNFT is
 
         REGISTRY = _registry;
 
-        address _multisigVault = REGISTRY.getAddressOf(MULTISIG);
-        address _vcAddress = REGISTRY.getAddressOf(VESTING_CONTROLLER);
+        address _multisigVault = REGISTRY.getAddressOf(REGISTRY.MULTISIG());
+        address _vcAddress = REGISTRY.getAddressOf(
+            REGISTRY.VESTING_CONTROLLER()
+        );
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
@@ -128,8 +130,9 @@ contract InvestorsNFT is
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount
-        ) = IVestingControllerERC721(REGISTRY.getAddressOf(VESTING_CONTROLLER))
-                .getInvestmentInfoForNFT(tokenId);
+        ) = IVestingControllerERC721(
+                REGISTRY.getAddressOf(REGISTRY.VESTING_CONTROLLER())
+            ).getInvestmentInfoForNFT(tokenId);
 
         bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
         require(
@@ -178,8 +181,9 @@ contract InvestorsNFT is
         (
             uint256 rndTokenAmount,
             uint256 rndClaimedAmount
-        ) = IVestingControllerERC721(REGISTRY.getAddressOf(VESTING_CONTROLLER))
-                .getInvestmentInfoForNFT(tokenId);
+        ) = IVestingControllerERC721(
+                REGISTRY.getAddressOf(REGISTRY.VESTING_CONTROLLER())
+            ).getInvestmentInfoForNFT(tokenId);
 
         TokenLevel tokenLevel = _tokenLevel[tokenId];
         bool isClaimedAll = rndTokenAmount == rndClaimedAmount;
