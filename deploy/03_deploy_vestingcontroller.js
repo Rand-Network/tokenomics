@@ -45,7 +45,8 @@ module.exports = async function (hre) {
     const networkId = await hre.network.config.chainId
     if (networkId != "31337") {
         await hre.run("etherscan-verify", { address: vc.address }); // EtherScan verification
-        await hre.run("sourcify", { contractName: "VestingControllerERC721" });   // Sourcify verification
+        await hre.run("verify-proxy", { proxy: vc.address, implementation: vc.implementation }); // OpenZeppelin proxy verification
+        await hre.run("sourcify", { address: vc.address });   // Sourcify verification
     };
 };
 

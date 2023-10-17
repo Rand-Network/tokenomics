@@ -96,5 +96,6 @@ module.exports = async function (hre) {
     process.exit(1);
 
 };
-
+module.exports.runAtTheEnd = true;
 module.exports.tags = ["Export"];
+module.exports.dependencies = ["AddressRegistry", "RandToken", "VestingControllerERC721", "InvestorsNFT"];

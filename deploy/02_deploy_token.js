@@ -7,7 +7,6 @@ module.exports = async function (hre) {
     deployments.log("Deploying Randtoken contract...");
     deployments.log("Deploying contracts with the account:", deployer);
 
-
     // Setting deploy parameters
     registry = await deployments.get("AddressRegistry");
     const { getParams } = require("./00_deploy_params.js");
@@ -46,7 +45,8 @@ module.exports = async function (hre) {
     const networkId = await hre.network.config.chainId;
     if (networkId != "31337") {
         await hre.run("etherscan-verify", { address: token.address }); // EtherScan verification
-        await hre.run("sourcify", { contractName: "RandToken" });   // Sourcify verification
+        await hre.run("verify-proxy", { proxy: token.address, implementation: token.implementation }); // OpenZeppelin proxy verification
+        await hre.run("sourcify", { address: token.address });   // Sourcify verification
     };
 
 };

@@ -3,7 +3,7 @@ const { ethers, getNamedAccounts, deployments } = require('hardhat');
 
 async function getParams() {
 
-    const { deployer } = await getNamedAccounts();
+    const { deployer, alice } = await getNamedAccounts();
 
     return {
 
@@ -12,6 +12,7 @@ async function getParams() {
             _name: "Token ERC20",
             _symbol: "tRND",
             _initialSupply: BigInt(200e6),
+            _decimal: BigInt(6),
             _registry: ""
         },
 
@@ -44,9 +45,12 @@ async function getParams() {
 
         _RegistryAddressbook: {
             _MS: deployer,
+            _MS_Final: "0x666C7D52AFa2dF4C9723dbC44ee1A8A96A5A6dB6",
+            _RND: deployer,
             _VCS: deployer,
             _SM: deployer,
             _GOV: deployer,
+            _RES: "0xC25ceA6E0cbC0986F13Cf91171f5ECF19B63e28d",
         }
     }
 }

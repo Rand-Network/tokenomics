@@ -60,6 +60,13 @@ module.exports = async function (hre) {
         params._RegistryAddressbook._GOV
     );
 
+    await execute(
+        'AddressRegistry',
+        { from: deployer },
+        'setNewAddress',
+        "RES",
+        params._RegistryAddressbook._RES
+    );
 
     const AddressRegistry = await ethers.getContractFactory("AddressRegistry");
     const registryInstance = AddressRegistry.attach(registry.address);
@@ -67,13 +74,15 @@ module.exports = async function (hre) {
     deployments.log("VCS address:", await registryInstance.getAddressOf("VCS"));
     deployments.log("SM  address:", await registryInstance.getAddressOf("SM"));
     deployments.log("GOV address:", await registryInstance.getAddressOf("GOV"));
+    deployments.log("RES address:", await registryInstance.getAddressOf("RES"));
 
 
     // Verifying contracts if not on local network
     const networkId = await hre.network.config.chainId;
     if (networkId != "31337") {
-        await hre.run("etherscan-verify", { address: registry.address });      // EtherScan verification    
-        await hre.run("sourcify", { contractName: "AddressRegistry" });     // Sourcify verification
+        await hre.run("etherscan-verify", { address: registry.address });   // EtherScan verification    
+        await hre.run("verify-proxy", { proxy: registry.address, implementation: registry.implementation });   // OpenZeppelin proxy verification
+        await hre.run("sourcify", { address: registry.address });     // Sourcify verification
     };
 
 };

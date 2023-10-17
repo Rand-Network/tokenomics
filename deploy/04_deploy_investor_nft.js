@@ -43,7 +43,8 @@ module.exports = async function (hre) {
 
     if (networkId != "31337") {
         await hre.run("etherscan-verify", { address: nft.address }); // EtherScan verification
-        await hre.run("sourcify", { contractName: "InvestorsNFT" });   // Sourcify verification
+        await hre.run("verify-proxy", { proxy: nft.address, implementation: nft.implementation }); // OpenZeppelin proxy verification
+        await hre.run("sourcify", { address: nft.address });   // Sourcify verification
     };
 };
 
