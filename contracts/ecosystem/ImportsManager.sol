@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.2;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -28,16 +28,6 @@ contract ImportsManager is
     // Registry update related variables
     event RegistryAddressUpdated(IAddressRegistry newAddress);
     IAddressRegistry public REGISTRY;
-    // Registry constants
-    string public constant MULTISIG = "MS";
-    string public constant RAND_TOKEN = "RND";
-    string public constant VESTING_CONTROLLER = "VC";
-    string public constant VESTING_CONTROLLER_SIGNER = "VCS";
-    string public constant SAFETY_MODULE = "SM";
-    string public constant ECOSYSTEM_RESERVE = "RES";
-    string public constant GOVERNANCE = "GOV";
-    string public constant INVESTOR_NFT = "NFT";
-    string public constant POOL_TOKEN = "PT";
 
     function __ImportsManager_init() internal onlyInitializing {
         __Pausable_init();
