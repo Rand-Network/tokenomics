@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.2;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
@@ -16,6 +16,8 @@ contract RandToken is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
+    uint8 private decimal;
+
     /// @notice Initializer allow proxy scheme
     /// @dev For upgradability its necessary to use initialize instead of simple constructor
     /// @param name_ Name of the token like `Rand Token ERC20`
@@ -26,6 +28,7 @@ contract RandToken is
         string memory name_,
         string memory symbol_,
         uint256 _initialSupply,
+        uint8 _decimal,
         IAddressRegistry _registry
     ) public initializer {
         __ERC20_init(name_, symbol_);
@@ -33,8 +36,9 @@ contract RandToken is
         __ImportsManager_init();
 
         REGISTRY = _registry;
+        decimal = _decimal;
 
-        address _multisigVault = REGISTRY.getAddressOf(MULTISIG);
+        address _multisigVault = REGISTRY.getAddressOf(REGISTRY.MULTISIG());
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
@@ -52,7 +56,7 @@ contract RandToken is
         uint256 amount
     ) external whenNotPaused {
         require(
-            REGISTRY.getAddressOf(SAFETY_MODULE) == _msgSender(),
+            REGISTRY.getAddressOf(REGISTRY.SAFETY_MODULE()) == _msgSender(),
             "RND: Not accessible by msg.sender"
         );
         _transfer(owner, recipient, amount);
@@ -79,6 +83,10 @@ contract RandToken is
         uint256 amount
     ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
         _burn(account, amount);
+    }
+
+    function decimals() public view virtual override returns (uint8) {
+        return decimal;
     }
 
     /// @inheritdoc	ERC20Upgradeable
