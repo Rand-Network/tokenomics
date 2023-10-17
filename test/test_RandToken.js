@@ -42,7 +42,7 @@ describe("RandToken ERC20 functions", function () {
     });
     it("Minting tokens", async function () {
         // Should mint with owner
-        const amount = BigInt("1") ** BigInt("18");
+        const amount = BigInt(1) * BigInt(10) ** await RandToken.decimals();
         const ownerBalanceBefore = await RandToken.balanceOf(deployer);
         tx = await RandToken.mint(deployer, amount);
         const ownerBalanceAfter = await RandToken.balanceOf(deployer);
@@ -57,7 +57,7 @@ describe("RandToken ERC20 functions", function () {
     });
     it("Burning tokens", async function () {
         // Should burn with owner
-        const amount = BigInt("1") ** BigInt("18");
+        const amount = BigInt(1) * BigInt(10) ** await RandToken.decimals();
         const ownerBalanceBefore = await RandToken.balanceOf(deployer);
         tx = await RandToken.increaseAllowance(deployer, amount);
         tx = await RandToken.burnFrom(deployer, amount);
@@ -71,7 +71,7 @@ describe("RandToken ERC20 functions", function () {
     });
     it("Transferring tokens", async function () {
         // Should transfer with deployer, check balances
-        const amount = BigInt("1") ** BigInt("18");
+        const amount = BigInt(1) * BigInt(10) ** await RandToken.decimals();
         const ownerBalanceBefore = await RandToken.balanceOf(deployer);
         const aliceBalanceBefore = await RandToken.balanceOf(alice);
         tx = await RandToken.transfer(alice, amount);
@@ -83,7 +83,7 @@ describe("RandToken ERC20 functions", function () {
     it("Pausing contract", async function () {
         // Should not transfer when paused
         tx = await RandToken.pause();
-        const amount = BigInt("1") ** BigInt("18");
+        const amount = BigInt(1) * BigInt(10) ** await RandToken.decimals();
         await expect(RandToken.transfer(alice, amount)).to.be.revertedWith("Pausable: paused");
 
         // Should be able to transfer when unpaused

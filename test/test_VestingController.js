@@ -138,11 +138,14 @@ describe("VC ERC721 functions", function () {
         const InvestorsNFTContract = await ethers.getContractFactory("InvestorsNFT");
         InvestorsNFT = InvestorsNFTContract.attach(InvestorsNFTDeployment.address);
 
+        // Making sure that the deployer is the RES in the AddressRegistry
+        await AddressRegistry.updateAddress("RES", deployer_signer.address);
+
         // Investment parameters
         last_block = await ethers.provider.getBlock();
         created_ts = last_block.timestamp;
         recipient = alice;
-        rndTokenAmount = ethers.parseEther("100");
+        rndTokenAmount = BigInt(100) * BigInt(10) ** await RandToken.decimals();
         vestingPeriod = BigInt("10");
         vestingStartTime = BigInt(1) //BigInt(created_ts);
         cliffPeriod = BigInt("1");
@@ -218,7 +221,7 @@ describe("VC ERC721 functions", function () {
         last_block = await ethers.provider.getBlock();
         created_ts = last_block.timestamp;
         recipient = deployer;
-        rndTokenAmount = ethers.parseEther("100");
+        rndTokenAmount = BigInt(100) * BigInt(10) ** await RandToken.decimals();
         vestingPeriod = BigInt("10");
         vestingStartTime = BigInt(created_ts);
         cliffPeriod = BigInt("3");
@@ -271,7 +274,7 @@ describe("VC ERC721 functions", function () {
         last_block = await ethers.provider.getBlock();
         created_ts = last_block.timestamp;
         recipient = deployer;
-        rndTokenAmount = ethers.parseEther("100");
+        rndTokenAmount = BigInt(100) * BigInt(10) ** await RandToken.decimals();
         vestingPeriod = BigInt("10");
         vestingStartTime = BigInt(created_ts);
         cliffPeriod = BigInt("3");
@@ -312,7 +315,7 @@ describe("VC ERC721 functions", function () {
         last_block = await ethers.provider.getBlock();
         created_ts = last_block.timestamp;
         recipient = alice;
-        rndTokenAmount = ethers.parseEther("100");
+        rndTokenAmount = BigInt(100) * BigInt(10) ** await RandToken.decimals();
         vestingPeriod = BigInt("10");
         vestingStartTime = BigInt(created_ts);
         cliffPeriod = BigInt("3");
@@ -379,7 +382,7 @@ describe("VC ERC721 functions", function () {
         last_block = await ethers.provider.getBlock();
         created_ts = last_block.timestamp;
         recipient = alice;
-        rndTokenAmount = ethers.parseEther("100");
+        rndTokenAmount = BigInt(100) * BigInt(10) ** await RandToken.decimals();
         vestingPeriod = BigInt("10");
         vestingStartTime = BigInt(created_ts);
         cliffPeriod = BigInt("3");
@@ -443,7 +446,7 @@ describe("VC ERC721 functions", function () {
         last_block = await ethers.provider.getBlock();
         created_ts = last_block.timestamp;
         recipient = alice;
-        rndTokenAmount = ethers.parseEther("100");
+        rndTokenAmount = BigInt(100) * BigInt(10) ** await RandToken.decimals();
 
         // Store balance of alice before distribution
         alice_before = await RandToken.balanceOf(alice);
