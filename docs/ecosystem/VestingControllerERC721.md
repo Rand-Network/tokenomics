@@ -1,12 +1,12 @@
 # VestingControllerERC721
 
-*@adradr - Adrian Lenard*
 
-> Rand.network ERC721 Vesting Controller contract
 
-Manages the vesting schedules for Rand investors
 
-*Interacts with Rand token and Safety Module (SM)*
+
+VC1: No access role for this address VC2: Not accessible by msg.sender VC3: Signature invalid VC4: tokenId does not exist VC5: Only Investors NFT allowed to call VC6: nftTokenId does not exist VC7: Amount is more than claimable VC8: Amount to be claimed is more than remaining VC9: Recipient cannot be zero address VC10: Amount must be more than zero VC11: Transfer of token is prohibited until investment is totally claimed
+
+
 
 ## Methods
 
@@ -27,57 +27,6 @@ function DEFAULT_ADMIN_ROLE() external view returns (bytes32)
 |---|---|---|
 | _0 | bytes32 | undefined |
 
-### ECOSYSTEM_RESERVE
-
-```solidity
-function ECOSYSTEM_RESERVE() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### GOVERNANCE
-
-```solidity
-function GOVERNANCE() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### INVESTOR_NFT
-
-```solidity
-function INVESTOR_NFT() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
 ### MINTER_ROLE
 
 ```solidity
@@ -94,23 +43,6 @@ function MINTER_ROLE() external view returns (bytes32)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bytes32 | undefined |
-
-### MULTISIG
-
-```solidity
-function MULTISIG() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
 
 ### PAUSER_ROLE
 
@@ -146,40 +78,6 @@ function PERIOD_SECONDS() external view returns (uint256)
 |---|---|---|
 | _0 | uint256 | undefined |
 
-### POOL_TOKEN
-
-```solidity
-function POOL_TOKEN() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### RAND_TOKEN
-
-```solidity
-function RAND_TOKEN() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
 ### READER_ROLE
 
 ```solidity
@@ -213,57 +111,6 @@ function REGISTRY() external view returns (contract IAddressRegistry)
 | Name | Type | Description |
 |---|---|---|
 | _0 | contract IAddressRegistry | undefined |
-
-### SAFETY_MODULE
-
-```solidity
-function SAFETY_MODULE() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### VESTING_CONTROLLER
-
-```solidity
-function VESTING_CONTROLLER() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### VESTING_CONTROLLER_SIGNER
-
-```solidity
-function VESTING_CONTROLLER_SIGNER() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
 
 ### approve
 
