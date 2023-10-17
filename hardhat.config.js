@@ -12,6 +12,7 @@ require("hardhat-deploy-ethers");
 require('dotenv').config();
 
 const axios = require('axios');
+const qs = require('qs');
 const pinataSDK = require('@pinata/sdk');
 const pinata = pinataSDK(process.env.PINATA_KEY, process.env.PINATA_SECRET);
 const prompt = require('prompt-sync')();
@@ -42,9 +43,10 @@ function findNetworInArgs(item, index, arr) {
 }
 
 // Get network id for Etherscan verification task
-var network_id;
-var chain_id;
+let network_id;
+let chain_id;
 process.argv.forEach(findNetworInArgs);
+console.log('Network id:', network_id);
 
 task("accounts", "Prints the list of accounts", async () => {
   const accounts = await ethers.getSigners();
@@ -97,7 +99,7 @@ task("flatten-clean", "Flattens and cleans soldity contract for Etherscan single
   });
 
 
-task("verifyProxy", "Verifies a proxy on Etherscan using the current network so Read/Write as proxy is avaiable")
+task("verify-proxy", "Verifies a proxy on Etherscan using the current network so Read/Write as proxy is avaiable")
   .addParam("proxy", "Address of the proxy contract to verify")
   .addParam("implementation", "Address of the implementation contract")
   .setAction(async ({ proxy, implementation }) => {
@@ -105,25 +107,43 @@ task("verifyProxy", "Verifies a proxy on Etherscan using the current network so 
       console.log("Unable to verify proxy on local development network. Exiting...");
       return;
     }
-    console.log("Starting verification.");
+    console.log("Starting Proxy verification.");
+
+    const { chains } = require("./scripts/utils_etherscan_config.js");
+    network_dict = chains[hre.network.name];
+    network_id = network_dict.urls.apiURL;
+
+    // example curl to create url
+    // curl - d "address=0xbc46363a7669f6e12353fa95bb067aead3675c29&expectedimplementation=0xe45a5176bc0f2c1198e2451c4e4501d4ed9b65a6" "https://api.etherscan.io/api?module=contract&action=verifyproxycontract&apikey=YourApiKeyToken"
+
     data = {
       "address": proxy,
       "expectedimplementation": implementation
     };
-    url = `${network_id}?module=contract&action=verifyproxycontract&apikey=${etherscan_api_key}`;
+    url = `${network_id}?module=contract&action=verifyproxycontract&apikey=${process.env.ETHERSCAN_API_KEY}`;
+
+    console.log("Proxy address:", proxy);
+    console.log("Implementation address:", implementation);
+    console.log("Network id:", network_id);
+    console.log("Network name:", hre.network.name);
+    console.log("URL:", url);
+    console.log("Curl:", `curl -d "address=${proxy}&expectedimplementation=${implementation}" "${url}"`);
 
     await axios({
       method: "post",
       url: url,
-      data: data,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      data: qs.stringify(data),
     })
       .then(function (response) {
         //handle success
         console.log(response.data);
       })
-      .catch(function (response) {
+      .catch(function (error) {
         //handle error
-        console.log(response);
+        console.log(error);
       });
   });
 
@@ -208,8 +228,6 @@ module.exports = {
     development: {
       url: "http://127.0.0.1:8545",
       chainId: 31337,
-      blockGasLimit: 120e6,
-      allowUnlimitedContractSize: true,
     },
     mainnet: {
       url: process.env.MAINNET_URL || '',
@@ -225,11 +243,6 @@ module.exports = {
       url: process.env.GOERLI_TESTNET_URL || '',
       accounts: accountkeys,
       timeout: 5 * 60 * 1e3,
-      // verify: {
-      //   etherscan: {
-      //     apiKey: process.env.ETHERSCAN_API_KEY
-      //   }
-      // }
     },
     polygonMumbai: {
       url: process.env.POLYGON_TESTNET_URL || '',
@@ -262,19 +275,19 @@ module.exports = {
           },
           optimizer: {
             enabled: true,
-            runs: 1000
+            runs: 200
           }
         }
       },
       { // Rand contracts
-        version: "0.8.2",
+        version: "0.8.4",
         settings: {
           metadata: {
             useLiteralContent: true,
           },
           optimizer: {
             enabled: true,
-            runs: 1000
+            runs: 200
           }
         }
       },

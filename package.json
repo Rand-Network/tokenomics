@@ -42,12 +42,13 @@
     "@pinata/sdk": "^1.1.23",
     "@safe-global/safe-contracts": "^1.4.1",
     "@tenderly/hardhat-tenderly": "^1.0.13",
-    "@testmachine.ai/cli": "^0.1.39",
+    "@testmachine.ai/cli": "^0.1.66",
     "abi2solidity": "^0.1.2",
     "axios": "^1.5.0",
     "dotenv": "^14.2.0",
     "hardhat-gas-reporter": "^1.0.9",
     "prompt-sync": "^4.2.0",
+    "qs": "^6.11.2",
     "solidity-coverage": "^0.8.4"
   }
 }
