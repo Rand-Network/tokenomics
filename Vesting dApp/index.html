@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IVestingControllerERC721 Interface</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/@metamask/detect-provider/dist/detect-provider.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+</head>
+<body>
+<div class="container mt-5">
+    <h2>IVestingControllerERC721 Interface</h2>
+    <div class="mb-3">
+        <label for="contractAddress" class="form-label">Contract Address:</label>
+        <input type="text" class="form-control" id="contractAddress" placeholder="Enter contract address" value="">
+    </div>
+        <div class="mb-3">
+        <label for="signerPrivateKey" class="form-label">Signature Signer Private Key:</label>
+        <input type="text" class="form-control" id="signerPrivateKey" value="">
+    </div>
+    <button onclick="connectWallet()" class="btn btn-primary">Connect Wallet</button>
+    <hr>
+<h3>Mint New Investment</h3>
+<div id="mint-section" class="mt-3">
+    <div class="mb-3">
+        <label for="signature" class="form-label">Signature:</label>
+        <input type="text" class="form-control" id="signature" placeholder="Enter signature">
+    </div>
+        <div class="mb-3">
+        <label for="recipient" class="form-label">Recipient Address:</label>
+        <input type="text" class="form-control" id="recipient" placeholder="Enter recipient address">
+    </div>
+    <div class="row">
+        <div class="col">
+            <div class="mb-3">
+                <label for="rndTokenAmount" class="form-label">RND Amount:</label>
+                <div class="input-group">
+                    <button class="btn btn-outline-secondary" type="button" id="addDecimals">+</button>
+                    <input type="number" class="form-control" id="rndTokenAmount" placeholder="Enter amount">
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="mb-3">
+                <label for="vestingPeriod" class="form-label">Vesting Period:</label>
+                <input type="number" class="form-control" id="vestingPeriod" placeholder="Enter period">
+            </div>
+        </div>
+        <div class="col">
+            <div class="mb-3">
+                <label for="vestingStartTime" class="form-label">Vesting Start Time:</label>
+                <input type="number" class="form-control" id="vestingStartTime" placeholder="Enter start time">
+            </div>
+        </div>
+        <div class="col">
+            <div class="mb-3">
+                <label for="cliffPeriod" class="form-label">Cliff Period:</label>
+                <input type="number" class="form-control" id="cliffPeriod" placeholder="Enter cliff period">
+            </div>
+        </div>
+        <div class="col">
+            <div class="mb-3">
+                <label for="nftLevel" class="form-label">NFT Level:</label>
+                <input type="number" class="form-control" id="nftLevel" placeholder="0 - none, 1,2,3,4">
+            </div>
+        </div>
+    </div>
+    <button onclick="fillSignatureField()" class="btn btn-success">Create Signature</button>
+    <button onclick="mintNewInvestment()" class="btn btn-success">Mint New Investment</button>
+</div>
+
+</div>
+
+<script>
+
+    // This will run when the page is loaded
+    document.addEventListener("DOMContentLoaded", function() {
+        const timestampInput = document.getElementById("vestingStartTime");
+        
+        // Get the current timestamp in milliseconds since the UNIX epoch
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+
+        timestampInput.value = currentTimestamp;
+    });
+
+    document.getElementById("addDecimals").addEventListener("click", function() {
+        const inputElement = document.getElementById("rndTokenAmount");
+        
+        let currentValue = parseFloat(inputElement.value);
+        if (isNaN(currentValue)) currentValue = 0;
+
+        // Get decimals from the RND contract 
+        const decimals = 6;
+
+        // Multiply the value by 10^decimals
+        const updatedValue = currentValue * Math.pow(10, decimals);
+        
+        inputElement.value = updatedValue;
+    });
+
+
+    let provider, signer, userAddress, contract, signature_timestamp;
+
+    const MintParameters = "(address recipient, uint256 rndTokenAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 cliffPeriod)";
+
+    const contractABI = [
+    `function mintNewInvestment(bytes signature, uint256 signatureTimestamp, ${MintParameters} params, uint8 nftLevel) external returns (uint256 tokenId)`,
+    "function distributeTokens(bytes signature, uint256 signatureTimestamp, address recipient, uint256 rndTokenAmount) external",
+    ];
+
+
+    async function connectWallet() {
+        const detectedProvider = await detectEthereumProvider();
+
+        if (detectedProvider) {
+            if (detectedProvider !== window.ethereum) {
+                console.error('Do you have multiple wallets installed?');
+            }
+            //provider = new ethers.providers.Web3Provider(window.ethereum);
+            provider = new ethers.BrowserProvider(window.ethereum);
+            signer = await provider.getSigner();
+
+            // Create a new signer from the private key input
+            signatureCreator = new ethers.Wallet(document.getElementById("signerPrivateKey").value);
+            userAddress = await signer.getAddress();
+            contract = new ethers.Contract(document.getElementById('contractAddress').value, contractABI, signer);
+
+            const recipientInput = document.getElementById("recipient");
+            recipientInput.value = userAddress;
+
+            console.log('Connected to', userAddress);
+            console.log('Signature creator address:', signatureCreator.address);
+        } else {
+            console.error('Please install MetaMask!');
+        }
+    }
+
+    async function getBlockTimestamp() {
+        bts = (await provider.getBlock()).timestamp;
+        ts = Math.ceil(Date.now() / 1000);
+        return Math.max(bts, ts) + 1800;
+    }
+
+    async function createSignature(signer_wallet, sender_addr, recipient_addr, amount, timestamp) {
+        // Get the chainId
+        chainId = (await provider.getNetwork()).chainId;
+        console.log('Chain ID:', chainId);
+
+        // STEP 1:
+        let messageHash = ethers.solidityPackedKeccak256(
+            ["address", "address", "uint256", "uint256", "uint256"],
+            [sender_addr, recipient_addr, amount, timestamp, chainId]
+        );
+
+        // STEP 2:
+        let messageHashBinary = ethers.getBytes(messageHash);
+
+        // STEP 3:
+        return await signer_wallet.signMessage(messageHashBinary);
+    }
+
+    async function fillSignatureField() {
+        const signatureTimestampInput = document.getElementById("signatureTimestamp");
+        const recipientInput = document.getElementById("recipient");
+        const rndTokenAmountInput = document.getElementById("rndTokenAmount");
+        const timestamp = await getBlockTimestamp();
+        
+        const signature = await createSignature(
+            signatureCreator, 
+            userAddress,
+            recipientInput.value,
+            BigInt(rndTokenAmountInput.value), 
+            BigInt(timestamp)
+            );
+
+        // Log all input values
+        console.log('Signature Signer:', signatureCreator.address);
+        console.log('Signature Sender:', userAddress)
+        console.log('Signature Recipient:', recipientInput.value);
+        console.log('Signature RND Token Amount:', rndTokenAmountInput.value);
+        console.log('Signature timestamp:', timestamp);
+        console.log('Signature:', signature);
+        
+        const signatureInput = document.getElementById("signature");
+        signatureInput.value = signature;
+        signature_timestamp = timestamp;
+    }
+
+    async function mintNewInvestment() {
+        if (!contract) {
+            console.error('Contract is not initialized.');
+            return;
+        }
+
+        try {
+            const rndTokenAmount = BigInt(document.getElementById('rndTokenAmount').value);
+            const vestingPeriod = document.getElementById('vestingPeriod').value;
+            const vestingStartTime = document.getElementById('vestingStartTime').value;
+            const cliffPeriod = document.getElementById('cliffPeriod').value;
+            const nftLevel = document.getElementById('nftLevel').value;
+
+            // Get current timestamp
+            const timestamp = signature_timestamp;
+
+            // Get signature from input
+            const signature = document.getElementById('signature').value;
+
+            const params = {
+                recipient: userAddress,
+                rndTokenAmount: (rndTokenAmount),
+                vestingPeriod: BigInt(vestingPeriod),
+                vestingStartTime: BigInt(vestingStartTime),
+                cliffPeriod: BigInt(cliffPeriod),
+            };
+            console.log('Minting new investment with params:', params);
+
+        
+            const tx = await contract.connect(signer)['mintNewInvestment(bytes,uint256,(address,uint256,uint256,uint256,uint256),uint8)'](
+                signature,
+                timestamp,
+                params,
+                nftLevel
+                //[recipient, rndTokenAmount, vestingPeriod, vestingStartTime, cliffPeriod]
+            );
+
+            const receipt = await tx.wait();
+            console.log('Mint Transaction Receipt:', receipt);
+        } catch (error) {
+            console.error('Error minting new investment:', error);
+        }
+    }
+
+</script>
+</body>
+</html>
