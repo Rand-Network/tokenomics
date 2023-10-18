@@ -1,10 +1,6 @@
-//require('@openzeppelin/hardhat-upgrades');
-//require("@openzeppelin/hardhat-defender");
-//const { AdminClient } = require('@openzeppelin/defender-admin-client');
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-ethers");
 require("hardhat-gas-reporter");
-require("@tenderly/hardhat-tenderly");
 require("solidity-coverage");
 require('@adradr/hardhat-dodoc');
 require('hardhat-deploy');
@@ -13,10 +9,6 @@ require('dotenv').config();
 
 const axios = require('axios');
 const qs = require('qs');
-const pinataSDK = require('@pinata/sdk');
-const pinata = pinataSDK(process.env.PINATA_KEY, process.env.PINATA_SECRET);
-const prompt = require('prompt-sync')();
-
 const { abi2sol, abi2json } = require("./scripts/abi2sol.js");
 const { execute, cleanFile } = require("./scripts/utils_flatten.js");
 const { chains } = require("./scripts/utils_etherscan_config.js");
@@ -46,7 +38,6 @@ function findNetworInArgs(item, index, arr) {
 let network_id;
 let chain_id;
 process.argv.forEach(findNetworInArgs);
-console.log('Network id:', network_id);
 
 task("accounts", "Prints the list of accounts", async () => {
   const accounts = await ethers.getSigners();
@@ -61,33 +52,6 @@ task("abi2interface", "Generates solidity interface contracts from ABIs, needs t
   .addPositionalParam("contract", "Solidity contract name")
   .setAction(async ({ contract }) => {
     await abi2sol(contract);
-  });
-
-task("abi2ipfs", "Uploads ABI to IPFS and pins using Pinata")
-  .addPositionalParam("contract", "Solidity contract name")
-  .setAction(async ({ contract }) => {
-    json_abi = await abi2json(contract);
-    //console.log(json_abi);
-    await pinata.pinJSONToIPFS(JSON.parse(json_abi)).then((result) => {
-      console.log(`Successful upload of ${contract} to IPFS:\nhttps://ipfs.io/ipfs/${result.IpfsHash}\n`);
-      console.log(result);
-    }).catch((err) => {
-      console.log(err);
-    });
-  });
-
-task("folder2ipfs", "Uploads JSONs to IPFS and pins using Pinata")
-  .addPositionalParam("folder", "")
-  .setAction(async ({ folder }) => {
-    project_path = process.mainModule.paths[0].split('node_modules')[0].slice(0, -1);
-    sourcePath = project_path + '/' + folder;
-    console.log(sourcePath);
-    await pinata.pinFromFS(sourcePath).then((result) => {
-      console.log(result);
-      console.log(`Successful upload of ${folder} to IPFS:\nhttps://cloudflare-ipfs.com/ipfs/${result.IpfsHash}\n`);
-    }).catch((err) => {
-      console.log(err);
-    });
   });
 
 task("flatten-clean", "Flattens and cleans soldity contract for Etherscan single file verification")
@@ -112,9 +76,6 @@ task("verify-proxy", "Verifies a proxy on Etherscan using the current network so
     const { chains } = require("./scripts/utils_etherscan_config.js");
     network_dict = chains[hre.network.name];
     network_id = network_dict.urls.apiURL;
-
-    // example curl to create url
-    // curl - d "address=0xbc46363a7669f6e12353fa95bb067aead3675c29&expectedimplementation=0xe45a5176bc0f2c1198e2451c4e4501d4ed9b65a6" "https://api.etherscan.io/api?module=contract&action=verifyproxycontract&apikey=YourApiKeyToken"
 
     data = {
       "address": proxy,
@@ -323,18 +284,13 @@ module.exports = {
   mocha: {
     timeout: 5 * 60 * 1e3
   },
-  // tenderly
-  tenderly: {
-    username: process.env.TENDERLY_USERNAME || '',
-    project: process.env.TENDERLY_PROJECT || ''
-  },
   // dodoc docs
   dodoc: {
     runOnCompile: true,
     debugMode: false,
     keepFileStructure: true,
     freshOutput: true,
-    outputDir: './docs',
+    outputDir: 'docs',
     include: ['ecosystem'],
     exclude: ['/contracts/mock'],
     tableOfContents: true
