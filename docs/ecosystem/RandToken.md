@@ -196,23 +196,6 @@ function burnFrom(address account, uint256 amount) external nonpayable
 | account | address | undefined |
 | amount | uint256 | undefined |
 
-### burnFromAdmin
-
-```solidity
-function burnFromAdmin(address account, uint256 amount) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| account | address | undefined |
-| amount | uint256 | undefined |
-
 ### decimals
 
 ```solidity
@@ -470,24 +453,6 @@ function revokeRole(bytes32 role, address account) external nonpayable
 |---|---|---|
 | role | bytes32 | undefined |
 | account | address | undefined |
-
-### safetyModuleTransfer
-
-```solidity
-function safetyModuleTransfer(address owner, address recipient, uint256 amount) external nonpayable
-```
-
-Function to allow admins to move funds without multiple approve and transfer steps
-
-*Aims to allow simple UX*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| owner | address | is the address who&#39;s tokens are approved and transferred |
-| recipient | address | is the address where to transfer the funds |
-| amount | uint256 | is the amount of transfer |
 
 ### supportsInterface
 

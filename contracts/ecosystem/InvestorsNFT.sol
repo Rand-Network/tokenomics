@@ -66,6 +66,9 @@ contract InvestorsNFT is
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _vcAddress);
+
+        // Increment counter to start from 1
+        _tokenIdCounter.increment();
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
@@ -153,7 +156,7 @@ contract InvestorsNFT is
         return baseURI;
     }
 
-    function tokenLevelToString(
+    function _tokenLevelToString(
         TokenLevel level
     ) internal pure returns (string memory) {
         if (level == TokenLevel.BLACK) {
@@ -196,7 +199,7 @@ contract InvestorsNFT is
                     : string(
                         abi.encodePacked(
                             baseURI,
-                            tokenLevelToString(tokenLevel)
+                            _tokenLevelToString(tokenLevel)
                         )
                     )
                 : "";

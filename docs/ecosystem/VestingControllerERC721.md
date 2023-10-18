@@ -341,7 +341,7 @@ function getRoleAdmin(bytes32 role) external view returns (bytes32)
 function getTokenIdOfNFT(uint256 tokenIdNFT) external view returns (uint256 tokenId)
 ```
 
-Simple utility function to get investent tokenId based on an NFT tokenId
+Simple utility function to get investment tokenId based on an NFT tokenId
 
 
 

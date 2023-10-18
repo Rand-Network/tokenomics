@@ -182,9 +182,7 @@ contract VestingControllerERC721 is
             uint256 rndStakedAmount
         )
     {
-        // _nftTokenToVCToken[tokenId] != 0
         require(vestingToken[tokenId].exists, "VC4: tokenId does not exist");
-
         rndTokenAmount = vestingToken[tokenId].rndTokenAmount;
         rndClaimedAmount = vestingToken[tokenId].rndClaimedAmount;
         vestingPeriod = vestingToken[tokenId].vestingPeriod;
@@ -426,7 +424,7 @@ contract VestingControllerERC721 is
         emit FetchedRND(amount);
     }
 
-    /// @notice Simple utility function to get investent tokenId based on an NFT tokenId
+    /// @notice Simple utility function to get investment tokenId based on an NFT tokenId
     /// @param tokenIdNFT tokenId of the early investor NFT
     /// @return tokenId of the investment
     function getTokenIdOfNFT(

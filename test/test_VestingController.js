@@ -387,7 +387,7 @@ describe("VC ERC721 functions", function () {
         vestingStartTime = BigInt(created_ts);
         cliffPeriod = BigInt("3");
         claimablePerPeriod = rndTokenAmount / BigInt(vestingPeriod);
-        nftTokenId = BigInt(0);
+        nftTokenId = BigInt(1);
         nftLevel = BigInt(1);
 
         // Mint investment token with NFT
@@ -412,7 +412,7 @@ describe("VC ERC721 functions", function () {
         e_nftTokenId_5 = logsNFT[0].args.nftTokenId;
 
         expect(e_tokenId_5).to.equal(BigInt(5));
-        expect(e_nftLevel_5).to.equal(nftLevel);
+        expect(e_nftLevel_5).to.equal(nftLevel - BigInt(1));
         expect(e_nftTokenId_5).to.equal(nftTokenId);
 
         // Call getTokenIdOfNFT to get VestingController tokenId based on NFT tokenId
@@ -426,10 +426,10 @@ describe("VC ERC721 functions", function () {
         await InvestorsNFT.setBaseURI(baseURI);
 
         // Get tokenId
-        NftTokenId = await VestingController.getTokenIdOfNFT(e_tokenId_5);
+        NftTokenId = await VestingController.getTokenIdOfNFT(e_nftTokenId_5);
 
         // Check tokenURI
-        expect(await InvestorsNFT.tokenURI(NftTokenId)).to.equal(baseURI + "BLACK");
+        expect(await InvestorsNFT.tokenURI(e_nftTokenId_5)).to.equal(baseURI + "BLACK");
     });
     it("Get investment info for NFT", async function () {
         // Get full investment info for NFT with getInvestmentInfoForNFT function

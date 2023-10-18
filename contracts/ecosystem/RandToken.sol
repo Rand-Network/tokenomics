@@ -45,23 +45,6 @@ contract RandToken is
         _mint(_multisigVault, _initialSupply * 10 ** decimals());
     }
 
-    /// @notice Function to allow admins to move funds without multiple approve and transfer steps
-    /// @dev Aims to allow simple UX
-    /// @param owner is the address who's tokens are approved and transferred
-    /// @param recipient is the address where to transfer the funds
-    /// @param amount is the amount of transfer
-    function safetyModuleTransfer(
-        address owner,
-        address recipient,
-        uint256 amount
-    ) external whenNotPaused {
-        require(
-            REGISTRY.getAddressOf(REGISTRY.SAFETY_MODULE()) == _msgSender(),
-            "RND: Not accessible by msg.sender"
-        );
-        _transfer(owner, recipient, amount);
-    }
-
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();
     }
@@ -75,14 +58,6 @@ contract RandToken is
         uint256 amount
     ) public whenNotPaused onlyRole(MINTER_ROLE) {
         _mint(to, amount);
-    }
-
-    // TODO: Rename this or change to really only allow burn from admin
-    function burnFromAdmin(
-        address account,
-        uint256 amount
-    ) public whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
-        _burn(account, amount);
     }
 
     function decimals() public view virtual override returns (uint8) {
