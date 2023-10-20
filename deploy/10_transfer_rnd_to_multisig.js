@@ -29,4 +29,4 @@ module.exports = async function (hre) {
 };
 
 module.exports.tags = ["TransferRND"];
-//module.exports.dependencies = ["RandToken", "MigrateRoles"];
+module.exports.dependencies = ["RandToken", "MigrateRoles"];
