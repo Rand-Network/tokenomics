@@ -45,12 +45,12 @@ async function getParams() {
 
         _RegistryAddressbook: {
             _MS: deployer,
-            _MS_Final: "0x09cD06b1738D9a4568044bA33b60bfdbB9cd7C16",  // Gnosis Safe Mainnet
+            _MS_Final: alice, //"0x09cD06b1738D9a4568044bA33b60bfdbB9cd7C16",  // Gnosis Safe Mainnet
             _RND: deployer,
             _VCS: deployer, // "0x608b3d5E3cE844faCFF0Be3A9b0D118210AfDcB9",  // OZ Relay Signer
             _SM: deployer,
             _GOV: deployer,
-            _RES: "0xa408C5aeD6021A0FC893532e2CDa3edB035862C6", // Fireblocks Reserves Mainnet
+            _RES: alice, //"0xa408C5aeD6021A0FC893532e2CDa3edB035862C6", // Fireblocks Reserves Mainnet
         }
     }
 }
