@@ -157,9 +157,8 @@ if (process.argv.includes('--network')) {
   reportGasSwitch = true;
 }
 
-//[owner, proxyAdmin, alice, backend] = await ethers.getSigners();
+//[deployer, alice, backend] = await ethers.getSigners();
 const accountkeys = [
-  //process.env.PROXYADMIN_PRIVATE_KEY,
   process.env.MULTISIG_PRIVATE_KEY,
   process.env.ALICE_PRIVATE_KEY,
   process.env.BACKEND_PRIVATE_KEY
