@@ -17,5 +17,9 @@ artifacts
 bin
 
 .DS_Store
-deployments/
-tenderly.yaml
+.openzeppelin/
+archive/
+.vscode/
+deployments/development
+deployments/hardhat
+deployments/goerli

@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.2;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./ImportsManager.sol";
 
 /// @title Rand.network ERC20 Token contract
@@ -20,6 +16,8 @@ contract RandToken is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
+    uint8 private decimal;
+
     /// @notice Initializer allow proxy scheme
     /// @dev For upgradability its necessary to use initialize instead of simple constructor
     /// @param name_ Name of the token like `Rand Token ERC20`
@@ -30,6 +28,7 @@ contract RandToken is
         string memory name_,
         string memory symbol_,
         uint256 _initialSupply,
+        uint8 _decimal,
         IAddressRegistry _registry
     ) public initializer {
         __ERC20_init(name_, symbol_);
@@ -37,29 +36,13 @@ contract RandToken is
         __ImportsManager_init();
 
         REGISTRY = _registry;
+        decimal = _decimal;
 
-        address _multisigVault = REGISTRY.getAddress(MULTISIG);
+        address _multisigVault = REGISTRY.getAddressOf(REGISTRY.MULTISIG());
         _grantRole(DEFAULT_ADMIN_ROLE, _multisigVault);
         _grantRole(PAUSER_ROLE, _multisigVault);
         _grantRole(MINTER_ROLE, _multisigVault);
-        _mint(_multisigVault, _initialSupply * 10**decimals());
-    }
-
-    /// @notice Function to allow admins to move funds without multiple approve and transfer steps
-    /// @dev Aims to allow simple UX
-    /// @param owner is the address who's tokens are approved and transferred
-    /// @param recipient is the address where to transfer the funds
-    /// @param amount is the amount of transfer
-    function adminTransfer(
-        address owner,
-        address recipient,
-        uint256 amount
-    ) external whenNotPaused {
-        require(
-            REGISTRY.getAddress(SAFETY_MODULE) == _msgSender(),
-            "RND: Not accessible by msg.sender"
-        );
-        _transfer(owner, recipient, amount);
+        _mint(_multisigVault, _initialSupply * 10 ** decimals());
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
@@ -70,20 +53,15 @@ contract RandToken is
         _unpause();
     }
 
-    function mint(address to, uint256 amount)
-        public
-        whenNotPaused
-        onlyRole(MINTER_ROLE)
-    {
+    function mint(
+        address to,
+        uint256 amount
+    ) public whenNotPaused onlyRole(MINTER_ROLE) {
         _mint(to, amount);
     }
 
-    function burn(address account, uint256 amount)
-        public
-        whenNotPaused
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        _burn(account, amount);
+    function decimals() public view virtual override returns (uint8) {
+        return decimal;
     }
 
     /// @inheritdoc	ERC20Upgradeable

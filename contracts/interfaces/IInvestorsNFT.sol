@@ -1,14 +1,34 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.2;
+pragma solidity 0.8.4;
 
 interface IInvestorsNFT {
-    function BURNER_ROLE() external view returns (bytes32);
+    function BPT_TOKEN() external view returns (string memory);
 
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
 
+    function ECOSYSTEM_RESERVE() external view returns (string memory);
+
+    function GOVERNANCE() external view returns (string memory);
+
+    function INVESTOR_NFT() external view returns (string memory);
+
     function MINTER_ROLE() external view returns (bytes32);
 
+    function MULTISIG() external view returns (string memory);
+
     function PAUSER_ROLE() external view returns (bytes32);
+
+    function RAND_TOKEN() external view returns (string memory);
+
+    function READER_ROLE() external view returns (bytes32);
+
+    function REGISTRY() external view returns (address);
+
+    function SAFETY_MODULE() external view returns (string memory);
+
+    function VESTING_CONTROLLER() external view returns (string memory);
+
+    function VESTING_CONTROLLER_SIGNER() external view returns (string memory);
 
     function approve(address to, uint256 tokenId) external;
 
@@ -26,10 +46,10 @@ interface IInvestorsNFT {
 
     function grantRole(bytes32 role, address account) external;
 
-    function hasRole(bytes32 role, address account)
-        external
-        view
-        returns (bool);
+    function hasRole(
+        bytes32 role,
+        address account
+    ) external view returns (bool);
 
     function initialize(
         string memory _erc721_name,
@@ -37,14 +57,15 @@ interface IInvestorsNFT {
         address _registry
     ) external;
 
-    function isApprovedForAll(address owner, address operator)
-        external
-        view
-        returns (bool);
+    function isApprovedForAll(
+        address owner,
+        address operator
+    ) external view returns (bool);
 
-    function mintInvestmentNFT(address to, uint256 tokenId)
-        external
-        returns (uint256);
+    function mintInvestmentNFT(
+        address to,
+        uint8 tokenLevel
+    ) external returns (uint256 tokenId);
 
     function name() external view returns (string memory);
 
@@ -53,6 +74,8 @@ interface IInvestorsNFT {
     function pause() external;
 
     function paused() external view returns (bool);
+
+    function proxiableUUID() external view returns (bytes32);
 
     function renounceRole(bytes32 role, address account) external;
 
@@ -68,7 +91,7 @@ interface IInvestorsNFT {
         address from,
         address to,
         uint256 tokenId,
-        bytes memory _data
+        bytes memory data
     ) external;
 
     function setApprovalForAll(address operator, bool approved) external;
@@ -81,20 +104,16 @@ interface IInvestorsNFT {
 
     function tokenByIndex(uint256 index) external view returns (uint256);
 
-    function tokenOfOwnerByIndex(address owner, uint256 index)
-        external
-        view
-        returns (uint256);
+    function tokenOfOwnerByIndex(
+        address owner,
+        uint256 index
+    ) external view returns (uint256);
 
     function tokenURI(uint256 tokenId) external view returns (string memory);
 
     function totalSupply() external view returns (uint256);
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
+    function transferFrom(address from, address to, uint256 tokenId) external;
 
     function unpause() external;
 
@@ -102,6 +121,8 @@ interface IInvestorsNFT {
 
     function upgradeTo(address newImplementation) external;
 
-    function upgradeToAndCall(address newImplementation, bytes memory data)
-        external;
+    function upgradeToAndCall(
+        address newImplementation,
+        bytes memory data
+    ) external;
 }

@@ -1,48 +1,14 @@
 # VestingControllerERC721
 
-*@adradr - Adrian Lenard*
 
-> Rand.network ERC721 Vesting Controller contract
 
-Manages the vesting schedules for Rand investors
 
-*Interacts with Rand token and Safety Module (SM)*
+
+VC1: No access role for this address VC2: Not accessible by msg.sender VC3: Signature invalid VC4: tokenId does not exist VC5: Only Investors NFT allowed to call VC6: nftTokenId does not exist VC7: Amount is more than claimable VC8: Amount to be claimed is more than remaining VC9: Recipient cannot be zero address VC10: Amount must be more than zero VC11: Transfer of token is prohibited until investment is totally claimed
+
+
 
 ## Methods
-
-### BPT_TOKEN
-
-```solidity
-function BPT_TOKEN() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### BURNER_ROLE
-
-```solidity
-function BURNER_ROLE() external view returns (bytes32)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
 
 ### DEFAULT_ADMIN_ROLE
 
@@ -61,57 +27,6 @@ function DEFAULT_ADMIN_ROLE() external view returns (bytes32)
 |---|---|---|
 | _0 | bytes32 | undefined |
 
-### ECOSYSTEM_RESERVE
-
-```solidity
-function ECOSYSTEM_RESERVE() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### GOVERNANCE
-
-```solidity
-function GOVERNANCE() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### INVESTOR_NFT
-
-```solidity
-function INVESTOR_NFT() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
 ### MINTER_ROLE
 
 ```solidity
@@ -128,40 +43,6 @@ function MINTER_ROLE() external view returns (bytes32)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bytes32 | undefined |
-
-### MULTISIG
-
-```solidity
-function MULTISIG() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### OPENZEPPELIN_DEFENDER
-
-```solidity
-function OPENZEPPELIN_DEFENDER() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
 
 ### PAUSER_ROLE
 
@@ -197,10 +78,10 @@ function PERIOD_SECONDS() external view returns (uint256)
 |---|---|---|
 | _0 | uint256 | undefined |
 
-### RAND_TOKEN
+### READER_ROLE
 
 ```solidity
-function RAND_TOKEN() external view returns (string)
+function READER_ROLE() external view returns (bytes32)
 ```
 
 
@@ -212,7 +93,7 @@ function RAND_TOKEN() external view returns (string)
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | string | undefined |
+| _0 | bytes32 | undefined |
 
 ### REGISTRY
 
@@ -230,40 +111,6 @@ function REGISTRY() external view returns (contract IAddressRegistry)
 | Name | Type | Description |
 |---|---|---|
 | _0 | contract IAddressRegistry | undefined |
-
-### SAFETY_MODULE
-
-```solidity
-function SAFETY_MODULE() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
-
-### VESTING_CONTROLLER
-
-```solidity
-function VESTING_CONTROLLER() external view returns (string)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | string | undefined |
 
 ### approve
 
@@ -327,15 +174,15 @@ function baseURI() external view returns (string)
 function burn(uint256 tokenId) external nonpayable
 ```
 
+Burn vesting token by admin (avaiable only for DEFAULT_ADMIN_ROLE)
 
-
-*Burns `tokenId`. See {ERC721-_burn}. Requirements: - The caller must own `tokenId` or be an approved operator.*
+*Returns collateral tokens to the caller*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| tokenId | uint256 | undefined |
+| tokenId | uint256 | to be burned |
 
 ### claimTokens
 
@@ -357,17 +204,19 @@ Claim function to withdraw vested tokens
 ### distributeTokens
 
 ```solidity
-function distributeTokens(address recipient, uint256 rndTokenAmount) external nonpayable
+function distributeTokens(bytes signature, uint256 signatureTimestamp, address recipient, uint256 rndTokenAmount) external nonpayable
 ```
 
 Transfers RND Tokens to non-vesting investor, its used to distribute public sale tokens by backend
 
-*emits InvestmentTransferred() and only accessible with MINTER_ROLE*
+*emits InvestmentTransferred() and only accessible with signature from Rand*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
+| signature | bytes | undefined |
+| signatureTimestamp | uint256 | undefined |
 | recipient | address | is the address to whom the token should be transferred to |
 | rndTokenAmount | uint256 | is the amount of the total investment |
 
@@ -439,7 +288,7 @@ View function to get information about a vested investment token
 | rndClaimedAmount | uint256 | amounts of tokens an investor already claimed and received |
 | vestingPeriod | uint256 | number of periods the investment is vested for |
 | vestingStartTime | uint256 | the timestamp when the vesting starts to kick-in |
-| rndStakedAmount | uint256 | undefined |
+| rndStakedAmount | uint256 | the amount of tokens an investor is staking |
 
 ### getInvestmentInfoForNFT
 
@@ -492,7 +341,7 @@ function getRoleAdmin(bytes32 role) external view returns (bytes32)
 function getTokenIdOfNFT(uint256 tokenIdNFT) external view returns (uint256 tokenId)
 ```
 
-Simple utility function to get investent tokenId based on an NFT tokenId
+Simple utility function to get investment tokenId based on an NFT tokenId
 
 
 
@@ -516,7 +365,7 @@ function grantRole(bytes32 role, address account) external nonpayable
 
 
 
-*Grants `role` to `account`. If `account` had not been already granted `role`, emits a {RoleGranted} event. Requirements: - the caller must have ``role``&#39;s admin role.*
+*Grants `role` to `account`. If `account` had not been already granted `role`, emits a {RoleGranted} event. Requirements: - the caller must have ``role``&#39;s admin role. May emit a {RoleGranted} event.*
 
 #### Parameters
 
@@ -593,55 +442,27 @@ function isApprovedForAll(address owner, address operator) external view returns
 ### mintNewInvestment
 
 ```solidity
-function mintNewInvestment(address recipient, uint256 rndTokenAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 cliffPeriod, uint256 nftTokenId) external nonpayable returns (uint256 tokenId)
+function mintNewInvestment(bytes signature, uint256 signatureTimestamp, VestingControllerERC721.MintParameters params, uint8 nftLevel) external nonpayable returns (uint256 tokenId)
 ```
 
-Mints a token and associates an investment to it and sets tokenURI and also mints an investors NFT
 
-*emits NewInvestmentTokenMinted() and only accessible with MINTER_ROLE*
+
+
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| recipient | address | is the address to whom the investment token should be minted to |
-| rndTokenAmount | uint256 | is the amount of the total investment |
-| vestingPeriod | uint256 | number of periods the investment is vested for |
-| vestingStartTime | uint256 | the timestamp when the vesting starts to kick-in |
-| cliffPeriod | uint256 | is the number of periods the vestingStartTime is shifted by |
-| nftTokenId | uint256 | is the tokenId to be used on the investors NFT when minting |
+| signature | bytes | undefined |
+| signatureTimestamp | uint256 | undefined |
+| params | VestingControllerERC721.MintParameters | undefined |
+| nftLevel | uint8 | undefined |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| tokenId | uint256 | the id of the minted token on VC |
-
-### mintNewInvestment
-
-```solidity
-function mintNewInvestment(address recipient, uint256 rndTokenAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 cliffPeriod) external nonpayable returns (uint256 tokenId)
-```
-
-Mints a token and associates an investment to it and sets tokenURI
-
-*emits NewInvestmentTokenMinted() and only accessible with MINTER_ROLE*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| recipient | address | is the address to whom the investment token should be minted to |
-| rndTokenAmount | uint256 | is the amount of the total investment |
-| vestingPeriod | uint256 | number of periods the investment is vested for |
-| vestingStartTime | uint256 | the timestamp when the vesting starts to kick-in |
-| cliffPeriod | uint256 | is the number of periods the vestingStartTime is shifted by |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| tokenId | uint256 | the id of the minted token on VC |
+| tokenId | uint256 | undefined |
 
 ### modifyStakedAmount
 
@@ -727,6 +548,23 @@ function paused() external view returns (bool)
 |---|---|---|
 | _0 | bool | undefined |
 
+### proxiableUUID
+
+```solidity
+function proxiableUUID() external view returns (bytes32)
+```
+
+
+
+*Implementation of the ERC1822 {proxiableUUID} function. This returns the storage slot used by the implementation. It is used to validate the implementation&#39;s compatibility when performing an upgrade. IMPORTANT: A proxy pointing at a proxiable contract should not be considered proxiable itself, because this risks bricking a proxy that upgrades to it, by delegating to itself until out of gas. Thus it is critical that this function revert if invoked through a proxy. This is guaranteed by the `notDelegated` modifier.*
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
 ### renounceRole
 
 ```solidity
@@ -735,7 +573,7 @@ function renounceRole(bytes32 role, address account) external nonpayable
 
 
 
-*Revokes `role` from the calling account. Roles are often managed via {grantRole} and {revokeRole}: this function&#39;s purpose is to provide a mechanism for accounts to lose their privileges if they are compromised (such as when a trusted device is misplaced). If the calling account had been revoked `role`, emits a {RoleRevoked} event. Requirements: - the caller must be `account`.*
+*Revokes `role` from the calling account. Roles are often managed via {grantRole} and {revokeRole}: this function&#39;s purpose is to provide a mechanism for accounts to lose their privileges if they are compromised (such as when a trusted device is misplaced). If the calling account had been revoked `role`, emits a {RoleRevoked} event. Requirements: - the caller must be `account`. May emit a {RoleRevoked} event.*
 
 #### Parameters
 
@@ -752,7 +590,7 @@ function revokeRole(bytes32 role, address account) external nonpayable
 
 
 
-*Revokes `role` from `account`. If `account` had been granted `role`, emits a {RoleRevoked} event. Requirements: - the caller must have ``role``&#39;s admin role.*
+*Revokes `role` from `account`. If `account` had been granted `role`, emits a {RoleRevoked} event. Requirements: - the caller must have ``role``&#39;s admin role. May emit a {RoleRevoked} event.*
 
 #### Parameters
 
@@ -782,7 +620,7 @@ function safeTransferFrom(address from, address to, uint256 tokenId) external no
 ### safeTransferFrom
 
 ```solidity
-function safeTransferFrom(address from, address to, uint256 tokenId, bytes _data) external nonpayable
+function safeTransferFrom(address from, address to, uint256 tokenId, bytes data) external nonpayable
 ```
 
 
@@ -796,7 +634,7 @@ function safeTransferFrom(address from, address to, uint256 tokenId, bytes _data
 | from | address | undefined |
 | to | address | undefined |
 | tokenId | uint256 | undefined |
-| _data | bytes | undefined |
+| data | bytes | undefined |
 
 ### setApprovalForAll
 
@@ -1155,6 +993,22 @@ event FetchedRND(uint256 amount)
 |---|---|---|
 | amount  | uint256 | undefined |
 
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
+
 ### InvestmentTransferred
 
 ```solidity
@@ -1175,7 +1029,7 @@ event InvestmentTransferred(address recipient, uint256 amount)
 ### NewInvestmentTokenMinted
 
 ```solidity
-event NewInvestmentTokenMinted(address recipient, uint256 rndTokenAmount, uint256 vestingPeriod, uint256 vestingStartTime, uint256 cliffPeriod, uint256 mintTimestamp, uint256 tokenId)
+event NewInvestmentTokenMinted(VestingControllerERC721.VestingInvestment investment, uint256 tokenId)
 ```
 
 
@@ -1186,13 +1040,26 @@ event NewInvestmentTokenMinted(address recipient, uint256 rndTokenAmount, uint25
 
 | Name | Type | Description |
 |---|---|---|
-| recipient  | address | undefined |
-| rndTokenAmount  | uint256 | undefined |
-| vestingPeriod  | uint256 | undefined |
-| vestingStartTime  | uint256 | undefined |
-| cliffPeriod  | uint256 | undefined |
-| mintTimestamp  | uint256 | undefined |
+| investment  | VestingControllerERC721.VestingInvestment | undefined |
 | tokenId  | uint256 | undefined |
+
+### NewInvestmentTokenMintedWithNFT
+
+```solidity
+event NewInvestmentTokenMintedWithNFT(uint256 nftTokenId, uint256 tokenId, uint8 nftLevel)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| nftTokenId  | uint256 | undefined |
+| tokenId  | uint256 | undefined |
+| nftLevel  | uint8 | undefined |
 
 ### Paused
 
@@ -1296,6 +1163,27 @@ event RoleRevoked(bytes32 indexed role, address indexed account, address indexed
 | role `indexed` | bytes32 | undefined |
 | account `indexed` | address | undefined |
 | sender `indexed` | address | undefined |
+
+### SignatureUsed
+
+```solidity
+event SignatureUsed(address sender, address recipient, uint256 amount, uint256 timestamp, uint256 chainId, bytes signature)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| sender  | address | undefined |
+| recipient  | address | undefined |
+| amount  | uint256 | undefined |
+| timestamp  | uint256 | undefined |
+| chainId  | uint256 | undefined |
+| signature  | bytes | undefined |
 
 ### StakedAmountModified
 
