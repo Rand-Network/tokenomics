@@ -1,0 +1,11 @@
+{
+    "name": "Rand | Claimed",
+    "description": "A token of gratitude for our early investors, symbolizing steadfast support and pioneering spirit.",
+    "image": "https://ipfs.io/ipfs/QmYfimJQqZPUq9KotNyMy1QAdtTm3hqNaryGJrXjHbTHcK/Rand_Empty.png",
+    "attributes": [
+        {
+            "trait_type": "Status",
+            "value": "Claimed"
+        }
+    ]
+}
