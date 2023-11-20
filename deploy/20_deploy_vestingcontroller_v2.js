@@ -44,7 +44,7 @@ module.exports = async function (hre) {
     // Verifying contracts if not on local network
     if (hre.network.config.chainId != "31337") {
         await hre.run("etherscan-verify", { address: vc_v2.address }); // EtherScan verification
-        await hre.run("verify-proxy", { proxy: vc_v2.address, implementation: vc.implementation }); // OpenZeppelin proxy verification
+        await hre.run("verify-proxy", { proxy: VestingControllerDeployment.address, implementation: vc_v2.address }); // OpenZeppelin proxy verification
         await hre.run("sourcify", { address: vc_v2.address });   // Sourcify verification
     };
 
