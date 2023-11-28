@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface IVestingControllerERC721{
+interface IVestingControllerERC721_V2{
   struct MintParameters {
         address recipient;
         uint256 rndTokenAmount;

@@ -2,94 +2,15 @@ const { expect } = require("chai");
 const { ethers, getNamedAccounts, deployments } = require('hardhat');
 const { getParams } = require("../deploy/00_deploy_params.js");
 const { extendConfig } = require("hardhat/config.js");
+const {
+    getUUPSImplementationAddress,
+    mintInvestment_v1,
+    mintInvestment_v2,
+    distributeTokens_v1,
+    distributeTokens_v2,
+    bigIntToHex
+} = require("../test/utils");
 
-function bigIntToHex(bigIntValue) {
-    return '0x' + bigIntValue.toString(16);
-}
-
-async function getBlockTimestamp() {
-    bts = (await ethers.provider.getBlock()).timestamp;
-    ts = Math.ceil(Date.now() / 1000);
-    return Math.max(bts, ts) + 1800;
-}
-
-async function createSignature(signer_wallet, sender_addr, recipient_addr, amount, timestamp) {
-
-    // Get the chainId
-    chainId = (await ethers.provider.getNetwork()).chainId;
-
-    // STEP 1:
-    // building hash has to come from system address
-    // 32 bytes of data
-    let messageHash = ethers.solidityPackedKeccak256(
-        ["address", "address", "uint256", "uint256", "uint256"],
-        [sender_addr, recipient_addr, amount, timestamp, chainId]
-    );
-
-    // STEP 2: 32 bytes of data in Uint8Array
-    let messageHashBinary = ethers.getBytes(messageHash);
-
-    // STEP 3: To sign the 32 bytes of data, make sure you pass in the data
-    return await signer_wallet.signMessage(messageHashBinary);
-}
-
-async function mintInvestment(
-    VestingController,
-    signer,
-    sender,
-    recipient,
-    rndTokenAmount,
-    vestingPeriod,
-    vestingStartTime,
-    cliffPeriod,
-    nftLevel = 0,
-) {
-
-    // Wait 500ms to avoid nonce issues
-    await new Promise(r => setTimeout(r, 1000));
-
-    // Get current timestamp
-    timestamp = await getBlockTimestamp();
-
-    // Create signature
-    const signature = await createSignature(signer, sender.address, recipient, rndTokenAmount, timestamp);
-
-
-    // Calling the function using the specific method signature
-    return await VestingController.connect(sender)['mintNewInvestment(bytes,uint256,(address,uint256,uint256,uint256,uint256),uint8)'](
-        signature,
-        timestamp,
-        [recipient, rndTokenAmount, vestingPeriod, vestingStartTime, cliffPeriod],
-        nftLevel
-    );
-
-}
-
-
-async function distributeTokens(
-    VestingController,
-    signer,
-    sender,
-    recipient,
-    rndTokenAmount
-) {
-    // Wait 500ms to avoid nonce issues
-    await new Promise(r => setTimeout(r, 1000));
-
-    // Get current timestamp
-    timestamp = await getBlockTimestamp();
-
-    // Create signature
-    const signature = await createSignature(signer, sender.address, recipient, rndTokenAmount, timestamp);
-
-    // Calling the function using the specific method signature
-    return await VestingController.connect(sender)['distributeTokens(bytes,uint256,address,uint256)'](
-        signature,
-        timestamp,
-        recipient,
-        rndTokenAmount)
-
-}
 
 
 describe("VC ERC721 functions", function () {
@@ -98,6 +19,8 @@ describe("VC ERC721 functions", function () {
     let backend;
     let RandToken;
     let VestingController;
+    let VestingController_V1;
+    let VestingController_V2;
     let rndTokenAmount;
     let e_tokenId_1;
     let e_tokenId_2;
@@ -156,7 +79,7 @@ describe("VC ERC721 functions", function () {
         tx = await RandToken.increaseAllowance(await VestingController.getAddress(), rndTokenAmount);
 
         // Minting a sample investment token
-        mint_tx_1 = await mintInvestment(
+        mint_tx_1 = await mintInvestment_v1(
             VestingController,
             deployer_signer,
             alice_signer,
@@ -167,7 +90,7 @@ describe("VC ERC721 functions", function () {
             cliffPeriod,
         );
 
-        mint_tx_2 = await mintInvestment(
+        mint_tx_2 = await mintInvestment_v1(
             VestingController,
             deployer_signer,
             alice_signer,
@@ -186,6 +109,7 @@ describe("VC ERC721 functions", function () {
         var rc = await mint_tx_2.wait(1);
         var logs = await VestingController.queryFilter(VestingController.filters.NewInvestmentTokenMinted(), rc.blockNumber, rc.blockNumber);
         e_tokenId_1 = logs[0].args.tokenId;
+
     });
     it("Checking name, symbol and supply", async function () {
         params = await getParams();
@@ -227,9 +151,7 @@ describe("VC ERC721 functions", function () {
         cliffPeriod = BigInt("3");
         claimablePerPeriod = rndTokenAmount / BigInt(vestingPeriod);
 
-        console.log()
-
-        mint_tx_3 = await mintInvestment(
+        mint_tx_3 = await mintInvestment_v1(
             VestingController,
             deployer_signer,
             alice_signer,
@@ -279,7 +201,7 @@ describe("VC ERC721 functions", function () {
         vestingStartTime = BigInt(created_ts);
         cliffPeriod = BigInt("3");
         claimablePerPeriod = rndTokenAmount / BigInt(vestingPeriod);
-        mint_tx_4 = await mintInvestment(
+        mint_tx_4 = await mintInvestment_v1(
             VestingController,
             deployer_signer,
             alice_signer,
@@ -320,7 +242,7 @@ describe("VC ERC721 functions", function () {
         vestingStartTime = BigInt(created_ts);
         cliffPeriod = BigInt("3");
         claimablePerPeriod = rndTokenAmount / BigInt(vestingPeriod);
-        mint_tx_5 = await mintInvestment(
+        mint_tx_5 = await mintInvestment_v1(
             VestingController,
             deployer_signer,
             alice_signer,
@@ -392,7 +314,7 @@ describe("VC ERC721 functions", function () {
 
         // Mint investment token with NFT
         tx = await RandToken.increaseAllowance(await VestingController.getAddress(), rndTokenAmount);
-        mint_tx_5 = await mintInvestment(
+        mint_tx_5 = await mintInvestment_v1(
             VestingController,
             deployer_signer,
             alice_signer,
@@ -440,6 +362,8 @@ describe("VC ERC721 functions", function () {
             expect(var1).to.be.equal(rndTokenAmount);
             expect(var2).to.be.equal(BigInt(0)); //rndClaimedAmount
         });
+        // Set back NFT address in Registry
+        await AddressRegistry.updateAddress("NFT", await InvestorsNFT.getAddress());
     });
     it("Distribute tokens to investors", async function () {
         // Mint new non-vested investment token
@@ -453,7 +377,7 @@ describe("VC ERC721 functions", function () {
 
         // Distribute tokens
         tx = await RandToken.increaseAllowance(await VestingController.getAddress(), rndTokenAmount);
-        mint_tx_6 = await distributeTokens(
+        mint_tx_6 = await distributeTokens_v1(
             VestingController,
             deployer_signer,
             alice_signer,
@@ -472,5 +396,112 @@ describe("VC ERC721 functions", function () {
         expect(alice_before + rndTokenAmount).to.equal(alice_after);
 
     });
-});
+    it("Upgrade VestingControllerERC721 to V2", async function () {
+        // Deploying VestingController_V2 via Fixture
+        await deployments.fixture(["VestingControllerERC721_V2"], { keepExistingDeployments: true });
 
+        vc_v1 = await deployments.get("VestingControllerERC721");
+        vc_v2 = await deployments.get("VestingControllerERC721_V2");
+
+        const VestingControllerDeployment = await deployments.get("VestingControllerERC721");
+        const VestingControllerContract = await ethers.getContractFactory("VestingControllerERC721");
+        VestingController_V1 = VestingControllerContract.attach(VestingControllerDeployment.address);
+
+        const VestingController_V2_Deployment = await deployments.get("VestingControllerERC721_V2");
+        const VestingController_V2_Contract = await ethers.getContractFactory("VestingControllerERC721_V2");
+        VestingController_V2 = VestingController_V2_Contract.attach(VestingController_V2_Deployment.address);
+
+        // Check if the upgrade was successful
+        expect(await VestingController.name()).to.equal(params._VCdeployParams._name);
+        expect(await VestingController.symbol()).to.equal(params._VCdeployParams._symbol);
+        expect(await VestingController.totalSupply()).to.equal(BigInt(2));
+
+        // Should only have 2 investment tokens left after burning 3 of them
+        expect(await VestingController.totalSupply()).to.equal(BigInt(2));
+
+        // Console log tokenId 0 using getInvestmentInfo
+        await VestingController.getInvestmentInfo(NftTokenId).then(function (res) {
+            var var1 = res[0];
+            var var2 = res[1];
+            var var3 = res[2];
+            var var4 = res[3];
+            expect(var1).to.be.equal(rndTokenAmount);
+            expect(var2).to.be.equal(BigInt(0)); //rndClaimedAmount
+            expect(var3).to.be.equal(vestingPeriod);
+            expect(var4).to.be.equal(vestingStartTime + BigInt(cliffPeriod));
+        });
+
+        // Check that implementation V1 is different from V2
+        expect(VestingControllerDeployment.implementation).to.not.equal(VestingController_V2_Deployment.address);
+    });
+
+    it("Mint investment with V2", async function () {
+        // Mint a new investment token with NFT
+        // solidity timestamp
+        last_block = await ethers.provider.getBlock();
+        created_ts = last_block.timestamp;
+        recipient = alice;
+        rndTokenAmount = BigInt(100) * BigInt(10) ** await RandToken.decimals();
+        vestingPeriod = BigInt("10");
+        vestingStartTime = BigInt(created_ts);
+        cliffPeriod = BigInt("3");
+        claimablePerPeriod = rndTokenAmount / BigInt(vestingPeriod);
+        nftTokenId = BigInt(1);
+        nftLevel = BigInt(1);
+
+        // Mint investment token with NFT
+        tx = await RandToken.increaseAllowance(await VestingController.getAddress(), rndTokenAmount);
+        mint_tx_7 = await mintInvestment_v2(
+            VestingController,
+            deployer_signer,
+            alice_signer,
+            recipient,
+            rndTokenAmount,
+            vestingPeriod,
+            vestingStartTime,
+            cliffPeriod,
+            nftLevel
+        );
+
+        // Parse logs
+        var rc = await mint_tx_7.wait(1);
+        var logsNFT = await VestingController.queryFilter(VestingController.filters.NewInvestmentTokenMintedWithNFT(), rc.blockNumber, rc.blockNumber);
+        e_tokenId_6 = logsNFT[0].args.tokenId;
+        e_nftLevel_6 = logsNFT[0].args.nftLevel;
+        e_nftTokenId_6 = logsNFT[0].args.nftTokenId;
+
+        expect(e_tokenId_6).to.equal(BigInt(6));
+        expect(e_nftLevel_6).to.equal(nftLevel - BigInt(1));
+
+    });
+    it("Distribute tokens to investors with V2", async function () {
+        // Mint new non-vested investment token
+        last_block = await ethers.provider.getBlock();
+        created_ts = last_block.timestamp;
+        recipient = alice;
+        rndTokenAmount = BigInt(100) * BigInt(10) ** await RandToken.decimals();
+
+        // Store balance of alice before distribution
+        alice_before = await RandToken.balanceOf(alice);
+
+        // Distribute tokens
+        tx = await RandToken.increaseAllowance(await VestingController.getAddress(), rndTokenAmount);
+        mint_tx_8 = await distributeTokens_v2(
+            VestingController,
+            deployer_signer,
+            alice_signer,
+            recipient,
+            rndTokenAmount,
+        );
+
+        // Parse logs
+        var rc = await mint_tx_8.wait(1);
+        var logs = await VestingController.queryFilter(VestingController.filters.InvestmentTransferred(), rc.blockNumber, rc.blockNumber);
+        expect(logs[0].args.recipient).to.equal(alice);
+        expect(logs[0].args.amount).to.equal(rndTokenAmount);
+
+        // Assert that the correct amount of tokens was distributed
+        alice_after = await RandToken.balanceOf(alice);
+        expect(alice_before + rndTokenAmount).to.equal(alice_after);
+    });
+});

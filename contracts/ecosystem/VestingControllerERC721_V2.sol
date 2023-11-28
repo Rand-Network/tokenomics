@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Enumer
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-import "./SignatureVerification.sol";
+import "./SignatureVerification_V2.sol";
 import "./ImportsManager.sol";
 import "../interfaces/IInvestorsNFT.sol";
 
@@ -29,12 +29,12 @@ import "../interfaces/IInvestorsNFT.sol";
 /// VC10: Amount must be more than zero
 /// VC11: Transfer of token is prohibited until investment is totally claimed
 
-contract VestingControllerERC721 is
+contract VestingControllerERC721_V2 is
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
     ERC721BurnableUpgradeable,
     ImportsManager,
-    SignatureVerification
+    SignatureVerification_V2
 {
     // Events
     event BaseURIChanged(string baseURI);
@@ -132,13 +132,23 @@ contract VestingControllerERC721 is
     modifier verifySignature(
         bytes memory signature,
         address recipient,
-        uint256 amount,
+        uint256 rndAmount,
+        uint256 vestingStartTime,
+        uint256 vestingPeriod,
+        uint256 cliffPeriod,
+        uint8 nftLevel,
         uint256 timestamp
     ) {
+
+
         require(
             _redeemSignature(
                 recipient,
-                amount,
+                rndAmount,
+                vestingStartTime,
+                vestingPeriod,
+                cliffPeriod,
+                nftLevel,
                 timestamp,
                 signature,
                 REGISTRY.getAddressOf(REGISTRY.VESTING_CONTROLLER_SIGNER())
@@ -279,6 +289,7 @@ contract VestingControllerERC721 is
         }
     }
 
+
     /// @notice Mints a token and associates an investment to it and sets tokenURI and also mints an investors NFT
     /// @dev emits NewInvestmentTokenMinted() and only accessible with signature from Rand
     /// @param signature is the signature which is used to verify the minting
@@ -291,7 +302,17 @@ contract VestingControllerERC721 is
         uint256 signatureTimestamp,
         MintParameters memory params,
         uint8 nftLevel
-    ) public whenNotPaused nonReentrant returns (uint256 tokenId) {
+    ) public whenNotPaused nonReentrant verifySignature(
+            signature,
+            params.recipient,
+            params.rndTokenAmount,
+            params.vestingStartTime,
+            params.vestingPeriod,
+            params.cliffPeriod,
+            nftLevel,
+            signatureTimestamp
+        )
+    returns (uint256 tokenId) {
         // Minting vesting investment inside VC
         tokenId = _mintNewInvestment(signature, signatureTimestamp, params);
 
@@ -317,14 +338,7 @@ contract VestingControllerERC721 is
         uint256 signatureTimestamp,
         MintParameters memory params
     )
-        internal
-        verifySignature(
-            signature,
-            params.recipient,
-            params.rndTokenAmount,
-            signatureTimestamp
-        )
-        returns (uint256 tokenId)
+        internal returns (uint256 tokenId)
     {
         // Requiring that the recipient is not the zero address
         require(
@@ -361,7 +375,7 @@ contract VestingControllerERC721 is
         vestingToken[tokenId] = investment;
         emit NewInvestmentTokenMinted(investment, tokenId);
     }
-
+    
     /// @notice Transfers RND Tokens to non-vesting investor, its used to distribute public sale tokens by backend
     /// @dev emits InvestmentTransferred() and only accessible with signature from Rand
     /// @param recipient is the address to whom the token should be transferred to
@@ -379,6 +393,10 @@ contract VestingControllerERC721 is
             signature,
             recipient,
             rndTokenAmount,
+            0,
+            0,
+            0,
+            0,
             signatureTimestamp
         )
     {
@@ -395,7 +413,7 @@ contract VestingControllerERC721 is
             );
         emit InvestmentTransferred(recipient, rndTokenAmount);
     }
-
+    
     /// @notice Function for Safety Module to increase the staked RND amount
     /// @dev emits StakedAmountModifier() and only accessible by the Safety Module contract via SM_ROLE
     /// @param tokenId the tokenId for which to increase staked amount
