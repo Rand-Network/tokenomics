@@ -1,0 +1,15 @@
+{
+    "name": "Rand | Gold Level",
+    "description": "A token of gratitude for our early investors, symbolizing steadfast support and pioneering spirit.",
+    "image": "https://ipfs.io/ipfs/QmYfimJQqZPUq9KotNyMy1QAdtTm3hqNaryGJrXjHbTHcK/Rand_Gold-active.png",
+    "attributes": [
+        {
+            "trait_type": "Level",
+            "value": "Gold"
+        },
+        {
+            "trait_type": "Status",
+            "value": "Vesting in progress"
+        }
+    ]
+}
