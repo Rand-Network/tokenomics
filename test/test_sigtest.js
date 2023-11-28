@@ -49,8 +49,6 @@ async function createSignature_v2(signer_wallet, sender_addr, recipient_addr, rn
     return await signer_wallet.signMessage(messageHashBinary);
 }
 
-
-
 describe("SigTest", function () {
 
     before(async function () {
@@ -115,7 +113,6 @@ describe("SigTest", function () {
         signature = createSignature_v1(adminWallet, userWallet.address, recipient, amount, timestamp);
         await expect(sigTest.connect(userWallet).redeemSignatureTest(recipient, amount, timestamp, signature)).to.be.revertedWith("VC: Signature has expired");
     });
-
 
 });
 
@@ -188,6 +185,5 @@ describe("SigTestV2", function () {
         signature = createSignature_v2(adminWallet, userWallet.address, recipient, amount, vestingStartTime, vestingPeriod, cliffPeriod, nftLevel, timestamp);
         await expect(sigTest.connect(userWallet).redeemSignatureTest(recipient, amount, vestingStartTime, vestingPeriod, cliffPeriod, nftLevel, timestamp, signature)).to.be.revertedWith("VC: Signature has expired");
     });
-
 
 });

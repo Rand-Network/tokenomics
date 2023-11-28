@@ -12,6 +12,8 @@ import "./SignatureVerification.sol";
 import "./ImportsManager.sol";
 import "../interfaces/IInvestorsNFT.sol";
 
+import "hardhat/console.sol";
+
 /// @title Rand.network ERC721 Vesting Controller contract
 /// @author @adradr - Adrian Lenard
 /// @notice Manages the vesting schedules for Rand investors

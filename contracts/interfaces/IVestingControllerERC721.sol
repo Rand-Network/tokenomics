@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
 
-interface IVestingControllerERC721{
-  struct MintParameters {
+pragma solidity 0.8.4;
+
+interface IVestingControllerERC721 {
+    struct MintParameters {
         address recipient;
         uint256 rndTokenAmount;
         uint256 vestingPeriod;

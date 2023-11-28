@@ -11,8 +11,6 @@ const {
     bigIntToHex
 } = require("../test/utils");
 
-
-
 describe("VC ERC721 functions", function () {
     let deployer;
     let alice;
